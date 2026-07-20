@@ -4,6 +4,7 @@ import { RequireAuth } from '@/auth/RequireAuth';
 import { Layout } from '@/components/Layout';
 import Dashboard from '@/views/Dashboard';
 import Drivers from '@/views/Drivers';
+import LiveTrips from '@/views/LiveTrips';
 import Login from '@/views/Login';
 import Mototaxis from '@/views/Mototaxis';
 
@@ -19,7 +20,7 @@ export function AppRoutes() {
       <Route element={<RequireAuth />}>
         <Route element={<Layout />}>
           <Route index element={<Dashboard />} />
-          <Route path="/viajes" element={<Placeholder name="Viajes en curso" />} />
+          <Route path="/viajes" element={<LiveTrips />} />
           <Route path="/mototaxis" element={<Mototaxis />} />
           <Route path="/conductores" element={<Drivers />} />
           <Route path="/historial" element={<Placeholder name="Historial" />} />

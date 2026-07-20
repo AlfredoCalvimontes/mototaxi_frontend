@@ -111,6 +111,9 @@ export const strings = {
     estimatedHint: 'Calculado en línea recta porque el ruteo no respondió: es una aproximación.',
     rating: 'Calificación',
     createdAt: 'Solicitado',
+    // El tablero en curso muestra antigüedad relativa; "Solicitado" a secas
+    // chocaría con el estado del mismo nombre en la columna de al lado.
+    requestedAgo: 'Pedido hace',
     endedAt: 'Finalizado',
     cancelledBy: 'Cancelado por',
     autoCompleted: 'Cierre automático',
