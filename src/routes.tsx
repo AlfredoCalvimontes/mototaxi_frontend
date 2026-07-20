@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 
 import { RequireAuth } from '@/auth/RequireAuth';
 import { Layout } from '@/components/Layout';
+import Customers from '@/views/Customers';
 import Dashboard from '@/views/Dashboard';
 import Drivers from '@/views/Drivers';
 import LiveTrips from '@/views/LiveTrips';
@@ -25,7 +26,7 @@ export function AppRoutes() {
           <Route path="/mototaxis" element={<Mototaxis />} />
           <Route path="/conductores" element={<Drivers />} />
           <Route path="/historial" element={<TripHistory />} />
-          <Route path="/clientes" element={<Placeholder name="Clientes" />} />
+          <Route path="/clientes" element={<Customers />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
