@@ -138,3 +138,40 @@ export function todayInLaPaz(now = new Date()): string {
 export function daysAgoInLaPaz(days: number, now = new Date()): string {
   return todayInLaPaz(new Date(now.getTime() - days * 86_400_000));
 }
+
+/**
+ * Villa Montes is UTC-4 year round, with no DST (spec §2), so the offset is a
+ * constant rather than something to derive per date.
+ */
+const LA_PAZ_UTC_OFFSET = '-04:00';
+
+/**
+ * Turns a local calendar date into the exact UTC instant it starts at.
+ *
+ * The history endpoint takes `datetime`, so a bare `YYYY-MM-DD` would arrive
+ * without a zone and be compared as midnight UTC — four hours off, quietly
+ * pulling in the tail of the previous local evening and dropping the last four
+ * hours of the day the operator asked for.
+ */
+export function laPazDayStartIso(day: string): string | undefined {
+  const start = laPazMidnight(day);
+  return start ? start.toISOString() : undefined;
+}
+
+/** Exclusive upper bound: the start of the day after `day`. */
+export function laPazDayEndIso(day: string): string | undefined {
+  const start = laPazMidnight(day);
+  return start ? new Date(start.getTime() + 86_400_000).toISOString() : undefined;
+}
+
+/**
+ * Returns `null` rather than an invalid Date. A cleared date input yields an
+ * empty string, and `toISOString()` on the resulting Invalid Date throws — from
+ * inside render, which takes the whole view down. An absent bound is a fine
+ * query; a crash is not.
+ */
+function laPazMidnight(day: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+  const date = new Date(`${day}T00:00:00${LA_PAZ_UTC_OFFSET}`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}

@@ -7,6 +7,7 @@ import Drivers from '@/views/Drivers';
 import LiveTrips from '@/views/LiveTrips';
 import Login from '@/views/Login';
 import Mototaxis from '@/views/Mototaxis';
+import TripHistory from '@/views/TripHistory';
 
 function Placeholder({ name }: { name: string }) {
   return <p className="text-slate-500">{name}</p>;
@@ -23,7 +24,7 @@ export function AppRoutes() {
           <Route path="/viajes" element={<LiveTrips />} />
           <Route path="/mototaxis" element={<Mototaxis />} />
           <Route path="/conductores" element={<Drivers />} />
-          <Route path="/historial" element={<Placeholder name="Historial" />} />
+          <Route path="/historial" element={<TripHistory />} />
           <Route path="/clientes" element={<Placeholder name="Clientes" />} />
         </Route>
       </Route>

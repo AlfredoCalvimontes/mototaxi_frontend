@@ -131,6 +131,7 @@ export const strings = {
     exportHint: 'El CSV incluye los teléfonos completos.',
     since: 'Desde',
     until: 'Hasta',
+    limit: 'Máximo',
     limitReached: (limit: number) =>
       `Se muestran los primeros ${limit} viajes. Acorta el rango para ver el resto.`,
   },

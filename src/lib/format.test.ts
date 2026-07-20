@@ -6,6 +6,8 @@ import {
   formatDateTime,
   formatDuration,
   formatRelative,
+  laPazDayEndIso,
+  laPazDayStartIso,
   maskCi,
   maskPhone,
   todayInLaPaz,
@@ -20,6 +22,20 @@ describe('fechas', () => {
   test('valores nulos o inválidos no rompen la tabla', () => {
     expect(formatDateTime(null)).toBe(EMPTY);
     expect(formatDateTime('no es una fecha')).toBe(EMPTY);
+  });
+
+  test('una fecha vacía o inválida no produce un rango, en vez de reventar', () => {
+    // Un input de fecha limpiado devuelve '': antes esto lanzaba desde el
+    // render y tumbaba la vista entera.
+    expect(laPazDayStartIso('')).toBeUndefined();
+    expect(laPazDayEndIso('2026-13-45')).toBeUndefined();
+  });
+
+  test('las fechas locales se convierten al instante UTC correcto', () => {
+    // La Paz es UTC-4 todo el año: la medianoche local son las 04:00 UTC.
+    expect(laPazDayStartIso('2026-07-20')).toBe('2026-07-20T04:00:00.000Z');
+    // Cota superior exclusiva: el inicio del día siguiente.
+    expect(laPazDayEndIso('2026-07-20')).toBe('2026-07-21T04:00:00.000Z');
   });
 
   test('el "hoy" del historial es el de La Paz', () => {
