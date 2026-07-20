@@ -78,8 +78,10 @@ describe('navegación', () => {
 
     await user.click(await screen.findByRole('link', { name: /sin check-in hoy/ }));
 
-    // El nombre también aparece en la navegación, así que se busca en el contenido.
+    // El nombre también aparece en la navegación, así que se busca el título.
     const main = screen.getByRole('main');
-    expect(await within(main).findByText('Conductores')).toBeInTheDocument();
+    expect(
+      await within(main).findByRole('heading', { name: 'Conductores', level: 1 }),
+    ).toBeInTheDocument();
   });
 });
