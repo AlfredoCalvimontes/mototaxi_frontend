@@ -10,10 +10,6 @@ import Login from '@/views/Login';
 import Mototaxis from '@/views/Mototaxis';
 import TripHistory from '@/views/TripHistory';
 
-function Placeholder({ name }: { name: string }) {
-  return <p className="text-slate-500">{name}</p>;
-}
-
 /** Extracted from `App` so tests can mount the same tree under a MemoryRouter. */
 export function AppRoutes() {
   return (
