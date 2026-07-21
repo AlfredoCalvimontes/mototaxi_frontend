@@ -9,7 +9,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "coverage": "vitest run --coverage"
   },
   "type": "module",
   "private": true,

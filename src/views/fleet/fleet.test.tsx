@@ -72,6 +72,81 @@ describe('edición de conductor: null se ignora', () => {
   });
 });
 
+describe('registro', () => {
+  test('un conductor nuevo sí pide CI y lo envía completo', async () => {
+    const bodies = captureBody('post', '/admin/drivers', fx.driver);
+    const { user } = renderApp(<Drivers />);
+    await screen.findByRole('table');
+
+    await user.click(screen.getByRole('button', { name: 'Registrar conductor' }));
+    const dialog = within(screen.getByRole('dialog'));
+    await user.type(dialog.getByLabelText(/Nombre/), 'Ana Choque');
+    await user.type(dialog.getByLabelText(/^CI/), '9988776 TJ');
+    await user.type(dialog.getByLabelText(/WhatsApp/), '+59170001111');
+    await user.click(dialog.getByRole('button', { name: 'Guardar' }));
+
+    await waitFor(() => expect(bodies).toHaveLength(1));
+    expect(bodies[0]).toEqual({
+      name: 'Ana Choque',
+      ci: '9988776 TJ',
+      phone_whatsapp: '+59170001111',
+      license_number: null,
+    });
+  });
+
+  test('no envía el alta si faltan campos obligatorios', async () => {
+    const bodies = captureBody('post', '/admin/drivers', fx.driver);
+    const { user } = renderApp(<Drivers />);
+    await screen.findByRole('table');
+
+    await user.click(screen.getByRole('button', { name: 'Registrar conductor' }));
+    const dialog = within(screen.getByRole('dialog'));
+    await user.type(dialog.getByLabelText(/Nombre/), 'Ana Choque');
+    await user.click(dialog.getByRole('button', { name: 'Guardar' }));
+
+    expect(bodies).toHaveLength(0);
+    expect(dialog.getAllByText('Este campo es obligatorio').length).toBeGreaterThan(0);
+  });
+
+  test('una mototaxi nueva envía los opcionales vacíos como null', async () => {
+    const bodies = captureBody('post', '/admin/mototaxis', fx.mototaxiDetail);
+    const { user } = renderApp(<Mototaxis />);
+    await screen.findByRole('table');
+
+    await user.click(screen.getByRole('button', { name: 'Registrar mototaxi' }));
+    const dialog = within(screen.getByRole('dialog'));
+    await user.type(dialog.getByLabelText(/Placa/), 'JKL456');
+    await user.type(dialog.getByLabelText(/IMEI/), '860111222333444');
+    await user.click(dialog.getByRole('button', { name: 'Guardar' }));
+
+    await waitFor(() => expect(bodies).toHaveLength(1));
+    expect(bodies[0]).toEqual({
+      plate_number: 'JKL456',
+      brand: null,
+      model: null,
+      tracker_imei: '860111222333444',
+      notes: null,
+    });
+  });
+
+  test('un alta duplicada muestra el mensaje del servidor', async () => {
+    server.use(
+      http.post(`${BASE}/admin/mototaxis`, () =>
+        HttpResponse.json({ detail: 'La placa ya está registrada' }, { status: 409 }),
+      ),
+    );
+    const { user } = renderApp(<Mototaxis />);
+    await screen.findByRole('table');
+
+    await user.click(screen.getByRole('button', { name: 'Registrar mototaxi' }));
+    const dialog = within(screen.getByRole('dialog'));
+    await user.type(dialog.getByLabelText(/Placa/), 'ABC123');
+    await user.click(dialog.getByRole('button', { name: 'Guardar' }));
+
+    expect(await dialog.findByRole('alert')).toHaveTextContent('La placa ya está registrada');
+  });
+});
+
 describe('edición de mototaxi: null limpia', () => {
   test('vaciar un campo opcional lo borra explícitamente', async () => {
     const bodies = captureBody('patch', '/admin/mototaxis/:uuid', fx.mototaxiDetail);
@@ -230,6 +305,50 @@ describe('asignación de mototaxi', () => {
 
     expect(dialog.getByText(/está en viaje/)).toBeInTheDocument();
     expect(dialog.getByRole('button', { name: 'Guardar' })).toBeDisabled();
+  });
+});
+
+describe('estado del vehículo', () => {
+  test('envía el nuevo estado de la unidad', async () => {
+    const bodies = captureBody('patch', '/admin/mototaxis/:uuid/status', fx.mototaxiDetail);
+    const { user } = renderApp(<Mototaxis />);
+
+    await user.click((await rowFor('ABC123')).getByRole('button', { name: 'Estado del vehículo' }));
+    const dialog = within(screen.getByRole('dialog'));
+    await user.click(dialog.getByRole('radio', { name: 'Fuera de servicio' }));
+    await user.click(dialog.getByRole('button', { name: 'Guardar' }));
+
+    await waitFor(() => expect(bodies).toHaveLength(1));
+    expect(bodies[0]).toEqual({ status: 'OUT_OF_SERVICE' });
+  });
+
+  test('no ofrece estados de conductor: son cosas distintas', async () => {
+    const { user } = renderApp(<Mototaxis />);
+
+    await user.click((await rowFor('ABC123')).getByRole('button', { name: 'Estado del vehículo' }));
+    const dialog = within(screen.getByRole('dialog'));
+
+    // El estado del vehículo es mecánico/administrativo; la elegibilidad para
+    // despacho sale del conductor (spec §4.2).
+    expect(dialog.queryByRole('radio', { name: 'En viaje' })).not.toBeInTheDocument();
+    expect(dialog.queryByRole('radio', { name: 'En descanso' })).not.toBeInTheDocument();
+  });
+
+  test('un rechazo del servidor se muestra dentro del diálogo', async () => {
+    server.use(
+      http.patch(`${BASE}/admin/mototaxis/:uuid/status`, () =>
+        HttpResponse.json({ detail: 'El conductor está en viaje' }, { status: 409 }),
+      ),
+    );
+    const { user } = renderApp(<Mototaxis />);
+
+    await user.click((await rowFor('ABC123')).getByRole('button', { name: 'Estado del vehículo' }));
+    const dialog = within(screen.getByRole('dialog'));
+    await user.click(dialog.getByRole('radio', { name: 'Deshabilitada' }));
+    await user.click(dialog.getByRole('button', { name: 'Guardar' }));
+
+    expect(await dialog.findByRole('alert')).toHaveTextContent('El conductor está en viaje');
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 });
 

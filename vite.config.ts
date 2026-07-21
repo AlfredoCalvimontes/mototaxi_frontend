@@ -27,5 +27,25 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
     css: false,
+    coverage: {
+      provider: 'v8',
+      // Fixtures and MSW handlers are test scaffolding: counting them measures
+      // how much of the mock we happened to exercise, not the app.
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+        'src/test/**',
+        'src/main.tsx',
+        'src/**/*.test.{ts,tsx}',
+        'src/vite-env.d.ts',
+        'src/lib/strings.ts',
+        'src/api/types.ts',
+      ],
+      thresholds: {
+        statements: 85,
+        lines: 88,
+        functions: 80,
+        branches: 75,
+      },
+    },
   },
 });

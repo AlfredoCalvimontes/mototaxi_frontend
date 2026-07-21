@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, test } from 'vitest';
 
 import { request, resetAuthRefreshState } from '@/api/client';
 import { RequireAuth } from '@/auth/RequireAuth';
+import { Layout } from '@/components/Layout';
 import { renderApp } from '@/test/render';
 import { server } from '@/test/server';
 import Login from '@/views/Login';
@@ -97,6 +98,55 @@ describe('inicio de sesión', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Completa ambos campos');
     expect(loginCalls).toBe(0);
+  });
+});
+
+describe('cierre de sesión', () => {
+  function withLayout() {
+    return (
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route element={<RequireAuth />}>
+          <Route element={<Layout />}>
+            <Route index element={<h1>Resumen</h1>} />
+          </Route>
+        </Route>
+      </Routes>
+    );
+  }
+
+  test('cerrar sesión devuelve a login sin aviso de expiración', async () => {
+    let logoutCalls = 0;
+    server.use(
+      http.post(`${BASE}/users/logout`, () => {
+        logoutCalls += 1;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    const { user } = renderApp(withLayout(), { route: '/' });
+    await screen.findByRole('heading', { name: 'Resumen' });
+
+    await user.click(screen.getByRole('button', { name: 'Cerrar sesión' }));
+
+    expect(await screen.findByRole('heading', { name: 'Ingresar al panel' })).toBeInTheDocument();
+    expect(logoutCalls).toBe(1);
+    // Salir a propósito no es una sesión caída: no corresponde el aviso.
+    expect(screen.queryByText('Tu sesión expiró. Ingresa de nuevo.')).not.toBeInTheDocument();
+  });
+
+  test('si el logout falla igual se cierra la sesión localmente', async () => {
+    server.use(
+      http.post(`${BASE}/users/logout`, () =>
+        HttpResponse.json({ detail: 'token ya revocado' }, { status: 401 }),
+      ),
+    );
+    const { user } = renderApp(withLayout(), { route: '/' });
+    await screen.findByRole('heading', { name: 'Resumen' });
+
+    await user.click(screen.getByRole('button', { name: 'Cerrar sesión' }));
+
+    // Las cookies pueden haber caducado ya; el operador pidió salir de todos modos.
+    expect(await screen.findByRole('heading', { name: 'Ingresar al panel' })).toBeInTheDocument();
   });
 });
 

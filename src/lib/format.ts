@@ -18,20 +18,6 @@ const dateTimeFormatter = new Intl.DateTimeFormat('es-BO', {
   hour12: false,
 });
 
-const timeFormatter = new Intl.DateTimeFormat('es-BO', {
-  timeZone: DISPLAY_TIME_ZONE,
-  hour: '2-digit',
-  minute: '2-digit',
-  hour12: false,
-});
-
-const dateFormatter = new Intl.DateTimeFormat('es-BO', {
-  timeZone: DISPLAY_TIME_ZONE,
-  day: '2-digit',
-  month: '2-digit',
-  year: 'numeric',
-});
-
 export const EMPTY = '—';
 
 function parse(value: string | null | undefined): Date | null {
@@ -43,16 +29,6 @@ function parse(value: string | null | undefined): Date | null {
 export function formatDateTime(value: string | null | undefined): string {
   const date = parse(value);
   return date ? dateTimeFormatter.format(date) : EMPTY;
-}
-
-export function formatTime(value: string | null | undefined): string {
-  const date = parse(value);
-  return date ? timeFormatter.format(date) : EMPTY;
-}
-
-export function formatDate(value: string | null | undefined): string {
-  const date = parse(value);
-  return date ? dateFormatter.format(date) : EMPTY;
 }
 
 /** `265` → `4 min 25 s`. Reach times and averages are always seconds. */

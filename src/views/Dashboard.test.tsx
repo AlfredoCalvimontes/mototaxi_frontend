@@ -30,6 +30,32 @@ describe('resumen', () => {
     expect(screen.getByText(/GPS sin actualizar/)).toBeInTheDocument();
   });
 
+  test('un fallo de red se explica en castellano, no con el error crudo', async () => {
+    server.use(http.get(`${BASE}/admin/kpis`, () => HttpResponse.error()));
+    renderApp(<Dashboard />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'No se pudo conectar con el servidor',
+    );
+  });
+
+  test('reintentar vuelve a pedir los datos', async () => {
+    let calls = 0;
+    server.use(
+      http.get(`${BASE}/admin/kpis`, () => {
+        calls += 1;
+        return calls === 1
+          ? HttpResponse.json({ detail: 'boom' }, { status: 500 })
+          : HttpResponse.json(fx.kpis);
+      }),
+    );
+    const { user } = renderApp(<Dashboard />);
+
+    await user.click(await screen.findByRole('button', { name: 'Reintentar' }));
+
+    expect(await screen.findByText('34')).toBeInTheDocument();
+  });
+
   test('sin alertas lo dice explícitamente en vez de mostrar una caja vacía', async () => {
     server.use(http.get(`${BASE}/admin/alerts`, () => HttpResponse.json(fx.noAlerts)));
     renderApp(<Dashboard />);
