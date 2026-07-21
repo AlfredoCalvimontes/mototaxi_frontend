@@ -1,4 +1,4 @@
-# Panel Mototaxis — Villa Montes
+# Panel Mototaxis
 
 Admin panel for the mototaxi dispatch system (spec §12). React + Vite SPA,
 Spanish (es-BO), talking to the FastAPI backend in `Documentos/Projects/mototaxi`.
