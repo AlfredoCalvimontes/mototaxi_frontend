@@ -1,5 +1,7 @@
 import { useId, type ReactNode } from 'react';
 
+import { strings } from '@/lib/strings';
+
 export type FieldProps = {
   label: string;
   value: string;
@@ -79,7 +81,7 @@ export function FormDialog({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Cerrar"
+            aria-label={strings.common.close}
             className="text-slate-400 hover:text-slate-700"
           >
             ✕
