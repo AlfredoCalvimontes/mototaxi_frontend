@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { lazy, Suspense, useMemo } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 import { listDrivers, listMototaxis } from '@/api/admin';
@@ -11,6 +11,9 @@ import { StatusBadge, WarningBadge } from '@/components/StatusBadge';
 import { TableSkeleton } from '@/components/Skeleton';
 import { EMPTY, formatCoords, formatRelative } from '@/lib/format';
 import { strings } from '@/lib/strings';
+import { MototaxiEditLoader } from '@/views/fleet/MototaxiEditLoader';
+import { MototaxiForm } from '@/views/fleet/MototaxiForm';
+import { MototaxiStatusDialog } from '@/views/fleet/MototaxiStatusDialog';
 
 // Leaflet and its CSS are the heaviest thing in the bundle and only one view
 // needs them, so the map loads on demand.
@@ -22,9 +25,15 @@ const FleetMap = lazy(() =>
 const STALE_PARAM = 'gps';
 const STALE_VALUE = 'sin-senal';
 
+type MototaxiDialog =
+  | { kind: 'create' }
+  | { kind: 'edit'; uuid: string }
+  | { kind: 'status'; mototaxi: MototaxiSummary };
+
 export default function Mototaxis() {
   const [searchParams, setSearchParams] = useSearchParams();
   const onlyStale = searchParams.get(STALE_PARAM) === STALE_VALUE;
+  const [dialog, setDialog] = useState<MototaxiDialog | null>(null);
 
   const mototaxis = useQuery({
     queryKey: queryKeys.mototaxis,
@@ -101,6 +110,28 @@ export default function Mototaxis() {
             ? formatRelative(unit.location_updated_at)
             : strings.mototaxis.noPosition,
       },
+      {
+        id: 'actions',
+        header: '',
+        cell: (unit) => (
+          <div className="flex flex-wrap justify-end gap-1">
+            <button
+              type="button"
+              onClick={() => setDialog({ kind: 'edit', uuid: unit.mototaxi_uuid })}
+              className="rounded border border-slate-300 px-2 py-1 text-xs font-medium whitespace-nowrap text-slate-700 hover:bg-slate-50"
+            >
+              {strings.common.edit}
+            </button>
+            <button
+              type="button"
+              onClick={() => setDialog({ kind: 'status', mototaxi: unit })}
+              className="rounded border border-slate-300 px-2 py-1 text-xs font-medium whitespace-nowrap text-slate-700 hover:bg-slate-50"
+            >
+              {strings.fleet.vehicleStatus}
+            </button>
+          </div>
+        ),
+      },
     ],
     [driverNames],
   );
@@ -114,6 +145,13 @@ export default function Mototaxis() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-semibold text-slate-900">{strings.mototaxis.heading}</h1>
+        <button
+          type="button"
+          onClick={() => setDialog({ kind: 'create' })}
+          className="rounded bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+        >
+          {strings.fleet.newMototaxi}
+        </button>
         <label className="flex items-center gap-2 text-sm text-slate-700">
           <input
             type="checkbox"
@@ -143,6 +181,16 @@ export default function Mototaxis() {
         initialSort={{ columnId: 'plate', direction: 'asc' }}
         rowClassName={(unit) => (unit.is_tracker_stale ? 'bg-amber-50/60' : 'hover:bg-slate-50')}
       />
+
+      {dialog?.kind === 'create' && (
+        <MototaxiForm mototaxi={null} onClose={() => setDialog(null)} />
+      )}
+      {dialog?.kind === 'edit' && (
+        <MototaxiEditLoader uuid={dialog.uuid} onClose={() => setDialog(null)} />
+      )}
+      {dialog?.kind === 'status' && (
+        <MototaxiStatusDialog mototaxi={dialog.mototaxi} onClose={() => setDialog(null)} />
+      )}
     </div>
   );
 }
