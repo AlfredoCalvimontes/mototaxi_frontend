@@ -109,6 +109,11 @@ describe('exportación CSV', () => {
     const createObjectURL = vi.fn(() => 'blob:csv');
     const revokeObjectURL = vi.fn();
     vi.stubGlobal('URL', Object.assign(URL, { createObjectURL, revokeObjectURL }));
+    // jsdom cannot follow a download link and logs "Not implemented" for the
+    // attempt. The click is what matters here, not the navigation.
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined);
 
     const { user } = renderApp(<TripHistory />);
     // El CSV lleva los teléfonos completos: eso se advierte antes de descargar.
@@ -119,6 +124,12 @@ describe('exportación CSV', () => {
     await waitFor(() => expect(seen).toHaveLength(1));
     expect(seen[0]!.searchParams.get('since')).toBe('2026-07-20T04:00:00.000Z');
     expect(createObjectURL).toHaveBeenCalled();
+    // El archivo se ofrece con un nombre que refleja el rango exportado.
+    const anchor = click.mock.instances[0] as HTMLAnchorElement;
+    expect(anchor.download).toBe('viajes_2026-07-20_2026-07-20.csv');
+    expect(revokeObjectURL).toHaveBeenCalled();
+
+    click.mockRestore();
     vi.unstubAllGlobals();
   });
 

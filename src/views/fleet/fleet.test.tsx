@@ -8,7 +8,8 @@ import { server } from '@/test/server';
 import Drivers from '@/views/Drivers';
 import Mototaxis from '@/views/Mototaxis';
 
-// Leaflet needs layout APIs jsdom does not provide.
+// Not the subject here, and rendering tiles per test is wasted work. The real
+// component is covered in FleetMap.test.tsx.
 vi.mock('@/components/FleetMap', () => ({ FleetMap: () => <div /> }));
 
 const BASE = '/api/v1';

@@ -7,8 +7,9 @@ import { renderApp } from '@/test/render';
 import { server } from '@/test/server';
 import Mototaxis from '@/views/Mototaxis';
 
-// Leaflet needs real layout and canvas APIs jsdom does not provide. The map is
-// covered by hand; these tests are about the table and the filter.
+// Stubbed to keep these tests about the table and the filter, and to assert
+// which units the view hands the map. The real component renders fine under
+// jsdom and is covered directly in FleetMap.test.tsx.
 vi.mock('@/components/FleetMap', () => ({
   FleetMap: ({ units }: { units: { mototaxi_uuid: string }[] }) => (
     <div data-testid="mapa">{units.length}</div>

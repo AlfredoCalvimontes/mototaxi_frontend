@@ -40,11 +40,13 @@ export default defineConfig({
         'src/lib/strings.ts',
         'src/api/types.ts',
       ],
+      // Set just under the current numbers: a regression fails, ordinary
+      // churn does not.
       thresholds: {
-        statements: 85,
-        lines: 88,
-        functions: 80,
-        branches: 75,
+        statements: 88,
+        lines: 91,
+        functions: 84,
+        branches: 80,
       },
     },
   },
