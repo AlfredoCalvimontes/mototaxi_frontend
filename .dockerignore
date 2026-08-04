@@ -1,0 +1,17 @@
+# node_modules is reinstalled by `npm ci` against the lockfile: copying the
+# host's copy in would ship whatever architecture the laptop happens to be.
+node_modules
+dist
+coverage
+
+.git
+.gitignore
+
+# .env holds VITE_DEV_API_TARGET and anything else local. Build args set what
+# the bundle needs; nothing else belongs in an image that is served publicly.
+.env
+.env.*
+!.env.example
+
+*.log
+.DS_Store
