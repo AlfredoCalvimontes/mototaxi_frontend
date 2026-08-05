@@ -1,0 +1,150 @@
+name: CI
+
+# The SPA has no deployment of its own. It is built on the API repository's VM
+# by that repo's scripts/deploy.sh, which pulls this checkout and builds the
+# `frontend` compose service. So a green run here ends by asking that repo to
+# deploy — see the `deploy` job.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Matches the builder stage in Dockerfile. Testing on a different major than
+  # the one that ships is how a build passes here and fails on the VM.
+  NODE_VERSION: "22"
+
+jobs:
+  quality:
+    name: Typecheck & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Vitest
+        run: npm test
+
+  build:
+    name: Production Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      # `npm run build` is `tsc --noEmit && vite build`, so this re-checks types
+      # as a side effect. Kept separate from the quality job anyway: a type
+      # error and a bundler failure are different problems and reading which
+      # job went red should not require opening it.
+      - name: Build
+        run: npm run build
+
+  image:
+    name: Docker Image Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      # The VM builds this image in place on every deploy, with no registry
+      # holding a previous one. A Dockerfile that fails there is downtime with
+      # nothing to roll back to, so it gets built here where failing is cheap.
+      - name: Build runtime image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: mototaxi-front:ci
+          # Same value docker-compose passes on the VM. Vite inlines it at
+          # build time, so building with a different one produces a bundle that
+          # calls the wrong origin.
+          build-args: VITE_API_BASE_URL=/api/v1
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Check the image serves the built SPA
+        run: |
+          set -euo pipefail
+          docker run -d --name spa -p 8080:80 mototaxi-front:ci
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            if curl -fsS --max-time 5 http://localhost:8080/ >/dev/null; then
+              echo "SPA responds"
+              docker rm -f spa >/dev/null
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::image built but served nothing on port 80"
+          docker logs spa || true
+          docker rm -f spa >/dev/null || true
+          exit 1
+
+  # Green on main asks the API repository to redeploy, because that is where
+  # deploy.sh and the VM credentials live. Nothing is pushed from here.
+  deploy:
+    name: Trigger dev deploy
+    needs: [quality, test, build, image]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch to mototaxi_sever
+        env:
+          # Fine-grained PAT, contents:write, scoped to mototaxi_sever alone.
+          # The event type carries the target — the receiving workflow matches
+          # `types:` before it starts and reads nothing from client_payload.
+          TOKEN: ${{ secrets.DEPLOY_DISPATCH_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TOKEN:-}" ]; then
+            echo "::error::DEPLOY_DISPATCH_TOKEN is not set — add it under Settings > Secrets and variables > Actions"
+            exit 1
+          fi
+          curl -fsS -X POST \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/repos/AlfredoCalvimontes/mototaxi_sever/dispatches \
+            -d '{"event_type":"frontend-dev"}'
+          echo "Requested a dev deploy. Watch it at:"
+          echo "  https://github.com/AlfredoCalvimontes/mototaxi_sever/actions/workflows/deploy.yml"
