@@ -1,3 +1,12 @@
+# syntax=docker/dockerfile:1
+#
+# The syntax directive is load-bearing, not decoration: the Caddyfile below is
+# written with a COPY heredoc, and heredocs need Dockerfile frontend 1.4+. The
+# BuildKit embedded in Debian's docker.io predates that and reads the opening
+# brace of the Caddyfile as an instruction — "dockerfile parse error line 40:
+# unknown instruction: {". This line makes BuildKit fetch a current frontend
+# instead of using its built-in one.
+#
 # Build the SPA, then serve the static output. Two stages because node and its
 # 400 MB of dev dependencies have no business running on the VM: the result is
 # a directory of files, and the runtime only needs something to hand them over.
