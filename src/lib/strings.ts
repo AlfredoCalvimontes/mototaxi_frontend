@@ -12,6 +12,7 @@ export const strings = {
     liveTrips: 'Viajes en curso',
     history: 'Historial',
     customers: 'Clientes',
+    settings: 'Configuración',
     logout: 'Cerrar sesión',
   },
   login: {
@@ -36,6 +37,7 @@ export const strings = {
     save: 'Guardar',
     edit: 'Editar',
     close: 'Cerrar',
+    moreInfo: 'Más información',
     search: 'Buscar',
     empty: 'No hay datos para mostrar',
     error: 'Ocurrió un error',
@@ -114,6 +116,32 @@ export const strings = {
     trackingNeedsShare: 'Debe compartir ubicación',
     trackingNeedsShareHint:
       'Sin GPS y sin ubicación reciente: no recibe viajes hasta que comparta su ubicación por WhatsApp.',
+  },
+  settings: {
+    heading: 'Configuración',
+    intro:
+      'Ajustes que puedes cambiar sin esperar una actualización del sistema. Se aplican de inmediato.',
+    save: 'Guardar cambio',
+    restoreDefault: (value: number, unit: string) => `Restaurar valor original (${value} ${unit})`,
+    saved: 'Cambio guardado.',
+    allowedRange: (min: number, max: number, unit: string) =>
+      `Permitido: de ${min} a ${max} ${unit}.`,
+    invalid: (min: number, max: number) => `Escribe un número entero entre ${min} y ${max}.`,
+    changedAt: 'Último cambio',
+    neverChanged: 'Nunca se ha cambiado: usa el valor original.',
+    units: { minutes: 'minutos' } as Record<string, string>,
+    parameters: {
+      shared_location_freshness_minutes: {
+        label: 'Vigencia de la ubicación compartida',
+        tooltip:
+          'Cuánto tiempo se confía en una ubicación que el conductor comparte por WhatsApp. ' +
+          'Una moto con GPS reporta su posición cada pocos segundos, pero una ubicación compartida ' +
+          'a mano no se actualiza sola: pasado este tiempo la moto deja de recibir viajes hasta que ' +
+          'el conductor la comparta de nuevo. Un valor bajo da posiciones más exactas pero obliga a ' +
+          'compartir más seguido; uno alto es más cómodo, pero puede ofrecer viajes a una moto que ya se movió. ' +
+          'No afecta a las motos con GPS.',
+      },
+    } as Record<string, { label: string; tooltip: string }>,
   },
   trips: {
     heading: 'Viajes en curso',

@@ -25,5 +25,6 @@ export const queryKeys = {
   driver: (uuid: UUID) => ['driver', uuid] as const,
   activeTrips: ['trips', 'active'] as const,
   tripHistory: (params: TripHistoryParams) => ['trips', 'history', params] as const,
+  settings: ['settings'] as const,
   customers: (includeBlocked: boolean) => ['customers', includeBlocked] as const,
 };

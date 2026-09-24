@@ -13,6 +13,7 @@ import type {
   DriverStatus,
   KPIs,
   Mototaxi,
+  RuntimeSetting,
   MototaxiSummary,
   TripSummary,
   UUID,
@@ -153,4 +154,12 @@ export function changeMototaxiStatus(
     method: 'PATCH',
     json: payload,
   });
+}
+
+export function listSettings(): Promise<RuntimeSetting[]> {
+  return request<RuntimeSetting[]>('/admin/settings');
+}
+
+export function updateSetting(key: string, value: number): Promise<RuntimeSetting> {
+  return request<RuntimeSetting>(`/admin/settings/${key}`, { method: 'PUT', json: { value } });
 }
