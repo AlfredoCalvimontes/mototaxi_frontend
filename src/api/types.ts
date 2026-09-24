@@ -76,6 +76,21 @@ export type MototaxiSummary = {
   current_driver_uuid: UUID | null;
 };
 
+/** A setting the manager can change at runtime (`GET /admin/settings`). */
+export type RuntimeSetting = {
+  key: string;
+  value: number;
+  /** The shipped value, for "restore default". */
+  default: number;
+  minimum: number;
+  maximum: number;
+  unit: string;
+  /** English description stored with the value; the UI shows its own Spanish text. */
+  description: string;
+  /** `null` until someone changes it from the default. */
+  updated_at: IsoDateTime | null;
+};
+
 export type CustomerSummary = {
   customer_uuid: UUID;
   phone_whatsapp: string;

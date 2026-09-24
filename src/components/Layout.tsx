@@ -10,6 +10,7 @@ const navItems = [
   { to: '/conductores', label: strings.nav.drivers, end: false },
   { to: '/historial', label: strings.nav.history, end: false },
   { to: '/clientes', label: strings.nav.customers, end: false },
+  { to: '/configuracion', label: strings.nav.settings, end: false },
 ];
 
 export function Layout() {

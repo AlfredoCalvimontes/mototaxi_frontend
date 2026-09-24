@@ -53,6 +53,17 @@ export const handlers = [
   http.patch(`${BASE}/admin/drivers/:uuid/mototaxi`, () => HttpResponse.json(fx.driver)),
   http.delete(`${BASE}/admin/drivers/:uuid`, () => new HttpResponse(null, { status: 204 })),
 
+  // settings
+  http.get(`${BASE}/admin/settings`, () => HttpResponse.json([fx.sharedLocationSetting])),
+  http.put(`${BASE}/admin/settings/:key`, async ({ request }) => {
+    const { value } = (await request.json()) as { value: number };
+    return HttpResponse.json({
+      ...fx.sharedLocationSetting,
+      value,
+      updated_at: '2026-09-24T18:00:00Z',
+    });
+  }),
+
   // trips
   http.get(`${BASE}/admin/trips/active`, () =>
     HttpResponse.json([fx.activeTrip, fx.searchingTrip]),

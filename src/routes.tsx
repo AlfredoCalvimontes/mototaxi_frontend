@@ -8,6 +8,7 @@ import Drivers from '@/views/Drivers';
 import LiveTrips from '@/views/LiveTrips';
 import Login from '@/views/Login';
 import Mototaxis from '@/views/Mototaxis';
+import Settings from '@/views/Settings';
 import TripHistory from '@/views/TripHistory';
 
 /** Extracted from `App` so tests can mount the same tree under a MemoryRouter. */
@@ -23,6 +24,7 @@ export function AppRoutes() {
           <Route path="/conductores" element={<Drivers />} />
           <Route path="/historial" element={<TripHistory />} />
           <Route path="/clientes" element={<Customers />} />
+          <Route path="/configuracion" element={<Settings />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

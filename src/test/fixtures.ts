@@ -5,6 +5,7 @@ import type {
   CustomerSummary,
   Driver,
   KPIs,
+  RuntimeSetting,
   Mototaxi,
   MototaxiSummary,
   TripSummary,
@@ -58,6 +59,17 @@ export const autoCompletedTrip: TripSummary = {
   rating: 4,
   created_at: '2026-07-19T11:00:00Z',
   ended_at: '2026-07-19T11:35:00Z',
+};
+
+export const sharedLocationSetting: RuntimeSetting = {
+  key: 'shared_location_freshness_minutes',
+  value: 30,
+  default: 30,
+  minimum: 5,
+  maximum: 480,
+  unit: 'minutes',
+  description: 'How long a location shared by hand keeps a mototaxi dispatchable',
+  updated_at: null,
 };
 
 export const mototaxiSummary: MototaxiSummary = {
