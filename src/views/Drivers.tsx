@@ -155,9 +155,13 @@ export default function Drivers() {
         sortValue: (driver) =>
           driver.current_mototaxi_uuid ? (plates.get(driver.current_mototaxi_uuid) ?? '') : null,
         cell: (driver) =>
-          driver.current_mototaxi_uuid
-            ? (plates.get(driver.current_mototaxi_uuid) ?? EMPTY)
-            : EMPTY,
+          driver.current_mototaxi_uuid ? (
+            (plates.get(driver.current_mototaxi_uuid) ?? EMPTY)
+          ) : (
+            <WarningBadge title={strings.drivers.noMototaxiHint}>
+              {strings.drivers.noMototaxiBadge}
+            </WarningBadge>
+          ),
       },
       {
         id: 'tracking',

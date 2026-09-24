@@ -52,7 +52,19 @@ describe('seguimiento', () => {
     const rows = await (await table()).findAllByRole('row');
     const lucia = rows.find((row) => within(row).queryByText('Lucía Vargas'))!;
 
+    expect(within(lucia).getByText('Sin seguimiento')).toBeInTheDocument();
+  });
+});
+
+describe('mototaxi asignada', () => {
+  test('quien no tiene mototaxi lo muestra con una insignia, no con un guion', async () => {
+    renderApp(<Drivers />);
+    const rows = await (await table()).findAllByRole('row');
+    const lucia = rows.find((row) => within(row).queryByText('Lucía Vargas'))!;
+    const marco = rows.find((row) => within(row).queryByText('Marco Peña'))!;
+
     expect(within(lucia).getByText('Sin mototaxi')).toBeInTheDocument();
+    expect(within(marco).queryByText('Sin mototaxi')).not.toBeInTheDocument();
   });
 });
 

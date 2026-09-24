@@ -97,8 +97,11 @@ export const strings = {
     noCheckinHint: 'Sin check-in hoy no recibe ofertas: la ventana de WhatsApp está cerrada.',
     onlyWithoutCheckin: 'Solo sin check-in',
     restingUntil: 'Descansa hasta',
+    noMototaxiBadge: 'Sin mototaxi',
+    noMototaxiHint:
+      'No tiene mototaxi asignada: no puede recibir viajes hasta que se le asigne una.',
     tracking: 'Seguimiento',
-    trackingNoMototaxi: 'Sin mototaxi',
+    trackingNoMototaxi: 'Sin seguimiento',
     trackingNoMototaxiHint: 'No tiene mototaxi asignada, así que no hay nada que rastrear.',
     trackingTracker: 'GPS activo',
     trackingTrackerHint: 'Su mototaxi tiene GPS y reportó posición hace poco.',
