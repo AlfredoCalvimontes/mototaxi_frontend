@@ -97,6 +97,20 @@ export const strings = {
     noCheckinHint: 'Sin check-in hoy no recibe ofertas: la ventana de WhatsApp está cerrada.',
     onlyWithoutCheckin: 'Solo sin check-in',
     restingUntil: 'Descansa hasta',
+    tracking: 'Seguimiento',
+    trackingNoMototaxi: 'Sin mototaxi',
+    trackingNoMototaxiHint: 'No tiene mototaxi asignada, así que no hay nada que rastrear.',
+    trackingTracker: 'GPS activo',
+    trackingTrackerHint: 'Su mototaxi tiene GPS y reportó posición hace poco.',
+    trackingTrackerStale: 'GPS sin señal',
+    trackingTrackerStaleHint:
+      'Su mototaxi tiene GPS pero dejó de reportar: no recibe viajes hasta que vuelva la señal.',
+    trackingShared: 'Ubicación compartida',
+    trackingSharedHint:
+      'Sin GPS en la mototaxi: la posición la compartió el conductor por WhatsApp.',
+    trackingNeedsShare: 'Debe compartir ubicación',
+    trackingNeedsShareHint:
+      'Sin GPS y sin ubicación reciente: no recibe viajes hasta que comparta su ubicación por WhatsApp.',
   },
   trips: {
     heading: 'Viajes en curso',

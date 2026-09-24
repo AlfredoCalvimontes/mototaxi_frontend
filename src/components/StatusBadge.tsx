@@ -81,3 +81,23 @@ export function WarningBadge({ children, title }: { children: string; title?: st
     </span>
   );
 }
+
+/** A pill in any tone, for states that belong to no status enum (e.g. GPS tracking). */
+export function ToneBadge({
+  tone,
+  children,
+  title,
+}: {
+  tone: Tone;
+  children: string;
+  title?: string;
+}) {
+  return (
+    <span
+      title={title}
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ring-1 ring-inset ${toneClasses[tone]}`}
+    >
+      {children}
+    </span>
+  );
+}

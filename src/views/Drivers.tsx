@@ -1,15 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 import { deleteDriver, listDrivers, listMototaxis } from '@/api/admin';
 import { POLL, queryKeys } from '@/api/queries';
-import type { Driver } from '@/api/types';
+import type { Driver, MototaxiSummary } from '@/api/types';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { DataTable, type Column } from '@/components/DataTable';
 import { ErrorState } from '@/components/ErrorState';
 import { MaskedValue } from '@/components/MaskedValue';
-import { StatusBadge, WarningBadge } from '@/components/StatusBadge';
+import { StatusBadge, ToneBadge, WarningBadge } from '@/components/StatusBadge';
 import { TableSkeleton } from '@/components/Skeleton';
 import { AssignMototaxiDialog } from '@/views/fleet/AssignMototaxiDialog';
 import { DriverForm } from '@/views/fleet/DriverForm';
@@ -19,10 +19,12 @@ import {
   formatDateTime,
   formatDuration,
   formatPercent,
+  formatRelative,
   maskCi,
   maskPhone,
 } from '@/lib/format';
 import { strings } from '@/lib/strings';
+import { trackingState, type TrackingState } from '@/lib/tracking';
 
 /** Set by the dashboard's "sin check-in" alert. */
 const CHECKIN_PARAM = 'checkin';
@@ -34,6 +36,37 @@ type DriverDialog =
   | { kind: 'status'; driver: Driver }
   | { kind: 'assign'; driver: Driver }
   | { kind: 'retire'; driver: Driver };
+
+const TRACKING_BADGES: Record<
+  TrackingState,
+  { tone: 'good' | 'warn' | 'idle'; label: string; hint: string }
+> = {
+  noMototaxi: {
+    tone: 'idle',
+    label: strings.drivers.trackingNoMototaxi,
+    hint: strings.drivers.trackingNoMototaxiHint,
+  },
+  tracker: {
+    tone: 'good',
+    label: strings.drivers.trackingTracker,
+    hint: strings.drivers.trackingTrackerHint,
+  },
+  trackerStale: {
+    tone: 'warn',
+    label: strings.drivers.trackingTrackerStale,
+    hint: strings.drivers.trackingTrackerStaleHint,
+  },
+  shared: {
+    tone: 'good',
+    label: strings.drivers.trackingShared,
+    hint: strings.drivers.trackingSharedHint,
+  },
+  needsShare: {
+    tone: 'warn',
+    label: strings.drivers.trackingNeedsShare,
+    hint: strings.drivers.trackingNeedsShareHint,
+  },
+};
 
 export default function Drivers() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -62,11 +95,23 @@ export default function Drivers() {
     refetchInterval: POLL.mototaxis,
   });
 
-  const plates = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const unit of mototaxis.data ?? []) map.set(unit.mototaxi_uuid, unit.plate_number);
+  const units = useMemo(() => {
+    const map = new Map<string, MototaxiSummary>();
+    for (const unit of mototaxis.data ?? []) map.set(unit.mototaxi_uuid, unit);
     return map;
   }, [mototaxis.data]);
+
+  const plates = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const [uuid, unit] of units) map.set(uuid, unit.plate_number);
+    return map;
+  }, [units]);
+
+  const unitOf = useCallback(
+    (driver: Driver) =>
+      driver.current_mototaxi_uuid ? units.get(driver.current_mototaxi_uuid) : undefined,
+    [units],
+  );
 
   const rows = useMemo(() => {
     const all = drivers.data ?? [];
@@ -113,6 +158,27 @@ export default function Drivers() {
           driver.current_mototaxi_uuid
             ? (plates.get(driver.current_mototaxi_uuid) ?? EMPTY)
             : EMPTY,
+      },
+      {
+        id: 'tracking',
+        header: strings.drivers.tracking,
+        sortValue: (driver) => trackingState(unitOf(driver)),
+        cell: (driver) => {
+          const unit = unitOf(driver);
+          const badge = TRACKING_BADGES[trackingState(unit)];
+          return (
+            <div className="flex flex-col items-start gap-0.5">
+              <ToneBadge tone={badge.tone} title={badge.hint}>
+                {badge.label}
+              </ToneBadge>
+              {unit?.location_updated_at && (
+                <span className="text-xs text-slate-500">
+                  {formatRelative(unit.location_updated_at)}
+                </span>
+              )}
+            </div>
+          );
+        },
       },
       {
         id: 'phone',
@@ -184,7 +250,7 @@ export default function Drivers() {
         ),
       },
     ],
-    [plates],
+    [plates, unitOf],
   );
 
   if (drivers.isPending) return <TableSkeleton rows={5} />;
