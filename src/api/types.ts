@@ -67,6 +67,10 @@ export type MototaxiSummary = {
   lat: number | null;
   lon: number | null;
   location_updated_at: IsoDateTime | null;
+  /** How the position arrived: `TRACKER`, `WHATSAPP`… `null` until one does. */
+  location_source: string | null;
+  /** A GPS tracker is fitted. `false`: the driver must share a WhatsApp location. */
+  has_tracker: boolean;
   /** Position older than the dispatch freshness window (spec §7.4). */
   is_tracker_stale: boolean;
   current_driver_uuid: UUID | null;

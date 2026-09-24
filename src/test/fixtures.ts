@@ -67,6 +67,8 @@ export const mototaxiSummary: MototaxiSummary = {
   lat: -21.26235,
   lon: -63.46903,
   location_updated_at: '2026-07-20T14:29:00Z',
+  location_source: 'TRACKER',
+  has_tracker: true,
   is_tracker_stale: false,
   current_driver_uuid: '66666666-6666-4666-8666-666666666666',
 };
