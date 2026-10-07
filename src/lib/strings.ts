@@ -209,7 +209,8 @@ export const strings = {
     ciNotEditable: 'el CI no se edita; para corregirlo, registra al conductor de nuevo',
     cannotClearFields:
       'Los campos vacíos no se pueden borrar por esta vía y se dejarán como estaban.',
-    imeiHint: 'Vaciarlo desconecta el GPS de la unidad y la saca de la lista autorizada.',
+    imeiHint:
+      '15 dígitos, impresos en la etiqueta del GPS o en su caja. Al guardar, el GPS queda autorizado en el servidor. Vaciarlo desconecta el GPS de la unidad y lo saca de la lista autorizada.',
     detachTrackerTitle: 'Desconectar el GPS',
     detachTrackerBody: (imei: string, plate: string) =>
       `Se quitará el IMEI ${imei} de ${plate}. La unidad dejará de reportar posición y saldrá de la lista autorizada del servidor GPS.`,
