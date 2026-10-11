@@ -13,6 +13,7 @@ import type {
   DriverStatus,
   KPIs,
   Mototaxi,
+  PhoneKey,
   RuntimeSetting,
   MototaxiSummary,
   TripSummary,
@@ -154,6 +155,15 @@ export function changeMototaxiStatus(
     method: 'PATCH',
     json: payload,
   });
+}
+
+/** Issues — or rotates — the key the vehicle's phone reports GPS with. Shown once. */
+export function issueMototaxiPhoneKey(mototaxiUuid: UUID): Promise<PhoneKey> {
+  return request<PhoneKey>(`/admin/mototaxis/${mototaxiUuid}/phone-key`, { method: 'POST' });
+}
+
+export function revokeMototaxiPhoneKey(mototaxiUuid: UUID): Promise<null> {
+  return request<null>(`/admin/mototaxis/${mototaxiUuid}/phone-key`, { method: 'DELETE' });
 }
 
 export function listSettings(): Promise<RuntimeSetting[]> {

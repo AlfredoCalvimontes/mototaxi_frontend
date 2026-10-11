@@ -71,6 +71,8 @@ export type MototaxiSummary = {
   location_source: string | null;
   /** A GPS tracker is fitted. `false`: the driver must share a WhatsApp location. */
   has_tracker: boolean;
+  /** A phone GPS key is issued, so the driver's phone can report this unit. */
+  has_phone_key: boolean;
   /** Position older than the dispatch freshness window (spec §7.4). */
   is_tracker_stale: boolean;
   current_driver_uuid: UUID | null;
@@ -150,6 +152,7 @@ export type Mototaxi = {
   brand: string | null;
   model: string | null;
   tracker_imei: string | null;
+  has_phone_key: boolean;
   status: MototaxiStatus;
   lat: number | null;
   lon: number | null;
@@ -234,3 +237,6 @@ export type UserProfile = {
   role: string;
   is_active: boolean;
 };
+
+/** Returned once by `POST /admin/mototaxis/{uuid}/phone-key`; only a hash is stored. */
+export type PhoneKey = { phone_key: string };

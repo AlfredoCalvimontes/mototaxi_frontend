@@ -81,6 +81,7 @@ export const mototaxiSummary: MototaxiSummary = {
   location_updated_at: '2026-07-20T14:29:00Z',
   location_source: 'TRACKER',
   has_tracker: true,
+  has_phone_key: false,
   is_tracker_stale: false,
   current_driver_uuid: '66666666-6666-4666-8666-666666666666',
 };
@@ -100,6 +101,7 @@ export const mototaxiDetail: Mototaxi = {
   brand: 'Honda',
   model: 'CG 125',
   tracker_imei: '860123456789012',
+  has_phone_key: false,
   status: 'AVAILABLE',
   lat: -21.26235,
   lon: -63.46903,
