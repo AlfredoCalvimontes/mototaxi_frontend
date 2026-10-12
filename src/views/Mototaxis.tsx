@@ -14,6 +14,7 @@ import { strings } from '@/lib/strings';
 import { MototaxiEditLoader } from '@/views/fleet/MototaxiEditLoader';
 import { MototaxiForm } from '@/views/fleet/MototaxiForm';
 import { MototaxiStatusDialog } from '@/views/fleet/MototaxiStatusDialog';
+import { PhoneKeyDialog } from '@/views/fleet/PhoneKeyDialog';
 
 // Leaflet and its CSS are the heaviest thing in the bundle and only one view
 // needs them, so the map loads on demand.
@@ -28,7 +29,8 @@ const STALE_VALUE = 'sin-senal';
 type MototaxiDialog =
   | { kind: 'create' }
   | { kind: 'edit'; uuid: string }
-  | { kind: 'status'; mototaxi: MototaxiSummary };
+  | { kind: 'status'; mototaxi: MototaxiSummary }
+  | { kind: 'phoneKey'; mototaxi: MototaxiSummary };
 
 export default function Mototaxis() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -129,6 +131,18 @@ export default function Mototaxis() {
             >
               {strings.fleet.vehicleStatus}
             </button>
+            <button
+              type="button"
+              onClick={() => setDialog({ kind: 'phoneKey', mototaxi: unit })}
+              className="rounded border border-slate-300 px-2 py-1 text-xs font-medium whitespace-nowrap text-slate-700 hover:bg-slate-50"
+            >
+              {strings.fleet.phoneKey}
+              {unit.has_phone_key && (
+                <span role="img" aria-label={strings.mototaxis.phoneKeyBadge} className="ml-1">
+                  ✓
+                </span>
+              )}
+            </button>
           </div>
         ),
       },
@@ -190,6 +204,9 @@ export default function Mototaxis() {
       )}
       {dialog?.kind === 'status' && (
         <MototaxiStatusDialog mototaxi={dialog.mototaxi} onClose={() => setDialog(null)} />
+      )}
+      {dialog?.kind === 'phoneKey' && (
+        <PhoneKeyDialog mototaxi={dialog.mototaxi} onClose={() => setDialog(null)} />
       )}
     </div>
   );

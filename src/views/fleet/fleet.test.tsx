@@ -376,3 +376,82 @@ describe('baja de conductor', () => {
     expect(row.queryByRole('button', { name: 'Dar de baja' })).not.toBeInTheDocument();
   });
 });
+
+describe('clave GPS del teléfono', () => {
+  test('genera la clave, la muestra una vez y no la conserva al cerrar', async () => {
+    const { user } = renderApp(<Mototaxis />);
+
+    await user.click((await rowFor('ABC123')).getByRole('button', { name: /Clave GPS/ }));
+    const dialog = within(screen.getByRole('dialog'));
+    expect(dialog.getByText('Esta unidad no tiene clave.')).toBeInTheDocument();
+
+    await user.click(dialog.getByRole('button', { name: 'Generar clave' }));
+
+    expect(await dialog.findByTestId('phone-key')).toHaveTextContent(
+      'test-phone-key-0123456789abcdefghij',
+    );
+    expect(dialog.getByText(/solo se muestra una vez/)).toBeInTheDocument();
+    expect(dialog.getByText(/\/api\/v1\/tracking\/phone$/)).toBeInTheDocument();
+
+    await user.click(dialog.getByRole('button', { name: 'Listo' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(screen.queryByText('test-phone-key-0123456789abcdefghij')).not.toBeInTheDocument();
+  });
+
+  test('una unidad con clave ofrece reemplazarla o revocarla, sin mostrar la clave', async () => {
+    server.use(
+      http.get(`${BASE}/admin/mototaxis`, () =>
+        HttpResponse.json([{ ...fx.mototaxiSummary, has_phone_key: true }]),
+      ),
+    );
+    const { user } = renderApp(<Mototaxis />);
+
+    await user.click((await rowFor('ABC123')).getByRole('button', { name: /Clave GPS/ }));
+    const dialog = within(screen.getByRole('dialog'));
+
+    expect(dialog.getByText('Esta unidad ya tiene una clave.')).toBeInTheDocument();
+    expect(dialog.getByText(/deja de funcionar al instante/)).toBeInTheDocument();
+    expect(dialog.queryByTestId('phone-key')).not.toBeInTheDocument();
+    expect(dialog.getByRole('button', { name: 'Generar una nueva' })).toBeInTheDocument();
+    expect(dialog.getByRole('button', { name: 'Revocar clave' })).toBeInTheDocument();
+  });
+
+  test('revocar llama al endpoint y deja la unidad sin clave', async () => {
+    server.use(
+      http.get(`${BASE}/admin/mototaxis`, () =>
+        HttpResponse.json([{ ...fx.mototaxiSummary, has_phone_key: true }]),
+      ),
+    );
+    const calls: string[] = [];
+    server.use(
+      http.delete(`${BASE}/admin/mototaxis/:uuid/phone-key`, ({ params }) => {
+        calls.push(String(params.uuid));
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    const { user } = renderApp(<Mototaxis />);
+
+    await user.click((await rowFor('ABC123')).getByRole('button', { name: /Clave GPS/ }));
+    const dialog = within(screen.getByRole('dialog'));
+    await user.click(dialog.getByRole('button', { name: 'Revocar clave' }));
+
+    expect(await dialog.findByText('Esta unidad no tiene clave.')).toBeInTheDocument();
+    expect(calls).toEqual([fx.mototaxiSummary.mototaxi_uuid]);
+  });
+
+  test('un error del servidor se muestra y no deja una clave a medias', async () => {
+    server.use(
+      http.post(`${BASE}/admin/mototaxis/:uuid/phone-key`, () =>
+        HttpResponse.json({ detail: 'Mototaxi no encontrada' }, { status: 404 }),
+      ),
+    );
+    const { user } = renderApp(<Mototaxis />);
+
+    await user.click((await rowFor('ABC123')).getByRole('button', { name: /Clave GPS/ }));
+    const dialog = within(screen.getByRole('dialog'));
+    await user.click(dialog.getByRole('button', { name: 'Generar clave' }));
+
+    expect(await dialog.findByRole('alert')).toHaveTextContent(/no encontrada/);
+    expect(dialog.queryByTestId('phone-key')).not.toBeInTheDocument();
+  });
+});

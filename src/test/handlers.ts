@@ -40,6 +40,13 @@ export const handlers = [
   http.post(`${BASE}/admin/mototaxis`, () => HttpResponse.json(fx.mototaxiDetail, { status: 201 })),
   http.patch(`${BASE}/admin/mototaxis/:uuid`, () => HttpResponse.json(fx.mototaxiDetail)),
   http.patch(`${BASE}/admin/mototaxis/:uuid/status`, () => HttpResponse.json(fx.mototaxiDetail)),
+  http.post(`${BASE}/admin/mototaxis/:uuid/phone-key`, () =>
+    HttpResponse.json({ phone_key: 'test-phone-key-0123456789abcdefghij' }),
+  ),
+  http.delete(
+    `${BASE}/admin/mototaxis/:uuid/phone-key`,
+    () => new HttpResponse(null, { status: 204 }),
+  ),
 
   http.get(`${BASE}/admin/drivers`, ({ request }) => {
     const status = new URL(request.url).searchParams.get('status');

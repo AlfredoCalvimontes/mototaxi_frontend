@@ -77,6 +77,7 @@ export const strings = {
       'Sin señal reciente: no recibe viajes hasta que el GPS reporte o el conductor comparta ubicación.',
     noPosition: 'Sin posición registrada',
     mapUnavailable: 'Ninguna unidad tiene posición para mostrar en el mapa',
+    phoneKeyBadge: 'Clave GPS emitida',
     brand: 'Marca',
     model: 'Modelo',
     imei: 'IMEI del GPS',
@@ -230,6 +231,24 @@ export const strings = {
     retireReason: 'Motivo (opcional)',
     inTripBlocked: 'No se puede mientras el conductor está en viaje.',
     vehicleStatus: 'Estado del vehículo',
+    phoneKey: 'Clave GPS',
+    phoneKeyTitle: (plate: string) => `Clave GPS del teléfono: ${plate}`,
+    phoneKeyIntro:
+      'Con esta clave el teléfono del conductor (app Traccar Client) envía la posición de la unidad. Cada unidad tiene la suya.',
+    phoneKeyNone: 'Esta unidad no tiene clave.',
+    phoneKeyIssued: 'Esta unidad ya tiene una clave.',
+    phoneKeyGenerate: 'Generar clave',
+    phoneKeyRotate: 'Generar una nueva',
+    phoneKeyRotateWarning:
+      'La clave anterior deja de funcionar al instante: hay que configurar la nueva en el teléfono.',
+    phoneKeyRevoke: 'Revocar clave',
+    phoneKeyRevokeHint: 'El teléfono deja de reportar posición hasta generar otra clave.',
+    phoneKeyShownOnce:
+      'Cópiala ahora: solo se muestra una vez. En Traccar Client, ponla como "Identificador del dispositivo".',
+    phoneKeyCopy: 'Copiar',
+    phoneKeyCopied: 'Copiada',
+    phoneKeyServerUrl: 'URL del servidor en la app',
+    phoneKeyDone: 'Listo',
   },
   status: {
     driver: {
