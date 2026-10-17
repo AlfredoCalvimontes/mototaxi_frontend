@@ -114,6 +114,8 @@ export default function Login() {
         >
           {submitting ? strings.login.submitting : strings.login.submit}
         </button>
+
+        <p className="text-center text-xs text-slate-500">{strings.app.operator}</p>
       </form>
     </main>
   );
