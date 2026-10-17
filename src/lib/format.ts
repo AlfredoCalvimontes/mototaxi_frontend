@@ -151,3 +151,8 @@ function laPazMidnight(day: string): Date | null {
   const date = new Date(`${day}T00:00:00${LA_PAZ_UTC_OFFSET}`);
   return Number.isNaN(date.getTime()) ? null : date;
 }
+
+/** "Alias · PLATE" when the vehicle has an alias, otherwise just the plate. */
+export function vehicleLabel(unit: { alias: string | null; plate_number: string }): string {
+  return unit.alias ? `${unit.alias} · ${unit.plate_number}` : unit.plate_number;
+}
