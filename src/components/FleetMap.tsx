@@ -63,7 +63,9 @@ export function FleetMap({ units }: { units: MototaxiSummary[] }) {
           icon={markerIcon(unit.is_tracker_stale)}
         >
           <Popup>
-            <p className="font-medium">{unit.plate_number}</p>
+            <p className="font-medium">
+              {unit.alias ? `${unit.alias} · ${unit.plate_number}` : unit.plate_number}
+            </p>
             <p className="text-xs text-slate-600">
               {strings.mototaxis.lastUpdate}: {formatRelative(unit.location_updated_at) || EMPTY}
             </p>

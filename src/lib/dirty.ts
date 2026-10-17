@@ -60,6 +60,7 @@ export function driverChanges(initial: DriverFormValues, current: DriverFormValu
 
 export type MototaxiFormValues = {
   plate_number: string;
+  alias: string;
   brand: string;
   model: string;
   tracker_imei: string;
@@ -89,6 +90,9 @@ export function mototaxiChanges(
   if (plate !== null && plate !== initial.plate_number) payload.plate_number = plate;
 
   // Everything below is nullable: an emptied input is an explicit clear.
+  const alias = normalise(current.alias);
+  if (alias !== (normalise(initial.alias) ?? null)) payload.alias = alias;
+
   const brand = normalise(current.brand);
   if (brand !== (normalise(initial.brand) ?? null)) payload.brand = brand;
 

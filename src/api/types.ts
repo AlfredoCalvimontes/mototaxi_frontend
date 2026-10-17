@@ -63,6 +63,7 @@ export type TripSummary = {
 export type MototaxiSummary = {
   mototaxi_uuid: UUID;
   plate_number: string;
+  alias: string | null;
   status: MototaxiStatus | string;
   lat: number | null;
   lon: number | null;
@@ -149,6 +150,7 @@ export type Driver = {
 export type Mototaxi = {
   mototaxi_uuid: UUID;
   plate_number: string;
+  alias: string | null;
   brand: string | null;
   model: string | null;
   tracker_imei: string | null;
@@ -198,6 +200,7 @@ export type AssignMototaxiPayload = { mototaxi_uuid: UUID | null };
 
 export type CreateMototaxiPayload = {
   plate_number: string;
+  alias?: string | null;
   brand?: string | null;
   model?: string | null;
   tracker_imei?: string | null;
@@ -211,6 +214,7 @@ export type CreateMototaxiPayload = {
  */
 export type UpdateMototaxiPayload = {
   plate_number?: string;
+  alias?: string | null;
   brand?: string | null;
   model?: string | null;
   tracker_imei?: string | null;

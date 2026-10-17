@@ -68,6 +68,7 @@ export const strings = {
   mototaxis: {
     heading: 'Mototaxis',
     plate: 'Placa',
+    alias: 'Alias',
     status: 'Estado',
     driver: 'Conductor',
     position: 'Posición',
@@ -78,6 +79,8 @@ export const strings = {
     noPosition: 'Sin posición registrada',
     mapUnavailable: 'Ninguna unidad tiene posición para mostrar en el mapa',
     phoneKeyBadge: 'Clave GPS emitida',
+    phoneKeyActive: 'Activa',
+    phoneKeyMissing: 'Sin clave',
     brand: 'Marca',
     model: 'Modelo',
     imei: 'IMEI del GPS',
@@ -231,6 +234,10 @@ export const strings = {
     retireReason: 'Motivo (opcional)',
     inTripBlocked: 'No se puede mientras el conductor está en viaje.',
     vehicleStatus: 'Estado del vehículo',
+    aliasHint: 'Nombre corto para reconocer la unidad rápido, por ejemplo «Rayo» o «La Roja».',
+    currentStatus: 'Estado actual',
+    currentDriver: 'Conductor actual',
+    noDriver: 'Sin conductor asignado',
     phoneKey: 'Clave GPS',
     phoneKeyTitle: (plate: string) => `Clave GPS del teléfono: ${plate}`,
     phoneKeyIntro:

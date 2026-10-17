@@ -12,6 +12,7 @@ import { strings } from '@/lib/strings';
 function toValues(unit: Mototaxi): MototaxiFormValues {
   return {
     plate_number: unit.plate_number,
+    alias: unit.alias ?? '',
     brand: unit.brand ?? '',
     model: unit.model ?? '',
     tracker_imei: unit.tracker_imei ?? '',
@@ -22,6 +23,7 @@ function toValues(unit: Mototaxi): MototaxiFormValues {
 
 const emptyValues: MototaxiFormValues = {
   plate_number: '',
+  alias: '',
   brand: '',
   model: '',
   tracker_imei: '',
@@ -51,6 +53,7 @@ export function MototaxiForm({
       if (editing) return updateMototaxi(mototaxi.mototaxi_uuid, payload);
       return createMototaxi({
         plate_number: values.plate_number.trim(),
+        alias: values.alias.trim() || null,
         brand: values.brand.trim() || null,
         model: values.model.trim() || null,
         tracker_imei: values.tracker_imei.trim() || null,
@@ -97,6 +100,13 @@ export function MototaxiForm({
             onChange={(plate_number) => setValues((v) => ({ ...v, plate_number }))}
             required
             error={validation.plate}
+          />
+
+          <Field
+            label={strings.mototaxis.alias}
+            value={values.alias}
+            onChange={(alias) => setValues((v) => ({ ...v, alias }))}
+            hint={strings.fleet.aliasHint}
           />
 
           <div className="grid gap-4 sm:grid-cols-2">

@@ -15,6 +15,7 @@ const driver: DriverFormValues = {
 
 const mototaxi: MototaxiFormValues = {
   plate_number: 'ABC123',
+  alias: '',
   brand: 'Honda',
   model: 'CG 125',
   tracker_imei: '860123456789012',
@@ -94,5 +95,15 @@ describe('mototaxi: null limpia el campo', () => {
     const sinImei = { ...mototaxi, tracker_imei: '' };
     const { detachesTracker } = mototaxiChanges(sinImei, sinImei);
     expect(detachesTracker).toBe(false);
+  });
+});
+
+describe('mototaxi: alias', () => {
+  it('un alias nuevo se envía y vaciarlo lo limpia', () => {
+    expect(mototaxiChanges(mototaxi, { ...mototaxi, alias: ' Rayo ' }).payload).toEqual({
+      alias: 'Rayo',
+    });
+    const named = { ...mototaxi, alias: 'Rayo' };
+    expect(mototaxiChanges(named, { ...named, alias: '' }).payload).toEqual({ alias: null });
   });
 });
