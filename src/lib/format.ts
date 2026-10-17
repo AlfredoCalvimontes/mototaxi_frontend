@@ -156,3 +156,10 @@ function laPazMidnight(day: string): Date | null {
 export function vehicleLabel(unit: { alias: string | null; plate_number: string }): string {
   return unit.alias ? `${unit.alias} · ${unit.plate_number}` : unit.plate_number;
 }
+
+/** Distance in metres as «85 m» or «2,3 km»; the EMPTY dash when unknown. */
+export function formatMeters(value: number | null | undefined): string {
+  if (value === null || value === undefined) return EMPTY;
+  if (value < 1000) return `${Math.round(value)} m`;
+  return `${(value / 1000).toFixed(1).replace('.', ',')} km`;
+}

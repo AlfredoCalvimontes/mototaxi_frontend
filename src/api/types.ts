@@ -72,8 +72,6 @@ export type MototaxiSummary = {
   location_source: string | null;
   /** A GPS tracker is fitted. `false`: the driver must share a WhatsApp location. */
   has_tracker: boolean;
-  /** A phone GPS key is issued, so the driver's phone can report this unit. */
-  has_phone_key: boolean;
   /** Position older than the dispatch freshness window (spec §7.4). */
   is_tracker_stale: boolean;
   current_driver_uuid: UUID | null;
@@ -143,6 +141,13 @@ export type Driver = {
   resting_until: IsoDateTime | null;
   last_checkin_at: IsoDateTime | null;
   has_checked_in_today: boolean;
+  /** A phone GPS key is issued, so this driver's phone can report. It follows them between units. */
+  has_phone_key: boolean;
+  /** The driver's own last position (phone or WhatsApp), apart from their unit's. */
+  lat: number | null;
+  lon: number | null;
+  location_updated_at: IsoDateTime | null;
+  location_source: string | null;
   created_at: IsoDateTime;
 };
 
@@ -154,7 +159,6 @@ export type Mototaxi = {
   brand: string | null;
   model: string | null;
   tracker_imei: string | null;
-  has_phone_key: boolean;
   status: MototaxiStatus;
   lat: number | null;
   lon: number | null;
@@ -242,5 +246,32 @@ export type UserProfile = {
   is_active: boolean;
 };
 
-/** Returned once by `POST /admin/mototaxis/{uuid}/phone-key`; only a hash is stored. */
+/** Returned once by `POST /admin/drivers/{uuid}/phone-key`; only a hash is stored. */
 export type PhoneKey = { phone_key: string };
+
+/** One fix in a driver or unit trace. */
+export type PositionFix = {
+  lat: number;
+  lon: number;
+  source: string;
+  recorded_at: IsoDateTime;
+  /** Why the fix was not believed (`DIVERGES_FROM_TRACKER`, …); `null` when it was. */
+  flag: string | null;
+};
+
+/** `GET /admin/drivers/{uuid}/position-check`: the driver's trace beside their unit's. */
+export type DriverPositionCheck = {
+  driver_uuid: UUID;
+  mototaxi_uuid: UUID | null;
+  driver_fix: PositionFix | null;
+  vehicle_fix: PositionFix | null;
+  tracker_fix: PositionFix | null;
+  driver_to_vehicle_m: number | null;
+  driver_to_tracker_m: number | null;
+  seconds_apart: number | null;
+  /** Far from the tracker while taken within the comparison window. */
+  diverges: boolean;
+  flagged_fixes: number;
+  driver_trace: PositionFix[];
+  tracker_trace: PositionFix[];
+};

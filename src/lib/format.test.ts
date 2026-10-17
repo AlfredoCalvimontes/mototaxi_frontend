@@ -5,6 +5,7 @@ import {
   daysAgoInLaPaz,
   formatDateTime,
   formatDuration,
+  formatMeters,
   formatRelative,
   laPazDayEndIso,
   laPazDayStartIso,
@@ -95,5 +96,16 @@ describe('vehicleLabel', () => {
 
   test('falls back to the plate alone', () => {
     expect(vehicleLabel({ alias: null, plate_number: '1234ABC' })).toBe('1234ABC');
+  });
+});
+
+describe('formatMeters', () => {
+  test('metros por debajo del kilómetro, kilómetros con coma decimal por encima', () => {
+    expect(formatMeters(85.4)).toBe('85 m');
+    expect(formatMeters(2300)).toBe('2,3 km');
+  });
+
+  test('sin dato muestra el guion', () => {
+    expect(formatMeters(null)).toBe(EMPTY);
   });
 });

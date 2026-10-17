@@ -79,9 +79,6 @@ export const strings = {
       'Sin señal reciente: no recibe viajes hasta que el GPS reporte o el conductor comparta ubicación.',
     noPosition: 'Sin posición registrada',
     mapUnavailable: 'Ninguna unidad tiene posición para mostrar en el mapa',
-    phoneKeyBadge: 'Clave GPS emitida',
-    phoneKeyActive: 'Activa',
-    phoneKeyMissing: 'Sin clave',
     brand: 'Marca',
     model: 'Modelo',
     imei: 'IMEI del GPS',
@@ -115,12 +112,54 @@ export const strings = {
     trackingTrackerStale: 'GPS sin señal',
     trackingTrackerStaleHint:
       'Su mototaxi tiene GPS pero dejó de reportar: no recibe viajes hasta que vuelva la señal.',
+    trackingPhone: 'GPS del celular',
+    trackingPhoneHint:
+      'La posición de su mototaxi viene del celular del conductor (sin GPS en la unidad, o con el GPS sin señal).',
     trackingShared: 'Ubicación compartida',
     trackingSharedHint:
       'Sin GPS en la mototaxi: la posición la compartió el conductor por WhatsApp.',
     trackingNeedsShare: 'Debe compartir ubicación',
     trackingNeedsShareHint:
       'Sin GPS y sin ubicación reciente: no recibe viajes hasta que comparta su ubicación por WhatsApp.',
+    phoneKeyBadge: 'Clave GPS emitida',
+    phoneKeyActive: 'Activa',
+    phoneKeyMissing: 'Sin clave',
+    phoneKeyNoMototaxiBadge: 'Clave sin mototaxi',
+    positionCheck: 'Posición',
+    positionCheckTitle: (name: string) => `Posición de ${name}`,
+    positionCheckIntro:
+      'Compara lo que reporta el conductor (celular o WhatsApp) con lo que reporta su unidad. Una distancia que se mantiene suele ser un conductor lejos de la moto, un GPS fallando o un teléfono manipulado.',
+    positionCheckDriver: 'Conductor',
+    positionCheckVehicle: 'Unidad (la que usa el despacho)',
+    positionCheckTracker: 'GPS de la unidad',
+    positionCheckNone: 'Sin posición',
+    positionCheckDriverToVehicle: 'Distancia conductor ↔ unidad',
+    positionCheckDriverToTracker: 'Distancia conductor ↔ GPS',
+    positionCheckSecondsApart: (seconds: number) =>
+      `tomadas con ${Math.round(seconds)} s de diferencia`,
+    positionCheckDiverges: 'Se alejan',
+    positionCheckDivergesHint:
+      'El conductor y el GPS de la unidad discrepan por más de lo tolerado en el mismo momento.',
+    positionCheckAgrees: 'Coinciden',
+    positionCheckFlagged: 'Reportes sospechosos (24 h)',
+    positionCheckRecent: 'Últimos reportes del conductor',
+    positionCheckSource: 'Origen',
+    positionCheckWhen: 'Cuándo',
+    positionCheckFlagLabel: 'Observación',
+    positionCheckNoFixes: 'El conductor no ha reportado posición en las últimas 24 horas.',
+    positionCheckNoMototaxi: 'No tiene mototaxi asignada: no hay unidad con la que comparar.',
+    flags: {
+      DIVERGES_FROM_TRACKER: 'Lejos del GPS de la unidad',
+      FROZEN_WHILE_MOVING: 'Coordenadas repetidas en movimiento',
+      CONSTANT_MOTION: 'Velocidad y rumbo idénticos',
+    } as Record<string, string>,
+    sources: {
+      TRACKER: 'GPS',
+      SECUREMORE: 'GPS',
+      PHONE: 'Celular',
+      WHATSAPP: 'WhatsApp',
+      GOOGLE_MAPS: 'Enlace de mapa',
+    } as Record<string, string>,
   },
   settings: {
     heading: 'Configuración',
@@ -240,11 +279,13 @@ export const strings = {
     currentDriver: 'Conductor actual',
     noDriver: 'Sin conductor asignado',
     phoneKey: 'Clave GPS',
-    phoneKeyTitle: (plate: string) => `Clave GPS del teléfono: ${plate}`,
+    phoneKeyTitle: (name: string) => `Clave GPS del teléfono: ${name}`,
     phoneKeyIntro:
-      'Con esta clave el teléfono del conductor (app Traccar Client) envía la posición de la unidad. Cada unidad tiene la suya.',
-    phoneKeyNone: 'Esta unidad no tiene clave.',
-    phoneKeyIssued: 'Esta unidad ya tiene una clave.',
+      'Con esta clave el teléfono del conductor (app Traccar Client) envía su posición. La clave es del conductor: si lo cambias de unidad, sigue funcionando y ubica la nueva.',
+    phoneKeyNone: 'Este conductor no tiene clave.',
+    phoneKeyIssued: 'Este conductor ya tiene una clave.',
+    phoneKeyNoMototaxi:
+      'No tiene mototaxi asignada: su posición se guarda como suya, pero no mueve ninguna unidad.',
     phoneKeyGenerate: 'Generar clave',
     phoneKeyRotate: 'Generar una nueva',
     phoneKeyRotateWarning:
@@ -257,6 +298,7 @@ export const strings = {
     phoneKeyCopied: 'Copiada',
     phoneKeyServerUrl: 'URL del servidor en la app',
     phoneKeyDone: 'Listo',
+    currentMototaxi: 'Mototaxi actual',
   },
   status: {
     driver: {

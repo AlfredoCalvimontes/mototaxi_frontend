@@ -7,14 +7,13 @@ import { POLL, queryKeys } from '@/api/queries';
 import type { MototaxiSummary } from '@/api/types';
 import { DataTable, type Column } from '@/components/DataTable';
 import { ErrorState } from '@/components/ErrorState';
-import { StatusBadge, ToneBadge, WarningBadge } from '@/components/StatusBadge';
+import { StatusBadge, WarningBadge } from '@/components/StatusBadge';
 import { TableSkeleton } from '@/components/Skeleton';
 import { EMPTY, formatCoords, formatRelative } from '@/lib/format';
 import { strings } from '@/lib/strings';
 import { MototaxiEditLoader } from '@/views/fleet/MototaxiEditLoader';
 import { MototaxiForm } from '@/views/fleet/MototaxiForm';
 import { MototaxiStatusDialog } from '@/views/fleet/MototaxiStatusDialog';
-import { PhoneKeyDialog } from '@/views/fleet/PhoneKeyDialog';
 
 // Leaflet and its CSS are the heaviest thing in the bundle and only one view
 // needs them, so the map loads on demand.
@@ -29,8 +28,7 @@ const STALE_VALUE = 'sin-senal';
 type MototaxiDialog =
   | { kind: 'create' }
   | { kind: 'edit'; uuid: string }
-  | { kind: 'status'; mototaxi: MototaxiSummary }
-  | { kind: 'phoneKey'; mototaxi: MototaxiSummary };
+  | { kind: 'status'; mototaxi: MototaxiSummary };
 
 export default function Mototaxis() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -119,9 +117,18 @@ export default function Mototaxis() {
         // Sorting by the raw timestamp, not by the rendered "hace 3 min".
         sortValue: (unit) => unit.location_updated_at ?? null,
         cell: (unit) =>
-          unit.location_updated_at
-            ? formatRelative(unit.location_updated_at)
-            : strings.mototaxis.noPosition,
+          unit.location_updated_at ? (
+            <div className="flex flex-col">
+              <span>{formatRelative(unit.location_updated_at)}</span>
+              {unit.location_source && (
+                <span className="text-xs text-slate-500">
+                  {strings.drivers.sources[unit.location_source] ?? unit.location_source}
+                </span>
+              )}
+            </div>
+          ) : (
+            strings.mototaxis.noPosition
+          ),
       },
       {
         id: 'actions',
@@ -142,25 +149,6 @@ export default function Mototaxis() {
             >
               {strings.fleet.vehicleStatus}
               <StatusBadge kind="mototaxi" value={unit.status} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setDialog({ kind: 'phoneKey', mototaxi: unit })}
-              className={`inline-flex items-center gap-1.5 rounded border px-2 py-1 text-xs font-medium whitespace-nowrap ${
-                unit.has_phone_key
-                  ? 'border-emerald-400 bg-emerald-50 text-emerald-900 hover:bg-emerald-100'
-                  : 'border-slate-300 text-slate-700 hover:bg-slate-50'
-              }`}
-            >
-              {strings.fleet.phoneKey}
-              <ToneBadge
-                tone={unit.has_phone_key ? 'good' : 'idle'}
-                title={unit.has_phone_key ? strings.mototaxis.phoneKeyBadge : undefined}
-              >
-                {unit.has_phone_key
-                  ? strings.mototaxis.phoneKeyActive
-                  : strings.mototaxis.phoneKeyMissing}
-              </ToneBadge>
             </button>
           </div>
         ),
@@ -223,13 +211,6 @@ export default function Mototaxis() {
       )}
       {dialog?.kind === 'status' && (
         <MototaxiStatusDialog
-          mototaxi={dialog.mototaxi}
-          driverName={driverNameOf(dialog.mototaxi)}
-          onClose={() => setDialog(null)}
-        />
-      )}
-      {dialog?.kind === 'phoneKey' && (
-        <PhoneKeyDialog
           mototaxi={dialog.mototaxi}
           driverName={driverNameOf(dialog.mototaxi)}
           onClose={() => setDialog(null)}
