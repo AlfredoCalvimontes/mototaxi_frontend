@@ -4,6 +4,7 @@ export const strings = {
   app: {
     title: 'Panel Mototaxis',
     city: 'Villa Montes',
+    operator: 'Mototaxi Seguro es un servicio de AC Comercial',
   },
   nav: {
     dashboard: 'Resumen',
