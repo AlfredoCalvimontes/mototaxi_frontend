@@ -10,6 +10,7 @@ import { ErrorState } from '@/components/ErrorState';
 import { StatusBadge, ToneBadge, WarningBadge } from '@/components/StatusBadge';
 import { TableSkeleton } from '@/components/Skeleton';
 import { EMPTY, formatCoords, formatDate, formatRelative } from '@/lib/format';
+import { usePersistentFlag } from '@/lib/persistentFlag';
 import { simRechargeState } from '@/lib/sim';
 import { strings } from '@/lib/strings';
 import { MototaxiEditLoader } from '@/views/fleet/MototaxiEditLoader';
@@ -30,6 +31,10 @@ type MototaxiDialog =
   | { kind: 'create' }
   | { kind: 'edit'; uuid: string }
   | { kind: 'status'; mototaxi: MototaxiSummary };
+
+/** The SIM columns, hidden together by one toggle. */
+const SIM_COLUMN_IDS = new Set(['simLastRecharge', 'simAmount', 'simNext']);
+const HIDE_SIM_KEY = 'mototaxi.hideSimColumns';
 
 const SIM_TEXT = {
   ok: '',
@@ -74,6 +79,7 @@ export default function Mototaxis() {
   const [searchParams, setSearchParams] = useSearchParams();
   const onlyStale = searchParams.get(STALE_PARAM) === STALE_VALUE;
   const [dialog, setDialog] = useState<MototaxiDialog | null>(null);
+  const [hideSim, toggleHideSim] = usePersistentFlag(HIDE_SIM_KEY, false);
 
   const mototaxis = useQuery({
     queryKey: queryKeys.mototaxis,
@@ -239,6 +245,14 @@ export default function Mototaxis() {
         >
           {strings.fleet.newMototaxi}
         </button>
+        <button
+          type="button"
+          onClick={toggleHideSim}
+          aria-pressed={hideSim}
+          className="rounded border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        >
+          {hideSim ? strings.mototaxis.showSim : strings.mototaxis.hideSim}
+        </button>
         <label className="flex items-center gap-2 text-sm text-slate-700">
           <input
             type="checkbox"
@@ -261,7 +275,7 @@ export default function Mototaxis() {
 
       <DataTable
         rows={rows}
-        columns={columns}
+        columns={hideSim ? columns.filter((column) => !SIM_COLUMN_IDS.has(column.id)) : columns}
         rowKey={(unit) => unit.mototaxi_uuid}
         caption={strings.mototaxis.heading}
         searchPlaceholder={strings.common.search}

@@ -115,3 +115,68 @@ describe('configuración', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('valor fuera de rango');
   });
 });
+
+describe('duración de la SIM por cada 10 de crédito', () => {
+  const SIM_LABEL = 'Duración de la SIM por cada 10 de crédito';
+
+  function withBoth() {
+    server.use(
+      http.get(`${BASE}/admin/settings`, () =>
+        HttpResponse.json([fx.sharedLocationSetting, fx.simDaysSetting]),
+      ),
+    );
+  }
+
+  test('aparece con su unidad en días y su rango', async () => {
+    withBoth();
+    renderApp(<Settings />);
+
+    const input = await screen.findByLabelText(SIM_LABEL);
+    expect(input).toHaveValue('30');
+    expect(screen.getByText('días')).toBeInTheDocument();
+    expect(screen.getByText(/Permitido: de 5 a 365 días/)).toBeInTheDocument();
+  });
+
+  test('el signo de información explica que recalcula las fechas', async () => {
+    withBoth();
+    const { user } = renderApp(<Settings />);
+    await screen.findByLabelText(SIM_LABEL);
+
+    const buttons = screen.getAllByRole('button', { name: 'Más información' });
+    await user.click(buttons[1]!);
+
+    expect(screen.getByRole('tooltip')).toHaveTextContent(/recalcula todas las fechas/);
+  });
+
+  test('guardar un valor nuevo manda la clave correcta', async () => {
+    withBoth();
+    const calls: { key: string; body: unknown }[] = [];
+    server.use(
+      http.put(`${BASE}/admin/settings/:key`, async ({ params, request }) => {
+        calls.push({ key: String(params.key), body: await request.json() });
+        return HttpResponse.json({ ...fx.simDaysSetting, value: 20 });
+      }),
+    );
+    const { user } = renderApp(<Settings />);
+    const input = await screen.findByLabelText(SIM_LABEL);
+
+    await user.clear(input);
+    await user.type(input, '20');
+    await user.click(screen.getAllByRole('button', { name: 'Guardar cambio' })[1]!);
+
+    expect(await screen.findByText('Cambio guardado.')).toBeInTheDocument();
+    expect(calls).toEqual([{ key: 'sim_days_per_ten_credit', body: { value: 20 } }]);
+  });
+
+  test('no acepta valores fuera del rango', async () => {
+    withBoth();
+    const { user } = renderApp(<Settings />);
+    const input = await screen.findByLabelText(SIM_LABEL);
+
+    await user.clear(input);
+    await user.type(input, '1');
+
+    expect(screen.getAllByRole('button', { name: 'Guardar cambio' })[1]).toBeDisabled();
+    expect(screen.getByText(/Escribe un número entero entre 5 y 365/)).toBeInTheDocument();
+  });
+});

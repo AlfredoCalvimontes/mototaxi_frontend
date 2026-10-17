@@ -73,6 +73,17 @@ export const sharedLocationSetting: RuntimeSetting = {
   updated_at: null,
 };
 
+export const simDaysSetting: RuntimeSetting = {
+  key: 'sim_days_per_ten_credit',
+  value: 30,
+  default: 30,
+  minimum: 5,
+  maximum: 365,
+  unit: 'days',
+  description: 'How many days ten units of credit keep a tracker SIM alive',
+  updated_at: null,
+};
+
 export const mototaxiSummary: MototaxiSummary = {
   mototaxi_uuid: '55555555-5555-4555-8555-555555555555',
   plate_number: 'ABC123',
