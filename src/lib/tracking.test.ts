@@ -29,4 +29,22 @@ describe('trackingState', () => {
   test('sin GPS y sin ninguna ubicación el conductor debe compartirla', () => {
     expect(trackingState({ ...trackerless, location_updated_at: null })).toBe('needsShare');
   });
+
+  test('sin GPS, el celular del conductor reportando cuenta como seguimiento por celular', () => {
+    expect(trackingState({ ...trackerless, location_source: 'PHONE' })).toBe('phone');
+  });
+
+  test('con GPS sin señal pero el celular cubriendo, se sigue por celular', () => {
+    expect(trackingState({ ...mototaxiSummary, location_source: 'PHONE' })).toBe('phone');
+  });
+
+  test('con GPS sin señal y solo una ubicación compartida vigente, cuenta como compartida', () => {
+    expect(trackingState({ ...mototaxiSummary, location_source: 'WHATSAPP' })).toBe('shared');
+  });
+
+  test('con GPS, sin señal y sin nada que lo cubra, está perdido', () => {
+    expect(
+      trackingState({ ...mototaxiSummary, is_tracker_stale: true, location_source: 'TRACKER' }),
+    ).toBe('trackerStale');
+  });
 });

@@ -23,6 +23,7 @@ export const queryKeys = {
   mototaxi: (uuid: UUID) => ['mototaxi', uuid] as const,
   drivers: (status?: DriverStatus) => ['drivers', status ?? 'all'] as const,
   driver: (uuid: UUID) => ['driver', uuid] as const,
+  positionCheck: (uuid: UUID) => ['position-check', uuid] as const,
   activeTrips: ['trips', 'active'] as const,
   tripHistory: (params: TripHistoryParams) => ['trips', 'history', params] as const,
   settings: ['settings'] as const,

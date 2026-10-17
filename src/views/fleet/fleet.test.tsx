@@ -384,13 +384,15 @@ describe('baja de conductor', () => {
   });
 });
 
-describe('clave GPS del teléfono', () => {
-  test('genera la clave, la muestra una vez y no la conserva al cerrar', async () => {
-    const { user } = renderApp(<Mototaxis />);
+describe('clave GPS del teléfono (del conductor)', () => {
+  const driverWithKey = { ...fx.driver, has_phone_key: true };
 
-    await user.click((await rowFor('ABC123')).getByRole('button', { name: /Clave GPS/ }));
+  test('genera la clave, la muestra una vez y no la conserva al cerrar', async () => {
+    const { user } = renderApp(<Drivers />);
+
+    await user.click((await rowFor('Marco Peña')).getByRole('button', { name: /Clave GPS/ }));
     const dialog = within(screen.getByRole('dialog'));
-    expect(dialog.getByText('Esta unidad no tiene clave.')).toBeInTheDocument();
+    expect(dialog.getByText('Este conductor no tiene clave.')).toBeInTheDocument();
 
     await user.click(dialog.getByRole('button', { name: 'Generar clave' }));
 
@@ -405,60 +407,168 @@ describe('clave GPS del teléfono', () => {
     expect(screen.queryByText('test-phone-key-0123456789abcdefghij')).not.toBeInTheDocument();
   });
 
-  test('una unidad con clave ofrece reemplazarla o revocarla, sin mostrar la clave', async () => {
+  test('la clave se pide para el conductor, no para su unidad', async () => {
+    const calls: string[] = [];
     server.use(
-      http.get(`${BASE}/admin/mototaxis`, () =>
-        HttpResponse.json([{ ...fx.mototaxiSummary, has_phone_key: true }]),
-      ),
+      http.post(`${BASE}/admin/drivers/:uuid/phone-key`, ({ params }) => {
+        calls.push(String(params.uuid));
+        return HttpResponse.json({ phone_key: 'k' });
+      }),
     );
-    const { user } = renderApp(<Mototaxis />);
+    const { user } = renderApp(<Drivers />);
 
-    await user.click((await rowFor('ABC123')).getByRole('button', { name: /Clave GPS/ }));
+    await user.click((await rowFor('Marco Peña')).getByRole('button', { name: /Clave GPS/ }));
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Generar clave' }),
+    );
+
+    await waitFor(() => expect(calls).toEqual([fx.driver.driver_uuid]));
+  });
+
+  test('un conductor con clave ofrece reemplazarla o revocarla, sin mostrar la clave', async () => {
+    server.use(http.get(`${BASE}/admin/drivers`, () => HttpResponse.json([driverWithKey])));
+    const { user } = renderApp(<Drivers />);
+
+    await user.click((await rowFor('Marco Peña')).getByRole('button', { name: /Clave GPS/ }));
     const dialog = within(screen.getByRole('dialog'));
 
-    expect(dialog.getByText('Esta unidad ya tiene una clave.')).toBeInTheDocument();
+    expect(dialog.getByText('Este conductor ya tiene una clave.')).toBeInTheDocument();
     expect(dialog.getByText(/deja de funcionar al instante/)).toBeInTheDocument();
     expect(dialog.queryByTestId('phone-key')).not.toBeInTheDocument();
     expect(dialog.getByRole('button', { name: 'Generar una nueva' })).toBeInTheDocument();
     expect(dialog.getByRole('button', { name: 'Revocar clave' })).toBeInTheDocument();
   });
 
-  test('revocar llama al endpoint y deja la unidad sin clave', async () => {
-    server.use(
-      http.get(`${BASE}/admin/mototaxis`, () =>
-        HttpResponse.json([{ ...fx.mototaxiSummary, has_phone_key: true }]),
-      ),
-    );
+  test('revocar llama al endpoint del conductor y lo deja sin clave', async () => {
+    server.use(http.get(`${BASE}/admin/drivers`, () => HttpResponse.json([driverWithKey])));
     const calls: string[] = [];
     server.use(
-      http.delete(`${BASE}/admin/mototaxis/:uuid/phone-key`, ({ params }) => {
+      http.delete(`${BASE}/admin/drivers/:uuid/phone-key`, ({ params }) => {
         calls.push(String(params.uuid));
         return new HttpResponse(null, { status: 204 });
       }),
     );
-    const { user } = renderApp(<Mototaxis />);
+    const { user } = renderApp(<Drivers />);
 
-    await user.click((await rowFor('ABC123')).getByRole('button', { name: /Clave GPS/ }));
+    await user.click((await rowFor('Marco Peña')).getByRole('button', { name: /Clave GPS/ }));
     const dialog = within(screen.getByRole('dialog'));
     await user.click(dialog.getByRole('button', { name: 'Revocar clave' }));
 
-    expect(await dialog.findByText('Esta unidad no tiene clave.')).toBeInTheDocument();
-    expect(calls).toEqual([fx.mototaxiSummary.mototaxi_uuid]);
+    expect(await dialog.findByText('Este conductor no tiene clave.')).toBeInTheDocument();
+    expect(calls).toEqual([fx.driver.driver_uuid]);
+  });
+
+  test('un conductor sin mototaxi lo avisa: su clave no mueve ninguna unidad', async () => {
+    server.use(
+      http.get(`${BASE}/admin/drivers`, () =>
+        HttpResponse.json([
+          { ...fx.driverWithoutCheckin, has_phone_key: true, current_mototaxi_uuid: null },
+        ]),
+      ),
+    );
+    const { user } = renderApp(<Drivers />);
+
+    const row = await rowFor('Lucía Vargas');
+    expect(row.getByText('Clave sin mototaxi')).toBeInTheDocument();
+
+    await user.click(row.getByRole('button', { name: /Clave GPS/ }));
+    expect(
+      within(screen.getByRole('dialog')).getByText(/no mueve ninguna unidad/),
+    ).toBeInTheDocument();
   });
 
   test('un error del servidor se muestra y no deja una clave a medias', async () => {
     server.use(
-      http.post(`${BASE}/admin/mototaxis/:uuid/phone-key`, () =>
-        HttpResponse.json({ detail: 'Mototaxi no encontrada' }, { status: 404 }),
+      http.post(`${BASE}/admin/drivers/:uuid/phone-key`, () =>
+        HttpResponse.json({ detail: 'Conductor no encontrado' }, { status: 404 }),
       ),
     );
-    const { user } = renderApp(<Mototaxis />);
+    const { user } = renderApp(<Drivers />);
 
-    await user.click((await rowFor('ABC123')).getByRole('button', { name: /Clave GPS/ }));
+    await user.click((await rowFor('Marco Peña')).getByRole('button', { name: /Clave GPS/ }));
     const dialog = within(screen.getByRole('dialog'));
     await user.click(dialog.getByRole('button', { name: 'Generar clave' }));
 
-    expect(await dialog.findByRole('alert')).toHaveTextContent(/no encontrada/);
+    expect(await dialog.findByRole('alert')).toHaveTextContent(/no encontrado/);
     expect(dialog.queryByTestId('phone-key')).not.toBeInTheDocument();
+  });
+
+  test('la lista de mototaxis ya no ofrece la clave GPS', async () => {
+    renderApp(<Mototaxis />);
+
+    const row = await rowFor('ABC123');
+    expect(row.queryByRole('button', { name: /Clave GPS/ })).not.toBeInTheDocument();
+  });
+});
+
+describe('posición del conductor frente a su unidad', () => {
+  test('muestra las distancias y que coinciden', async () => {
+    const { user } = renderApp(<Drivers />);
+
+    await user.click((await rowFor('Marco Peña')).getByRole('button', { name: 'Posición' }));
+    const dialog = within(screen.getByRole('dialog'));
+
+    expect(await dialog.findByText('Coinciden')).toBeInTheDocument();
+    expect(dialog.getAllByText(/18 m/)).not.toHaveLength(0);
+    expect(dialog.getByText(/30 s de diferencia/)).toBeInTheDocument();
+  });
+
+  test('avisa cuando el conductor y el GPS se alejan, y cuenta los reportes sospechosos', async () => {
+    server.use(
+      http.get(`${BASE}/admin/drivers/:uuid/position-check`, () =>
+        HttpResponse.json({
+          ...fx.positionCheck,
+          driver_to_tracker_m: 2300,
+          diverges: true,
+          flagged_fixes: 3,
+          driver_trace: [{ ...fx.positionCheck.driver_trace[0], flag: 'DIVERGES_FROM_TRACKER' }],
+        }),
+      ),
+    );
+    const { user } = renderApp(<Drivers />);
+
+    await user.click((await rowFor('Marco Peña')).getByRole('button', { name: 'Posición' }));
+    const dialog = within(screen.getByRole('dialog'));
+
+    expect(await dialog.findByText('Se alejan')).toBeInTheDocument();
+    expect(dialog.getByText(/2,3 km/)).toBeInTheDocument();
+    expect(dialog.getByText('3')).toBeInTheDocument();
+    expect(dialog.getByText('Lejos del GPS de la unidad')).toBeInTheDocument();
+  });
+
+  test('un conductor sin reportes lo dice', async () => {
+    server.use(
+      http.get(`${BASE}/admin/drivers/:uuid/position-check`, () =>
+        HttpResponse.json({
+          ...fx.positionCheck,
+          driver_fix: null,
+          driver_to_vehicle_m: null,
+          driver_to_tracker_m: null,
+          seconds_apart: null,
+          driver_trace: [],
+        }),
+      ),
+    );
+    const { user } = renderApp(<Drivers />);
+
+    await user.click((await rowFor('Marco Peña')).getByRole('button', { name: 'Posición' }));
+    const dialog = within(screen.getByRole('dialog'));
+
+    expect(await dialog.findByText(/no ha reportado posición/)).toBeInTheDocument();
+  });
+
+  test('un error del servidor se muestra', async () => {
+    server.use(
+      http.get(`${BASE}/admin/drivers/:uuid/position-check`, () =>
+        HttpResponse.json({ detail: 'Conductor no encontrado' }, { status: 404 }),
+      ),
+    );
+    const { user } = renderApp(<Drivers />);
+
+    await user.click((await rowFor('Marco Peña')).getByRole('button', { name: 'Posición' }));
+
+    expect(
+      await within(screen.getByRole('dialog')).findByText(/no encontrado/),
+    ).toBeInTheDocument();
   });
 });

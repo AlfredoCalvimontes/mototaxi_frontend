@@ -13,6 +13,7 @@ import type {
   DriverStatus,
   KPIs,
   Mototaxi,
+  DriverPositionCheck,
   PhoneKey,
   RuntimeSetting,
   MototaxiSummary,
@@ -157,13 +158,23 @@ export function changeMototaxiStatus(
   });
 }
 
-/** Issues — or rotates — the key the vehicle's phone reports GPS with. Shown once. */
-export function issueMototaxiPhoneKey(mototaxiUuid: UUID): Promise<PhoneKey> {
-  return request<PhoneKey>(`/admin/mototaxis/${mototaxiUuid}/phone-key`, { method: 'POST' });
+/** Issues — or rotates — the key the driver's phone reports GPS with. Shown once. */
+export function issueDriverPhoneKey(driverUuid: UUID): Promise<PhoneKey> {
+  return request<PhoneKey>(`/admin/drivers/${driverUuid}/phone-key`, { method: 'POST' });
 }
 
-export function revokeMototaxiPhoneKey(mototaxiUuid: UUID): Promise<null> {
-  return request<null>(`/admin/mototaxis/${mototaxiUuid}/phone-key`, { method: 'DELETE' });
+export function revokeDriverPhoneKey(driverUuid: UUID): Promise<null> {
+  return request<null>(`/admin/drivers/${driverUuid}/phone-key`, { method: 'DELETE' });
+}
+
+/** The driver's own trace set beside their unit's, to spot a gap between them. */
+export function getDriverPositionCheck(
+  driverUuid: UUID,
+  windowHours = 24,
+): Promise<DriverPositionCheck> {
+  return request<DriverPositionCheck>(`/admin/drivers/${driverUuid}/position-check`, {
+    query: { window_hours: windowHours },
+  });
 }
 
 export function listSettings(): Promise<RuntimeSetting[]> {

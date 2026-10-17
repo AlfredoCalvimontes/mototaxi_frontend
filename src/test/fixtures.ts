@@ -1,6 +1,7 @@
 /** Fixtures shaped exactly like the verified backend responses. */
 
 import type {
+  DriverPositionCheck,
   Alerts,
   CustomerSummary,
   Driver,
@@ -82,7 +83,6 @@ export const mototaxiSummary: MototaxiSummary = {
   location_updated_at: '2026-07-20T14:29:00Z',
   location_source: 'TRACKER',
   has_tracker: true,
-  has_phone_key: false,
   is_tracker_stale: false,
   current_driver_uuid: '66666666-6666-4666-8666-666666666666',
 };
@@ -103,7 +103,6 @@ export const mototaxiDetail: Mototaxi = {
   brand: 'Honda',
   model: 'CG 125',
   tracker_imei: '860123456789012',
-  has_phone_key: false,
   status: 'AVAILABLE',
   lat: -21.26235,
   lon: -63.46903,
@@ -133,6 +132,11 @@ export const driver: Driver = {
   resting_until: null,
   last_checkin_at: '2026-07-20T11:00:00Z',
   has_checked_in_today: true,
+  has_phone_key: false,
+  lat: null,
+  lon: null,
+  location_updated_at: null,
+  location_source: null,
   created_at: '2026-05-02T09:00:00Z',
 };
 
@@ -194,4 +198,45 @@ export const noAlerts: Alerts = {
   overdue_trips: 0,
   auto_completed_trips: 0,
   drivers_without_checkin: 0,
+};
+
+export const positionCheck: DriverPositionCheck = {
+  driver_uuid: driver.driver_uuid,
+  mototaxi_uuid: mototaxiSummary.mototaxi_uuid,
+  driver_fix: {
+    lat: -21.2625,
+    lon: -63.469,
+    source: 'PHONE',
+    recorded_at: '2026-07-20T14:29:30Z',
+    flag: null,
+  },
+  vehicle_fix: {
+    lat: -21.26235,
+    lon: -63.46903,
+    source: 'TRACKER',
+    recorded_at: '2026-07-20T14:29:00Z',
+    flag: null,
+  },
+  tracker_fix: {
+    lat: -21.26235,
+    lon: -63.46903,
+    source: 'TRACKER',
+    recorded_at: '2026-07-20T14:29:00Z',
+    flag: null,
+  },
+  driver_to_vehicle_m: 18,
+  driver_to_tracker_m: 18,
+  seconds_apart: 30,
+  diverges: false,
+  flagged_fixes: 0,
+  driver_trace: [
+    {
+      lat: -21.2625,
+      lon: -63.469,
+      source: 'PHONE',
+      recorded_at: '2026-07-20T14:29:30Z',
+      flag: null,
+    },
+  ],
+  tracker_trace: [],
 };

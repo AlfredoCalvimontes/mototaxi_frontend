@@ -1,8 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
-import { issueMototaxiPhoneKey, revokeMototaxiPhoneKey } from '@/api/admin';
-import type { MototaxiSummary } from '@/api/types';
+import { issueDriverPhoneKey, revokeDriverPhoneKey } from '@/api/admin';
+import type { Driver } from '@/api/types';
 import { FormDialog } from '@/components/Field';
 import { errorText } from '@/lib/errors';
 import { strings } from '@/lib/strings';
@@ -13,32 +13,36 @@ const SERVER_URL = `${window.location.origin}/api/v1/tracking/phone`;
 /**
  * Issues, rotates or revokes the key a driver's phone reports GPS with.
  *
+ * The key belongs to the driver, not to a unit, so it keeps working when they
+ * are moved to another one.
+ *
  * The server stores only a hash, so the key exists in the clear exactly once —
  * in the response to issuing it. It is held in this component's state and
  * nowhere else (not the query cache, not storage): closing the dialog is the
  * point of no return.
  */
 export function PhoneKeyDialog({
-  mototaxi,
-  driverName,
+  driver,
+  mototaxiLabel,
   onClose,
 }: {
-  mototaxi: MototaxiSummary;
-  driverName: string | null;
+  driver: Driver;
+  /** The unit the driver is on, for display; `null` when none is assigned. */
+  mototaxiLabel: string | null;
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
   const [key, setKey] = useState<string | null>(null);
-  const [hasKey, setHasKey] = useState(mototaxi.has_phone_key);
+  const [hasKey, setHasKey] = useState(driver.has_phone_key);
   const [copied, setCopied] = useState<'key' | 'url' | null>(null);
 
   function refresh() {
-    void queryClient.invalidateQueries({ queryKey: ['mototaxis'] });
-    void queryClient.invalidateQueries({ queryKey: ['mototaxi'] });
+    void queryClient.invalidateQueries({ queryKey: ['drivers'] });
+    void queryClient.invalidateQueries({ queryKey: ['driver'] });
   }
 
   const issue = useMutation({
-    mutationFn: () => issueMototaxiPhoneKey(mototaxi.mototaxi_uuid),
+    mutationFn: () => issueDriverPhoneKey(driver.driver_uuid),
     onSuccess: (response) => {
       setKey(response.phone_key);
       setHasKey(true);
@@ -47,7 +51,7 @@ export function PhoneKeyDialog({
   });
 
   const revoke = useMutation({
-    mutationFn: () => revokeMototaxiPhoneKey(mototaxi.mototaxi_uuid),
+    mutationFn: () => revokeDriverPhoneKey(driver.driver_uuid),
     onSuccess: () => {
       setKey(null);
       setHasKey(false);
@@ -70,18 +74,18 @@ export function PhoneKeyDialog({
   const busy = issue.isPending || revoke.isPending;
 
   return (
-    <FormDialog
-      title={strings.fleet.phoneKeyTitle(
-        mototaxi.alias ? `${mototaxi.alias} · ${mototaxi.plate_number}` : mototaxi.plate_number,
-      )}
-      onClose={onClose}
-    >
+    <FormDialog title={strings.fleet.phoneKeyTitle(driver.name)} onClose={onClose}>
       <div className="space-y-4">
         <p className="text-sm text-slate-600">{strings.fleet.phoneKeyIntro}</p>
         <p className="text-sm text-slate-600">
-          {strings.fleet.currentDriver}:{' '}
-          <span className="font-medium text-slate-900">{driverName ?? strings.fleet.noDriver}</span>
+          {strings.fleet.currentMototaxi}:{' '}
+          <span className="font-medium text-slate-900">
+            {mototaxiLabel ?? strings.fleet.noMototaxi}
+          </span>
         </p>
+        {mototaxiLabel === null && (
+          <p className="text-xs text-slate-500">{strings.fleet.phoneKeyNoMototaxi}</p>
+        )}
 
         {key !== null ? (
           <div className="space-y-3">

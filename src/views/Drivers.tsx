@@ -14,6 +14,8 @@ import { TableSkeleton } from '@/components/Skeleton';
 import { AssignMototaxiDialog } from '@/views/fleet/AssignMototaxiDialog';
 import { DriverForm } from '@/views/fleet/DriverForm';
 import { DriverStatusDialog } from '@/views/fleet/DriverStatusDialog';
+import { PhoneKeyDialog } from '@/views/fleet/PhoneKeyDialog';
+import { PositionCheckDialog } from '@/views/fleet/PositionCheckDialog';
 import {
   EMPTY,
   formatDateTime,
@@ -36,6 +38,8 @@ type DriverDialog =
   | { kind: 'form'; driver: Driver | null }
   | { kind: 'status'; driver: Driver }
   | { kind: 'assign'; driver: Driver }
+  | { kind: 'phoneKey'; driver: Driver }
+  | { kind: 'position'; driver: Driver }
   | { kind: 'retire'; driver: Driver };
 
 const TRACKING_BADGES: Record<
@@ -56,6 +60,11 @@ const TRACKING_BADGES: Record<
     tone: 'warn',
     label: strings.drivers.trackingTrackerStale,
     hint: strings.drivers.trackingTrackerStaleHint,
+  },
+  phone: {
+    tone: 'good',
+    label: strings.drivers.trackingPhone,
+    hint: strings.drivers.trackingPhoneHint,
   },
   shared: {
     tone: 'good',
@@ -181,6 +190,11 @@ export default function Drivers() {
                   {formatRelative(unit.location_updated_at)}
                 </span>
               )}
+              {driver.has_phone_key && !unit && (
+                <ToneBadge tone="warn" title={strings.fleet.phoneKeyNoMototaxi}>
+                  {strings.drivers.phoneKeyNoMototaxiBadge}
+                </ToneBadge>
+              )}
             </div>
           );
         },
@@ -246,6 +260,12 @@ export default function Drivers() {
             <RowAction onClick={() => setDialog({ kind: 'assign', driver })}>
               {strings.fleet.assignMototaxi}
             </RowAction>
+            <RowAction onClick={() => setDialog({ kind: 'phoneKey', driver })}>
+              {`${strings.fleet.phoneKey}${driver.has_phone_key ? ' ✓' : ''}`}
+            </RowAction>
+            <RowAction onClick={() => setDialog({ kind: 'position', driver })}>
+              {strings.drivers.positionCheck}
+            </RowAction>
             {driver.status !== 'DISABLED' && (
               <RowAction danger onClick={() => setDialog({ kind: 'retire', driver })}>
                 {strings.fleet.retire}
@@ -309,6 +329,20 @@ export default function Drivers() {
       )}
       {dialog?.kind === 'assign' && (
         <AssignMototaxiDialog driver={dialog.driver} onClose={() => setDialog(null)} />
+      )}
+      {dialog?.kind === 'phoneKey' && (
+        <PhoneKeyDialog
+          driver={dialog.driver}
+          mototaxiLabel={
+            dialog.driver.current_mototaxi_uuid
+              ? (plates.get(dialog.driver.current_mototaxi_uuid) ?? null)
+              : null
+          }
+          onClose={() => setDialog(null)}
+        />
+      )}
+      {dialog?.kind === 'position' && (
+        <PositionCheckDialog driver={dialog.driver} onClose={() => setDialog(null)} />
       )}
 
       <ConfirmDialog
