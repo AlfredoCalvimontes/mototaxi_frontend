@@ -48,7 +48,9 @@ export function FleetMap({ units }: { units: MototaxiSummary[] }) {
       center={located.length === 1 ? center : CITY_CENTER}
       zoom={14}
       scrollWheelZoom={false}
-      className="h-72 w-full rounded-lg border border-slate-200"
+      // `isolate` keeps Leaflet's panes (z-index up to 1000) inside the map's own
+      // stacking context; without it they paint over the z-50 dialogs.
+      className="isolate h-72 w-full rounded-lg border border-slate-200"
     >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'

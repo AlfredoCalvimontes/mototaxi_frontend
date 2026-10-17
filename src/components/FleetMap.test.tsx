@@ -111,3 +111,10 @@ describe('detalle de la unidad', () => {
     expect(screen.queryByText('GPS sin señal')).not.toBeInTheDocument();
   });
 });
+
+describe('apilamiento', () => {
+  test('el mapa abre su propio contexto de apilamiento para no tapar los diálogos', () => {
+    const { container } = render(<FleetMap units={[fx.mototaxiSummary]} />);
+    expect(container.querySelector('.leaflet-container')).toHaveClass('isolate');
+  });
+});
