@@ -7,9 +7,10 @@ import { POLL, queryKeys } from '@/api/queries';
 import type { MototaxiSummary } from '@/api/types';
 import { DataTable, type Column } from '@/components/DataTable';
 import { ErrorState } from '@/components/ErrorState';
-import { StatusBadge, WarningBadge } from '@/components/StatusBadge';
+import { StatusBadge, ToneBadge, WarningBadge } from '@/components/StatusBadge';
 import { TableSkeleton } from '@/components/Skeleton';
-import { EMPTY, formatCoords, formatRelative } from '@/lib/format';
+import { EMPTY, formatCoords, formatDate, formatRelative } from '@/lib/format';
+import { simRechargeState } from '@/lib/sim';
 import { strings } from '@/lib/strings';
 import { MototaxiEditLoader } from '@/views/fleet/MototaxiEditLoader';
 import { MototaxiForm } from '@/views/fleet/MototaxiForm';
@@ -29,6 +30,45 @@ type MototaxiDialog =
   | { kind: 'create' }
   | { kind: 'edit'; uuid: string }
   | { kind: 'status'; mototaxi: MototaxiSummary };
+
+const SIM_TEXT = {
+  ok: '',
+  soon: 'font-medium text-amber-700',
+  urgent: 'font-semibold text-red-700',
+  overdue: 'font-semibold text-red-700',
+} as const;
+
+const SIM_BADGES = {
+  ok: { tone: 'good' },
+  soon: { tone: 'warn' },
+  urgent: { tone: 'bad' },
+  overdue: { tone: 'bad' },
+} as const;
+
+/** The next top-up date, coloured as it nears: yellow within a week, red within three days. */
+function SimNextRecharge({ unit }: { unit: MototaxiSummary }) {
+  if (!unit.has_tracker || !unit.sim_next_recharge_at) return null;
+  const { state, daysLeft } = simRechargeState(unit.sim_next_recharge_at);
+  if (state === 'none' || daysLeft === null) return null;
+  const label =
+    state === 'overdue'
+      ? strings.mototaxis.simOverdue(-daysLeft)
+      : state === 'urgent'
+        ? strings.mototaxis.simUrgent(daysLeft)
+        : state === 'soon'
+          ? strings.mototaxis.simSoon(daysLeft)
+          : strings.mototaxis.simOk(daysLeft);
+  return (
+    <div className="flex flex-col items-start gap-0.5">
+      <span className={`tabular-nums ${SIM_TEXT[state]}`}>
+        {formatDate(unit.sim_next_recharge_at)}
+      </span>
+      <ToneBadge tone={SIM_BADGES[state].tone} title={strings.mototaxis.simHint}>
+        {label}
+      </ToneBadge>
+    </div>
+  );
+}
 
 export default function Mototaxis() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -129,6 +169,32 @@ export default function Mototaxis() {
           ) : (
             strings.mototaxis.noPosition
           ),
+      },
+      {
+        id: 'simLastRecharge',
+        header: strings.mototaxis.simLastRecharge,
+        secondary: true,
+        sortValue: (unit) => unit.sim_last_recharge_at ?? null,
+        // Empty — not a dash — when there is no tracker, so no SIM: it does not apply.
+        cell: (unit) => (unit.has_tracker ? formatDate(unit.sim_last_recharge_at) : ''),
+      },
+      {
+        id: 'simAmount',
+        header: strings.mototaxis.simAmount,
+        align: 'right',
+        secondary: true,
+        sortValue: (unit) => unit.sim_last_recharge_amount ?? null,
+        cell: (unit) =>
+          unit.has_tracker && unit.sim_last_recharge_amount !== null
+            ? unit.sim_last_recharge_amount
+            : '',
+      },
+      {
+        id: 'simNext',
+        header: strings.mototaxis.simNextRecharge,
+        secondary: true,
+        sortValue: (unit) => unit.sim_next_recharge_at ?? null,
+        cell: (unit) => <SimNextRecharge unit={unit} />,
       },
       {
         id: 'actions',

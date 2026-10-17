@@ -149,6 +149,125 @@ describe('registro', () => {
   });
 });
 
+describe('recarga de la SIM en el formulario', () => {
+  async function openNew(user: ReturnType<typeof renderApp>['user']) {
+    await screen.findByRole('table');
+    await user.click(screen.getByRole('button', { name: 'Registrar mototaxi' }));
+    return within(screen.getByRole('dialog'));
+  }
+
+  test('los campos de la SIM solo aparecen cuando hay un GPS', async () => {
+    const { user } = renderApp(<Mototaxis />);
+    const dialog = await openNew(user);
+
+    expect(dialog.queryByLabelText('Última recarga')).not.toBeInTheDocument();
+
+    await user.type(dialog.getByLabelText(/IMEI/), '860111222333444');
+    expect(dialog.getByLabelText('Última recarga')).toBeInTheDocument();
+    expect(dialog.getByLabelText('Crédito cargado')).toBeInTheDocument();
+  });
+
+  test('una alta con GPS y recarga envía la fecha y el crédito', async () => {
+    const bodies = captureBody('post', '/admin/mototaxis', fx.mototaxiDetail);
+    const { user } = renderApp(<Mototaxis />);
+    const dialog = await openNew(user);
+
+    await user.type(dialog.getByLabelText(/Placa/), 'JKL456');
+    await user.type(dialog.getByLabelText(/IMEI/), '860111222333444');
+    await user.type(dialog.getByLabelText('Última recarga'), '2026-10-01');
+    await user.type(dialog.getByLabelText('Crédito cargado'), '10,5');
+    await user.click(dialog.getByRole('button', { name: 'Guardar' }));
+
+    await waitFor(() => expect(bodies).toHaveLength(1));
+    expect(bodies[0]).toMatchObject({
+      tracker_imei: '860111222333444',
+      sim_last_recharge_at: '2026-10-01',
+      sim_last_recharge_amount: 10.5,
+    });
+  });
+
+  test('la fecha sin el crédito (o al revés) no se envía y lo explica', async () => {
+    const bodies = captureBody('post', '/admin/mototaxis', fx.mototaxiDetail);
+    const { user } = renderApp(<Mototaxis />);
+    const dialog = await openNew(user);
+
+    await user.type(dialog.getByLabelText(/Placa/), 'JKL456');
+    await user.type(dialog.getByLabelText(/IMEI/), '860111222333444');
+    await user.type(dialog.getByLabelText('Última recarga'), '2026-10-01');
+    await user.click(dialog.getByRole('button', { name: 'Guardar' }));
+
+    expect(await dialog.findByText(/fecha y el crédito, o deja ambos vacíos/)).toBeInTheDocument();
+    expect(bodies).toHaveLength(0);
+  });
+
+  test('un crédito que no es un número positivo se rechaza', async () => {
+    const bodies = captureBody('post', '/admin/mototaxis', fx.mototaxiDetail);
+    const { user } = renderApp(<Mototaxis />);
+    const dialog = await openNew(user);
+
+    await user.type(dialog.getByLabelText(/Placa/), 'JKL456');
+    await user.type(dialog.getByLabelText(/IMEI/), '860111222333444');
+    await user.type(dialog.getByLabelText('Última recarga'), '2026-10-01');
+    await user.type(dialog.getByLabelText('Crédito cargado'), 'abc');
+    await user.click(dialog.getByRole('button', { name: 'Guardar' }));
+
+    expect(await dialog.findByText(/mayor que cero/)).toBeInTheDocument();
+    expect(bodies).toHaveLength(0);
+  });
+
+  test('al editar, los valores guardados vienen cargados y se puede limpiar', async () => {
+    server.use(
+      http.get(`${BASE}/admin/mototaxis/:uuid`, () =>
+        HttpResponse.json({
+          ...fx.mototaxiDetail,
+          sim_last_recharge_at: '2026-10-01',
+          sim_last_recharge_amount: 10,
+          sim_next_recharge_at: '2026-10-31',
+        }),
+      ),
+    );
+    const bodies = captureBody('patch', '/admin/mototaxis/:uuid', fx.mototaxiDetail);
+    const { user } = renderApp(<Mototaxis />);
+
+    await user.click((await rowFor('ABC123')).getByRole('button', { name: 'Editar' }));
+    const dialog = within(await screen.findByRole('dialog'));
+    expect(await dialog.findByDisplayValue('2026-10-01')).toBeInTheDocument();
+    expect(dialog.getByDisplayValue('10')).toBeInTheDocument();
+
+    await user.clear(dialog.getByLabelText('Última recarga'));
+    await user.clear(dialog.getByLabelText('Crédito cargado'));
+    await user.click(dialog.getByRole('button', { name: 'Guardar' }));
+
+    await waitFor(() => expect(bodies).toHaveLength(1));
+    expect(bodies[0]).toEqual({ sim_last_recharge_at: null, sim_last_recharge_amount: null });
+  });
+
+  test('cambiar solo el crédito reenvía el par completo', async () => {
+    server.use(
+      http.get(`${BASE}/admin/mototaxis/:uuid`, () =>
+        HttpResponse.json({
+          ...fx.mototaxiDetail,
+          sim_last_recharge_at: '2026-10-01',
+          sim_last_recharge_amount: 10,
+          sim_next_recharge_at: '2026-10-31',
+        }),
+      ),
+    );
+    const bodies = captureBody('patch', '/admin/mototaxis/:uuid', fx.mototaxiDetail);
+    const { user } = renderApp(<Mototaxis />);
+
+    await user.click((await rowFor('ABC123')).getByRole('button', { name: 'Editar' }));
+    const dialog = within(await screen.findByRole('dialog'));
+    const amount = await dialog.findByLabelText('Crédito cargado');
+    await user.clear(amount);
+    await user.type(amount, '20');
+    await user.click(dialog.getByRole('button', { name: 'Guardar' }));
+
+    await waitFor(() => expect(bodies).toHaveLength(1));
+    expect(bodies[0]).toEqual({ sim_last_recharge_at: '2026-10-01', sim_last_recharge_amount: 20 });
+  });
+});
+
 describe('edición de mototaxi: null limpia', () => {
   test('vaciar un campo opcional lo borra explícitamente', async () => {
     const bodies = captureBody('patch', '/admin/mototaxis/:uuid', fx.mototaxiDetail);
