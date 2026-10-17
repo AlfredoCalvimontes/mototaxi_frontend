@@ -163,3 +163,8 @@ export function formatMeters(value: number | null | undefined): string {
   if (value < 1000) return `${Math.round(value)} m`;
   return `${(value / 1000).toFixed(1).replace('.', ',')} km`;
 }
+
+/** What a map marker is called: the alias when the unit has one, otherwise its plate. */
+export function markerLabel(unit: { alias: string | null; plate_number: string }): string {
+  return unit.alias || unit.plate_number;
+}
