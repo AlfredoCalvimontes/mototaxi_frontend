@@ -10,6 +10,7 @@ import {
   laPazDayStartIso,
   maskCi,
   maskPhone,
+  vehicleLabel,
   todayInLaPaz,
 } from '@/lib/format';
 
@@ -84,5 +85,15 @@ describe('enmascarado', () => {
     // El sufijo de departamento no debe consumir caracteres revelados.
     expect(maskCi('7654321 TJ')).toBe('····21TJ');
     expect(maskCi('1234567')).toBe('····4567');
+  });
+});
+
+describe('vehicleLabel', () => {
+  test('puts the alias before the plate', () => {
+    expect(vehicleLabel({ alias: 'Rayo', plate_number: '1234ABC' })).toBe('Rayo · 1234ABC');
+  });
+
+  test('falls back to the plate alone', () => {
+    expect(vehicleLabel({ alias: null, plate_number: '1234ABC' })).toBe('1234ABC');
   });
 });

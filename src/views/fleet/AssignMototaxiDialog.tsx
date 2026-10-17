@@ -6,6 +6,7 @@ import { queryKeys } from '@/api/queries';
 import type { Driver } from '@/api/types';
 import { FormDialog } from '@/components/Field';
 import { errorText } from '@/lib/errors';
+import { vehicleLabel } from '@/lib/format';
 import { strings } from '@/lib/strings';
 
 /** Sent as `null` to detach; the field is required, so `{}` would be a 422. */
@@ -57,7 +58,7 @@ export function AssignMototaxiDialog({ driver, onClose }: { driver: Driver; onCl
             <option value={DETACH}>{strings.fleet.detachMototaxi}</option>
             {available.map((unit) => (
               <option key={unit.mototaxi_uuid} value={unit.mototaxi_uuid}>
-                {unit.plate_number}
+                {vehicleLabel(unit)}
               </option>
             ))}
           </select>

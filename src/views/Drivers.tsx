@@ -22,6 +22,7 @@ import {
   formatRelative,
   maskCi,
   maskPhone,
+  vehicleLabel,
 } from '@/lib/format';
 import { strings } from '@/lib/strings';
 import { trackingState, type TrackingState } from '@/lib/tracking';
@@ -103,7 +104,7 @@ export default function Drivers() {
 
   const plates = useMemo(() => {
     const map = new Map<string, string>();
-    for (const [uuid, unit] of units) map.set(uuid, unit.plate_number);
+    for (const [uuid, unit] of units) map.set(uuid, vehicleLabel(unit));
     return map;
   }, [units]);
 
