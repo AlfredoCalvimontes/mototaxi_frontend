@@ -4,6 +4,7 @@ import { useState, type FormEvent } from 'react';
 import { changeMototaxiStatus } from '@/api/admin';
 import type { MototaxiStatus, MototaxiSummary } from '@/api/types';
 import { FormDialog } from '@/components/Field';
+import { StatusBadge } from '@/components/StatusBadge';
 import { errorText } from '@/lib/errors';
 import { strings } from '@/lib/strings';
 
@@ -16,9 +17,11 @@ const STATUSES: MototaxiStatus[] = ['AVAILABLE', 'OUT_OF_SERVICE', 'DISABLED'];
  */
 export function MototaxiStatusDialog({
   mototaxi,
+  driverName,
   onClose,
 }: {
   mototaxi: MototaxiSummary;
+  driverName: string | null;
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -40,10 +43,19 @@ export function MototaxiStatusDialog({
 
   return (
     <FormDialog
-      title={`${strings.fleet.vehicleStatus}: ${mototaxi.plate_number}`}
+      title={`${strings.fleet.vehicleStatus}: ${mototaxi.alias ? `${mototaxi.alias} · ` : ''}${mototaxi.plate_number}`}
       onClose={onClose}
     >
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+        <dl className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-1 text-sm">
+          <dt className="text-slate-600">{strings.fleet.currentStatus}</dt>
+          <dd>
+            <StatusBadge kind="mototaxi" value={mototaxi.status} />
+          </dd>
+          <dt className="text-slate-600">{strings.fleet.currentDriver}</dt>
+          <dd className="font-medium text-slate-900">{driverName ?? strings.fleet.noDriver}</dd>
+        </dl>
+
         <fieldset className="space-y-2">
           <legend className="text-sm font-medium text-slate-700">{strings.mototaxis.status}</legend>
           {STATUSES.map((option) => (

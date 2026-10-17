@@ -7,7 +7,7 @@ import { POLL, queryKeys } from '@/api/queries';
 import type { MototaxiSummary } from '@/api/types';
 import { DataTable, type Column } from '@/components/DataTable';
 import { ErrorState } from '@/components/ErrorState';
-import { StatusBadge, WarningBadge } from '@/components/StatusBadge';
+import { StatusBadge, ToneBadge, WarningBadge } from '@/components/StatusBadge';
 import { TableSkeleton } from '@/components/Skeleton';
 import { EMPTY, formatCoords, formatRelative } from '@/lib/format';
 import { strings } from '@/lib/strings';
@@ -57,6 +57,9 @@ export default function Mototaxis() {
     return map;
   }, [drivers.data]);
 
+  const driverNameOf = (unit: MototaxiSummary) =>
+    unit.current_driver_uuid ? (driverNames.get(unit.current_driver_uuid) ?? null) : null;
+
   const rows = useMemo(() => {
     const all = mototaxis.data ?? [];
     return onlyStale ? all.filter((unit) => unit.is_tracker_stale) : all;
@@ -68,7 +71,15 @@ export default function Mototaxis() {
         id: 'plate',
         header: strings.mototaxis.plate,
         sortValue: (unit) => unit.plate_number,
-        cell: (unit) => <span className="font-medium text-slate-900">{unit.plate_number}</span>,
+        searchValue: (unit) => `${unit.alias ?? ''} ${unit.plate_number}`,
+        cell: (unit) => (
+          <div className="leading-tight">
+            {unit.alias && <div className="font-semibold text-slate-900">{unit.alias}</div>}
+            <span className={unit.alias ? 'text-xs text-slate-500' : 'font-medium text-slate-900'}>
+              {unit.plate_number}
+            </span>
+          </div>
+        ),
       },
       {
         id: 'status',
@@ -127,21 +138,29 @@ export default function Mototaxis() {
             <button
               type="button"
               onClick={() => setDialog({ kind: 'status', mototaxi: unit })}
-              className="rounded border border-slate-300 px-2 py-1 text-xs font-medium whitespace-nowrap text-slate-700 hover:bg-slate-50"
+              className="inline-flex items-center gap-1.5 rounded border border-slate-300 px-2 py-1 text-xs font-medium whitespace-nowrap text-slate-700 hover:bg-slate-50"
             >
               {strings.fleet.vehicleStatus}
+              <StatusBadge kind="mototaxi" value={unit.status} />
             </button>
             <button
               type="button"
               onClick={() => setDialog({ kind: 'phoneKey', mototaxi: unit })}
-              className="rounded border border-slate-300 px-2 py-1 text-xs font-medium whitespace-nowrap text-slate-700 hover:bg-slate-50"
+              className={`inline-flex items-center gap-1.5 rounded border px-2 py-1 text-xs font-medium whitespace-nowrap ${
+                unit.has_phone_key
+                  ? 'border-emerald-400 bg-emerald-50 text-emerald-900 hover:bg-emerald-100'
+                  : 'border-slate-300 text-slate-700 hover:bg-slate-50'
+              }`}
             >
               {strings.fleet.phoneKey}
-              {unit.has_phone_key && (
-                <span role="img" aria-label={strings.mototaxis.phoneKeyBadge} className="ml-1">
-                  ✓
-                </span>
-              )}
+              <ToneBadge
+                tone={unit.has_phone_key ? 'good' : 'idle'}
+                title={unit.has_phone_key ? strings.mototaxis.phoneKeyBadge : undefined}
+              >
+                {unit.has_phone_key
+                  ? strings.mototaxis.phoneKeyActive
+                  : strings.mototaxis.phoneKeyMissing}
+              </ToneBadge>
             </button>
           </div>
         ),
@@ -203,10 +222,18 @@ export default function Mototaxis() {
         <MototaxiEditLoader uuid={dialog.uuid} onClose={() => setDialog(null)} />
       )}
       {dialog?.kind === 'status' && (
-        <MototaxiStatusDialog mototaxi={dialog.mototaxi} onClose={() => setDialog(null)} />
+        <MototaxiStatusDialog
+          mototaxi={dialog.mototaxi}
+          driverName={driverNameOf(dialog.mototaxi)}
+          onClose={() => setDialog(null)}
+        />
       )}
       {dialog?.kind === 'phoneKey' && (
-        <PhoneKeyDialog mototaxi={dialog.mototaxi} onClose={() => setDialog(null)} />
+        <PhoneKeyDialog
+          mototaxi={dialog.mototaxi}
+          driverName={driverNameOf(dialog.mototaxi)}
+          onClose={() => setDialog(null)}
+        />
       )}
     </div>
   );

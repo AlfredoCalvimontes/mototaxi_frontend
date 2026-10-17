@@ -8,6 +8,8 @@ export type Column<T> = {
   cell: (row: T) => ReactNode;
   /** Value used for sorting and text search; omit to make the column inert. */
   sortValue?: (row: T) => string | number | null;
+  /** Text matched by the search box instead of `sortValue`, when they differ. */
+  searchValue?: (row: T) => string | null;
   align?: 'left' | 'right';
   /** Hidden below `sm`. Keeps the table usable on the owner's phone. */
   secondary?: boolean;
@@ -50,7 +52,7 @@ export function DataTable<T>({
     if (!needle) return rows;
     return rows.filter((row) =>
       columns.some((column) => {
-        const value = column.sortValue?.(row);
+        const value = column.searchValue ? column.searchValue(row) : column.sortValue?.(row);
         return (
           value !== null && value !== undefined && String(value).toLowerCase().includes(needle)
         );

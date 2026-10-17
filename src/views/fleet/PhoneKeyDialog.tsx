@@ -20,9 +20,11 @@ const SERVER_URL = `${window.location.origin}/api/v1/tracking/phone`;
  */
 export function PhoneKeyDialog({
   mototaxi,
+  driverName,
   onClose,
 }: {
   mototaxi: MototaxiSummary;
+  driverName: string | null;
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -68,9 +70,18 @@ export function PhoneKeyDialog({
   const busy = issue.isPending || revoke.isPending;
 
   return (
-    <FormDialog title={strings.fleet.phoneKeyTitle(mototaxi.plate_number)} onClose={onClose}>
+    <FormDialog
+      title={strings.fleet.phoneKeyTitle(
+        mototaxi.alias ? `${mototaxi.alias} · ${mototaxi.plate_number}` : mototaxi.plate_number,
+      )}
+      onClose={onClose}
+    >
       <div className="space-y-4">
         <p className="text-sm text-slate-600">{strings.fleet.phoneKeyIntro}</p>
+        <p className="text-sm text-slate-600">
+          {strings.fleet.currentDriver}:{' '}
+          <span className="font-medium text-slate-900">{driverName ?? strings.fleet.noDriver}</span>
+        </p>
 
         {key !== null ? (
           <div className="space-y-3">
@@ -116,7 +127,18 @@ export function PhoneKeyDialog({
             </div>
           </div>
         ) : (
-          <p className="text-sm font-medium text-slate-800">
+          <p
+            className={`rounded border px-3 py-2 text-sm font-medium ${
+              hasKey
+                ? 'border-emerald-300 bg-emerald-50 text-emerald-900'
+                : 'border-slate-200 bg-slate-50 text-slate-800'
+            }`}
+          >
+            {hasKey && (
+              <span aria-hidden="true" className="mr-1.5 font-bold text-emerald-600">
+                ✓
+              </span>
+            )}
             {hasKey ? strings.fleet.phoneKeyIssued : strings.fleet.phoneKeyNone}
           </p>
         )}

@@ -75,6 +75,7 @@ export const sharedLocationSetting: RuntimeSetting = {
 export const mototaxiSummary: MototaxiSummary = {
   mototaxi_uuid: '55555555-5555-4555-8555-555555555555',
   plate_number: 'ABC123',
+  alias: null,
   status: 'AVAILABLE',
   lat: -21.26235,
   lon: -63.46903,
@@ -98,6 +99,7 @@ export const staleMototaxiSummary: MototaxiSummary = {
 export const mototaxiDetail: Mototaxi = {
   mototaxi_uuid: mototaxiSummary.mototaxi_uuid,
   plate_number: 'ABC123',
+  alias: null,
   brand: 'Honda',
   model: 'CG 125',
   tracker_imei: '860123456789012',

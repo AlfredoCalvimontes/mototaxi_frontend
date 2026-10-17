@@ -123,6 +123,7 @@ describe('registro', () => {
     await waitFor(() => expect(bodies).toHaveLength(1));
     expect(bodies[0]).toEqual({
       plate_number: 'JKL456',
+      alias: null,
       brand: null,
       model: null,
       tracker_imei: '860111222333444',
@@ -314,7 +315,9 @@ describe('estado del vehículo', () => {
     const bodies = captureBody('patch', '/admin/mototaxis/:uuid/status', fx.mototaxiDetail);
     const { user } = renderApp(<Mototaxis />);
 
-    await user.click((await rowFor('ABC123')).getByRole('button', { name: 'Estado del vehículo' }));
+    await user.click(
+      (await rowFor('ABC123')).getByRole('button', { name: /^Estado del vehículo/ }),
+    );
     const dialog = within(screen.getByRole('dialog'));
     await user.click(dialog.getByRole('radio', { name: 'Fuera de servicio' }));
     await user.click(dialog.getByRole('button', { name: 'Guardar' }));
@@ -326,7 +329,9 @@ describe('estado del vehículo', () => {
   test('no ofrece estados de conductor: son cosas distintas', async () => {
     const { user } = renderApp(<Mototaxis />);
 
-    await user.click((await rowFor('ABC123')).getByRole('button', { name: 'Estado del vehículo' }));
+    await user.click(
+      (await rowFor('ABC123')).getByRole('button', { name: /^Estado del vehículo/ }),
+    );
     const dialog = within(screen.getByRole('dialog'));
 
     // El estado del vehículo es mecánico/administrativo; la elegibilidad para
@@ -343,7 +348,9 @@ describe('estado del vehículo', () => {
     );
     const { user } = renderApp(<Mototaxis />);
 
-    await user.click((await rowFor('ABC123')).getByRole('button', { name: 'Estado del vehículo' }));
+    await user.click(
+      (await rowFor('ABC123')).getByRole('button', { name: /^Estado del vehículo/ }),
+    );
     const dialog = within(screen.getByRole('dialog'));
     await user.click(dialog.getByRole('radio', { name: 'Deshabilitada' }));
     await user.click(dialog.getByRole('button', { name: 'Guardar' }));
