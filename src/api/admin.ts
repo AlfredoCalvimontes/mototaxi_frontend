@@ -2,6 +2,7 @@
 
 import { request } from '@/api/client';
 import type {
+  AddUsageCreditPayload,
   Alerts,
   AssignMototaxiPayload,
   ChangeDriverStatusPayload,
@@ -108,6 +109,14 @@ export function createDriver(payload: CreateDriverPayload): Promise<Driver> {
 /** Send dirty fields only — a `null` here is ignored, never a clear. */
 export function updateDriver(driverUuid: UUID, payload: UpdateDriverPayload): Promise<Driver> {
   return request<Driver>(`/admin/drivers/${driverUuid}`, { method: 'PATCH', json: payload });
+}
+
+/** Adds credit to a driver on the scheme; a negative amount takes some back. */
+export function addUsageCredit(driverUuid: UUID, payload: AddUsageCreditPayload): Promise<Driver> {
+  return request<Driver>(`/admin/drivers/${driverUuid}/usage-credit`, {
+    method: 'POST',
+    json: payload,
+  });
 }
 
 /** The only route out of `DISABLED`. */

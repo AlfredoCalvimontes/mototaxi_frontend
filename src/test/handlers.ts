@@ -53,6 +53,9 @@ export const handlers = [
     `${BASE}/admin/drivers/:uuid/phone-key`,
     () => new HttpResponse(null, { status: 204 }),
   ),
+  http.post(`${BASE}/admin/drivers/:uuid/usage-credit`, () =>
+    HttpResponse.json(fx.driverWithCredit),
+  ),
   http.get(`${BASE}/admin/drivers/:uuid/position-check`, () => HttpResponse.json(fx.positionCheck)),
   http.get(`${BASE}/admin/drivers/:uuid`, () => HttpResponse.json(fx.driver)),
   http.post(`${BASE}/admin/drivers`, () => HttpResponse.json(fx.driver, { status: 201 })),

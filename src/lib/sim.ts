@@ -14,6 +14,11 @@ function dayNumber(isoDate: string): number {
   return Date.UTC(year ?? 0, (month ?? 1) - 1, day ?? 1) / DAY_MS;
 }
 
+/** Whole calendar days from *today* to *isoDate*; negative once it has passed. */
+export function daysUntil(isoDate: string, today: string = todayInLaPaz()): number {
+  return dayNumber(isoDate) - dayNumber(today);
+}
+
 /**
  * How close a tracker's SIM is to running out of credit.
  *
@@ -26,7 +31,7 @@ export function simRechargeState(
   today: string = todayInLaPaz(),
 ): { state: SimRechargeState; daysLeft: number | null } {
   if (!nextRecharge) return { state: 'none', daysLeft: null };
-  const daysLeft = dayNumber(nextRecharge) - dayNumber(today);
+  const daysLeft = daysUntil(nextRecharge, today);
   if (daysLeft < 0) return { state: 'overdue', daysLeft };
   if (daysLeft <= SIM_URGENT_DAYS) return { state: 'urgent', daysLeft };
   if (daysLeft <= SIM_WARN_DAYS) return { state: 'soon', daysLeft };

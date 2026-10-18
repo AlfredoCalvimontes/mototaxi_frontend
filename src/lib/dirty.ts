@@ -27,7 +27,11 @@ export type DriverFormValues = {
   name: string;
   phone_whatsapp: string;
   license_number: string;
+  usage_credit_enabled: boolean;
 };
+
+/** The text fields only: the credit switch is a boolean and can always be turned off. */
+type DriverTextField = Exclude<keyof DriverFormValues, 'usage_credit_enabled'>;
 
 export type DriverChanges = {
   payload: UpdateDriverPayload;
@@ -36,12 +40,12 @@ export type DriverChanges = {
    * say so: sending them would be accepted and silently do nothing, leaving
    * the operator believing a value was removed.
    */
-  unclearable: (keyof DriverFormValues)[];
+  unclearable: DriverTextField[];
 };
 
 export function driverChanges(initial: DriverFormValues, current: DriverFormValues): DriverChanges {
   const payload: UpdateDriverPayload = {};
-  const unclearable: (keyof DriverFormValues)[] = [];
+  const unclearable: DriverTextField[] = [];
 
   const name = normalise(current.name);
   if (name !== null && name !== initial.name) payload.name = name;
@@ -54,6 +58,10 @@ export function driverChanges(initial: DriverFormValues, current: DriverFormValu
   const license = normalise(current.license_number);
   if (license !== null && license !== initial.license_number) payload.license_number = license;
   else if (license === null && initial.license_number !== '') unclearable.push('license_number');
+
+  if (current.usage_credit_enabled !== initial.usage_credit_enabled) {
+    payload.usage_credit_enabled = current.usage_credit_enabled;
+  }
 
   return { payload, unclearable };
 }

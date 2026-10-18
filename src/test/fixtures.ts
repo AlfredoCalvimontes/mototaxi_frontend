@@ -154,6 +154,10 @@ export const driver: Driver = {
   lon: null,
   location_updated_at: null,
   location_source: null,
+  usage_credit_enabled: false,
+  usage_credit_balance: null,
+  usage_credit_expires_on: null,
+  usage_credit_expired: false,
   created_at: '2026-05-02T09:00:00Z',
 };
 
@@ -168,6 +172,42 @@ export const driverWithoutCheckin: Driver = {
   current_mototaxi_uuid: null,
   last_checkin_at: '2026-07-18T12:00:00Z',
   has_checked_in_today: false,
+};
+
+/** On the credit scheme with credit left, but not much: the last days show amber. */
+export const driverWithCredit: Driver = {
+  ...driver,
+  driver_uuid: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  name: 'Rafael Soria',
+  ci: '5551234 TJ',
+  phone_whatsapp: '+59170001234',
+  usage_credit_enabled: true,
+  usage_credit_balance: 180,
+  usage_credit_expires_on: '2099-01-01',
+  usage_credit_expired: false,
+};
+
+/** Out of credit: no trips, and the panel paints the row red. */
+export const driverCreditExpired: Driver = {
+  ...driverWithCredit,
+  driver_uuid: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+  name: 'Elena Cruz',
+  ci: '4441234 TJ',
+  phone_whatsapp: '+59170005678',
+  usage_credit_balance: -20,
+  usage_credit_expires_on: '2026-10-01',
+  usage_credit_expired: true,
+};
+
+export const usageCreditSetting: RuntimeSetting = {
+  key: 'usage_credit_per_day',
+  value: 60,
+  default: 60,
+  minimum: 1,
+  maximum: 10000,
+  unit: 'credit/day',
+  description: 'How much usage credit a driver consumes each day',
+  updated_at: null,
 };
 
 export const customer: CustomerSummary = {
