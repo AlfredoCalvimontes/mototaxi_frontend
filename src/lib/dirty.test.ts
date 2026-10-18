@@ -19,6 +19,8 @@ const mototaxi: MototaxiFormValues = {
   brand: 'Honda',
   model: 'CG 125',
   tracker_imei: '860123456789012',
+  sim_last_recharge_at: '',
+  sim_last_recharge_amount: '',
   notes: '',
   last_maintenance_at: '2026-06-01',
 };
@@ -105,5 +107,62 @@ describe('mototaxi: alias', () => {
     });
     const named = { ...mototaxi, alias: 'Rayo' };
     expect(mototaxiChanges(named, { ...named, alias: '' }).payload).toEqual({ alias: null });
+  });
+});
+
+describe('mototaxi: recarga de la SIM', () => {
+  const recharged = {
+    ...mototaxi,
+    sim_last_recharge_at: '2026-10-01',
+    sim_last_recharge_amount: '10',
+  };
+
+  test('sin cambios no envía nada de la SIM', () => {
+    expect(mototaxiChanges(recharged, recharged).payload).toEqual({});
+  });
+
+  test('registrar la primera recarga envía la fecha y el crédito juntos', () => {
+    expect(
+      mototaxiChanges(mototaxi, {
+        ...mototaxi,
+        sim_last_recharge_at: '2026-10-01',
+        sim_last_recharge_amount: '10',
+      }).payload,
+    ).toEqual({ sim_last_recharge_at: '2026-10-01', sim_last_recharge_amount: 10 });
+  });
+
+  test('cambiar solo el crédito reenvía también la fecha', () => {
+    expect(
+      mototaxiChanges(recharged, { ...recharged, sim_last_recharge_amount: '20' }).payload,
+    ).toEqual({ sim_last_recharge_at: '2026-10-01', sim_last_recharge_amount: 20 });
+  });
+
+  test('acepta la coma decimal', () => {
+    expect(
+      mototaxiChanges(mototaxi, {
+        ...mototaxi,
+        sim_last_recharge_at: '2026-10-01',
+        sim_last_recharge_amount: '10,5',
+      }).payload,
+    ).toMatchObject({ sim_last_recharge_amount: 10.5 });
+  });
+
+  test('vaciar ambos los limpia explícitamente', () => {
+    expect(
+      mototaxiChanges(recharged, {
+        ...recharged,
+        sim_last_recharge_at: '',
+        sim_last_recharge_amount: '',
+      }).payload,
+    ).toEqual({ sim_last_recharge_at: null, sim_last_recharge_amount: null });
+  });
+
+  test('quitar el GPS no envía la SIM: el servidor la borra con el rastreador', () => {
+    const { payload, detachesTracker } = mototaxiChanges(recharged, {
+      ...recharged,
+      tracker_imei: '',
+    });
+    expect(payload).toEqual({ tracker_imei: null });
+    expect(detachesTracker).toBe(true);
   });
 });

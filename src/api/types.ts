@@ -72,6 +72,12 @@ export type MototaxiSummary = {
   location_source: string | null;
   /** A GPS tracker is fitted. `false`: the driver must share a WhatsApp location. */
   has_tracker: boolean;
+  /** Last top-up of the tracker's SIM; `null` without a tracker or before the first one. */
+  sim_last_recharge_at: IsoDate | null;
+  /** Credit that top-up added. */
+  sim_last_recharge_amount: number | null;
+  /** When the credit should run out: ten units last a month. */
+  sim_next_recharge_at: IsoDate | null;
   /** Position older than the dispatch freshness window (spec §7.4). */
   is_tracker_stale: boolean;
   current_driver_uuid: UUID | null;
@@ -159,6 +165,9 @@ export type Mototaxi = {
   brand: string | null;
   model: string | null;
   tracker_imei: string | null;
+  sim_last_recharge_at: IsoDate | null;
+  sim_last_recharge_amount: number | null;
+  sim_next_recharge_at: IsoDate | null;
   status: MototaxiStatus;
   lat: number | null;
   lon: number | null;
@@ -208,6 +217,9 @@ export type CreateMototaxiPayload = {
   brand?: string | null;
   model?: string | null;
   tracker_imei?: string | null;
+  /** Sent together or not at all; both `null` clears the record. Needs a tracker. */
+  sim_last_recharge_at?: IsoDate | null;
+  sim_last_recharge_amount?: number | null;
   notes?: string | null;
 };
 
@@ -222,6 +234,8 @@ export type UpdateMototaxiPayload = {
   brand?: string | null;
   model?: string | null;
   tracker_imei?: string | null;
+  sim_last_recharge_at?: IsoDate | null;
+  sim_last_recharge_amount?: number | null;
   notes?: string | null;
   last_maintenance_at?: IsoDate | null;
 };

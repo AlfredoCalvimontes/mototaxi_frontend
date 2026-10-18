@@ -82,6 +82,16 @@ export const strings = {
     brand: 'Marca',
     model: 'Modelo',
     imei: 'IMEI del GPS',
+    simLastRecharge: 'Última recarga SIM',
+    simAmount: 'Crédito cargado',
+    simNextRecharge: 'Próxima recarga',
+    simOk: (days: number) => `En ${days} días`,
+    simSoon: (days: number) => `En ${days} días`,
+    simUrgent: (days: number) => (days === 0 ? 'Hoy' : `En ${days} día${days === 1 ? '' : 's'}`),
+    simOverdue: (days: number) => `Vencida hace ${days} día${days === 1 ? '' : 's'}`,
+    simHint: 'La fecha se calcula según cuántos días duran diez de crédito (Configuración).',
+    hideSim: 'Ocultar SIM',
+    showSim: 'Mostrar SIM',
     notes: 'Notas',
     lastMaintenance: 'Último mantenimiento',
   },
@@ -173,7 +183,7 @@ export const strings = {
     invalid: (min: number, max: number) => `Escribe un número entero entre ${min} y ${max}.`,
     changedAt: 'Último cambio',
     neverChanged: 'Nunca se ha cambiado: usa el valor original.',
-    units: { minutes: 'minutos' } as Record<string, string>,
+    units: { minutes: 'minutos', days: 'días' } as Record<string, string>,
     parameters: {
       shared_location_freshness_minutes: {
         label: 'Vigencia de la ubicación compartida',
@@ -184,6 +194,14 @@ export const strings = {
           'el conductor la comparta de nuevo. Un valor bajo da posiciones más exactas pero obliga a ' +
           'compartir más seguido; uno alto es más cómodo, pero puede ofrecer viajes a una moto que ya se movió. ' +
           'No afecta a las motos con GPS.',
+      },
+      sim_days_per_ten_credit: {
+        label: 'Duración de la SIM por cada 10 de crédito',
+        tooltip:
+          'Cuántos días le duran al GPS diez de crédito cargados a su SIM. Con esto se calcula la ' +
+          'próxima recarga de cada mototaxi: la fecha de la última recarga más los días que ' +
+          'correspondan al monto (con 20 de crédito, el doble). Cambiarlo recalcula todas las ' +
+          'fechas de inmediato. El amarillo (una semana antes) y el rojo (tres días antes) no cambian.',
       },
     } as Record<string, { label: string; tooltip: string }>,
   },
@@ -274,6 +292,12 @@ export const strings = {
     retireReason: 'Motivo (opcional)',
     inTripBlocked: 'No se puede mientras el conductor está en viaje.',
     vehicleStatus: 'Estado del vehículo',
+    simSection: 'SIM del GPS',
+    simLastRechargeField: 'Última recarga',
+    simAmountField: 'Crédito cargado',
+    simAmountHint: 'Diez de crédito duran un mes; con eso se calcula la próxima recarga.',
+    simBothRequired: 'Indica la fecha y el crédito, o deja ambos vacíos.',
+    simAmountInvalid: 'El crédito debe ser un número mayor que cero.',
     aliasHint: 'Nombre corto para reconocer la unidad rápido, por ejemplo «Rayo» o «La Roja».',
     currentStatus: 'Estado actual',
     currentDriver: 'Conductor actual',

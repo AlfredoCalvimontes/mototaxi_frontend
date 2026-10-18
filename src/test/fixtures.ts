@@ -73,6 +73,17 @@ export const sharedLocationSetting: RuntimeSetting = {
   updated_at: null,
 };
 
+export const simDaysSetting: RuntimeSetting = {
+  key: 'sim_days_per_ten_credit',
+  value: 30,
+  default: 30,
+  minimum: 5,
+  maximum: 365,
+  unit: 'days',
+  description: 'How many days ten units of credit keep a tracker SIM alive',
+  updated_at: null,
+};
+
 export const mototaxiSummary: MototaxiSummary = {
   mototaxi_uuid: '55555555-5555-4555-8555-555555555555',
   plate_number: 'ABC123',
@@ -83,6 +94,9 @@ export const mototaxiSummary: MototaxiSummary = {
   location_updated_at: '2026-07-20T14:29:00Z',
   location_source: 'TRACKER',
   has_tracker: true,
+  sim_last_recharge_at: null,
+  sim_last_recharge_amount: null,
+  sim_next_recharge_at: null,
   is_tracker_stale: false,
   current_driver_uuid: '66666666-6666-4666-8666-666666666666',
 };
@@ -103,6 +117,9 @@ export const mototaxiDetail: Mototaxi = {
   brand: 'Honda',
   model: 'CG 125',
   tracker_imei: '860123456789012',
+  sim_last_recharge_at: null,
+  sim_last_recharge_amount: null,
+  sim_next_recharge_at: null,
   status: 'AVAILABLE',
   lat: -21.26235,
   lon: -63.46903,
