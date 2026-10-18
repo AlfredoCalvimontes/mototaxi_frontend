@@ -16,8 +16,10 @@ import { DriverForm } from '@/views/fleet/DriverForm';
 import { DriverStatusDialog } from '@/views/fleet/DriverStatusDialog';
 import { PhoneKeyDialog } from '@/views/fleet/PhoneKeyDialog';
 import { PositionCheckDialog } from '@/views/fleet/PositionCheckDialog';
+import { UsageCreditDialog } from '@/views/fleet/UsageCreditDialog';
 import {
   EMPTY,
+  formatDate,
   formatDateTime,
   formatDuration,
   formatPercent,
@@ -28,6 +30,7 @@ import {
 } from '@/lib/format';
 import { strings } from '@/lib/strings';
 import { trackingState, type TrackingState } from '@/lib/tracking';
+import { formatCredit, usageCreditState } from '@/lib/usageCredit';
 
 /** Set by the dashboard's "sin check-in" alert. */
 const CHECKIN_PARAM = 'checkin';
@@ -40,6 +43,7 @@ type DriverDialog =
   | { kind: 'assign'; driver: Driver }
   | { kind: 'phoneKey'; driver: Driver }
   | { kind: 'position'; driver: Driver }
+  | { kind: 'credit'; driver: Driver }
   | { kind: 'retire'; driver: Driver };
 
 const TRACKING_BADGES: Record<
@@ -77,6 +81,30 @@ const TRACKING_BADGES: Record<
     hint: strings.drivers.trackingNeedsShareHint,
   },
 };
+
+/** The expiry date, red once the credit has run out and amber in its last days. */
+function CreditExpiry({ driver }: { driver: Driver }) {
+  const { state, daysLeft } = usageCreditState(driver);
+  if (state === 'off' || !driver.usage_credit_expires_on) return null;
+  const text = {
+    ok: '',
+    soon: 'font-medium text-amber-700',
+    expired: 'font-semibold text-red-700',
+  }[state];
+  return (
+    <div className="flex flex-col items-start gap-0.5">
+      <span className={`tabular-nums ${text}`}>{formatDate(driver.usage_credit_expires_on)}</span>
+      {state === 'expired' && (
+        <ToneBadge tone="bad" title={strings.drivers.creditExpiredHint}>
+          {strings.drivers.creditExpiredBadge}
+        </ToneBadge>
+      )}
+      {state === 'soon' && daysLeft !== null && (
+        <ToneBadge tone="warn">{strings.drivers.creditSoonBadge(daysLeft)}</ToneBadge>
+      )}
+    </div>
+  );
+}
 
 export default function Drivers() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -240,6 +268,29 @@ export default function Drivers() {
         cell: (driver) => formatDuration(driver.average_response_seconds),
       },
       {
+        id: 'credit',
+        header: strings.drivers.credit,
+        align: 'right',
+        sortValue: (driver) => driver.usage_credit_balance,
+        // Empty — not a dash — off the scheme: it does not apply to this driver.
+        cell: (driver) =>
+          driver.usage_credit_enabled ? (
+            <span
+              className={`tabular-nums ${driver.usage_credit_expired ? 'font-semibold text-red-700' : ''}`}
+            >
+              {formatCredit(driver.usage_credit_balance)}
+            </span>
+          ) : (
+            ''
+          ),
+      },
+      {
+        id: 'creditExpires',
+        header: strings.drivers.creditExpires,
+        sortValue: (driver) => driver.usage_credit_expires_on ?? null,
+        cell: (driver) => <CreditExpiry driver={driver} />,
+      },
+      {
         id: 'checkin',
         header: strings.drivers.checkin,
         sortValue: (driver) => driver.last_checkin_at ?? null,
@@ -266,6 +317,11 @@ export default function Drivers() {
             <RowAction onClick={() => setDialog({ kind: 'position', driver })}>
               {strings.drivers.positionCheck}
             </RowAction>
+            {driver.usage_credit_enabled && (
+              <RowAction onClick={() => setDialog({ kind: 'credit', driver })}>
+                {strings.drivers.addCredit}
+              </RowAction>
+            )}
             {driver.status !== 'DISABLED' && (
               <RowAction danger onClick={() => setDialog({ kind: 'retire', driver })}>
                 {strings.fleet.retire}
@@ -317,7 +373,11 @@ export default function Drivers() {
         searchPlaceholder={strings.common.search}
         initialSort={{ columnId: 'name', direction: 'asc' }}
         rowClassName={(driver) =>
-          driver.has_checked_in_today ? 'hover:bg-slate-50' : 'bg-amber-50/60'
+          driver.usage_credit_expired
+            ? 'bg-red-50/70 hover:bg-red-50'
+            : driver.has_checked_in_today
+              ? 'hover:bg-slate-50'
+              : 'bg-amber-50/60'
         }
       />
 
@@ -340,6 +400,9 @@ export default function Drivers() {
           }
           onClose={() => setDialog(null)}
         />
+      )}
+      {dialog?.kind === 'credit' && (
+        <UsageCreditDialog driver={dialog.driver} onClose={() => setDialog(null)} />
       )}
       {dialog?.kind === 'position' && (
         <PositionCheckDialog driver={dialog.driver} onClose={() => setDialog(null)} />
