@@ -11,6 +11,7 @@ const driver: DriverFormValues = {
   name: 'Marco Peña',
   phone_whatsapp: '+59171234567',
   license_number: 'LIC-4421',
+  usage_credit_enabled: false,
 };
 
 const mototaxi: MototaxiFormValues = {
@@ -24,6 +25,25 @@ const mototaxi: MototaxiFormValues = {
   notes: '',
   last_maintenance_at: '2026-06-01',
 };
+
+describe('conductor: crédito de uso', () => {
+  test('activarlo se envía', () => {
+    expect(driverChanges(driver, { ...driver, usage_credit_enabled: true }).payload).toEqual({
+      usage_credit_enabled: true,
+    });
+  });
+
+  test('desactivarlo se envía como false, no como null', () => {
+    const on = { ...driver, usage_credit_enabled: true };
+    expect(driverChanges(on, { ...on, usage_credit_enabled: false }).payload).toEqual({
+      usage_credit_enabled: false,
+    });
+  });
+
+  test('sin tocarlo no viaja', () => {
+    expect(driverChanges(driver, { ...driver, name: 'Otro' }).payload).toEqual({ name: 'Otro' });
+  });
+});
 
 describe('conductor: null se ignora, nada se puede limpiar', () => {
   test('sin cambios no envía nada', () => {

@@ -13,10 +13,16 @@ function toValues(driver: Driver): DriverFormValues {
     name: driver.name,
     phone_whatsapp: driver.phone_whatsapp,
     license_number: driver.license_number ?? '',
+    usage_credit_enabled: driver.usage_credit_enabled,
   };
 }
 
-const emptyValues: DriverFormValues = { name: '', phone_whatsapp: '', license_number: '' };
+const emptyValues: DriverFormValues = {
+  name: '',
+  phone_whatsapp: '',
+  license_number: '',
+  usage_credit_enabled: false,
+};
 
 export function DriverForm({ driver, onClose }: { driver: Driver | null; onClose: () => void }) {
   const editing = driver !== null;
@@ -39,6 +45,8 @@ export function DriverForm({ driver, onClose }: { driver: Driver | null; onClose
         ci: ci.trim(),
         phone_whatsapp: values.phone_whatsapp.trim(),
         license_number: values.license_number.trim() || null,
+        // Only sent when on: off is the default, and it keeps the request minimal.
+        ...(values.usage_credit_enabled && { usage_credit_enabled: true }),
       });
     },
     onSuccess: () => {
@@ -107,6 +115,27 @@ export function DriverForm({ driver, onClose }: { driver: Driver | null; onClose
           value={values.license_number}
           onChange={(license_number) => setValues((v) => ({ ...v, license_number }))}
         />
+
+        <div className="space-y-1">
+          <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+            <input
+              type="checkbox"
+              checked={values.usage_credit_enabled}
+              onChange={(e) => setValues((v) => ({ ...v, usage_credit_enabled: e.target.checked }))}
+              className="rounded border-slate-300"
+            />
+            {strings.fleet.creditEnabled}
+          </label>
+          <p className="text-xs text-slate-500">{strings.fleet.creditEnabledHint}</p>
+          {editing && driver.usage_credit_enabled && !values.usage_credit_enabled && (
+            <p
+              role="alert"
+              className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+            >
+              {strings.fleet.creditDisableWarning}
+            </p>
+          )}
+        </div>
 
         {editing && unclearable.length > 0 && (
           <p

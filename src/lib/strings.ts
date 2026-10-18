@@ -107,6 +107,15 @@ export const strings = {
     acceptance: 'Aceptación',
     responseTime: 'Respuesta promedio',
     checkin: 'Check-in',
+    credit: 'Crédito de uso',
+    creditExpires: 'Vence',
+    creditExpiredBadge: 'Crédito vencido',
+    creditExpiredHint:
+      'Se le acabó el crédito de uso: no recibe viajes y, si escribe al bot, se le pide recargar.',
+    creditSoonBadge: (days: number) =>
+      days <= 0 ? 'Vence hoy' : `Vence en ${days} día${days === 1 ? '' : 's'}`,
+    creditOkBadge: (days: number) => `En ${days} días`,
+    addCredit: 'Agregar crédito',
     noCheckinBadge: 'Sin check-in hoy',
     noCheckinHint: 'Sin check-in hoy no recibe ofertas: la ventana de WhatsApp está cerrada.',
     onlyWithoutCheckin: 'Solo sin check-in',
@@ -183,7 +192,10 @@ export const strings = {
     invalid: (min: number, max: number) => `Escribe un número entero entre ${min} y ${max}.`,
     changedAt: 'Último cambio',
     neverChanged: 'Nunca se ha cambiado: usa el valor original.',
-    units: { minutes: 'minutos', days: 'días' } as Record<string, string>,
+    units: { minutes: 'minutos', days: 'días', 'credit/day': 'de crédito por día' } as Record<
+      string,
+      string
+    >,
     parameters: {
       shared_location_freshness_minutes: {
         label: 'Vigencia de la ubicación compartida',
@@ -202,6 +214,14 @@ export const strings = {
           'próxima recarga de cada mototaxi: la fecha de la última recarga más los días que ' +
           'correspondan al monto (con 20 de crédito, el doble). Cambiarlo recalcula todas las ' +
           'fechas de inmediato. El amarillo (una semana antes) y el rojo (tres días antes) no cambian.',
+      },
+      usage_credit_per_day: {
+        label: 'Crédito de uso que consume un conductor por día',
+        tooltip:
+          'Solo cuenta para los conductores que tienen activado el crédito de uso. Cada día se les ' +
+          'descuenta este monto; al llegar a cero dejan de recibir viajes y, si escriben al bot, se ' +
+          'les avisa que deben recargar. Con 60 por día, 180 de crédito duran tres días. Cambiarlo ' +
+          'recalcula de inmediato la fecha de vencimiento de todos.',
       },
     } as Record<string, { label: string; tooltip: string }>,
   },
@@ -264,6 +284,24 @@ export const strings = {
   fleet: {
     newDriver: 'Registrar conductor',
     editDriver: 'Editar conductor',
+    creditEnabled: 'Usa crédito de uso',
+    creditEnabledHint:
+      'Si se activa, el conductor recibe viajes solo mientras tenga crédito, que baja cada día. ' +
+      'Empieza en cero: agrega crédito después de guardar.',
+    creditDisableWarning:
+      'Al desactivarlo se borra el crédito que le quede y vuelve a recibir viajes sin límite.',
+    addCreditTitle: (name: string) => `Agregar crédito a ${name}`,
+    addCreditIntro: (balance: string, expires: string) =>
+      `Crédito actual: ${balance}. Vence el ${expires}.`,
+    addCreditExpiredIntro: (balance: string) =>
+      `Crédito actual: ${balance}. Está vencido: no recibe viajes hasta recargar.`,
+    addCreditAmount: 'Monto',
+    addCreditAmountHint: 'Usa un número negativo para quitar crédito.',
+    addCreditAmountInvalid: 'Escribe un monto distinto de cero.',
+    addCreditNegativeWarning:
+      'Un monto negativo reduce el crédito del conductor. Si queda en cero o menos, dejará de recibir viajes.',
+    addCreditSubmit: 'Agregar',
+    addCreditSubmitNegative: 'Quitar crédito',
     newMototaxi: 'Registrar mototaxi',
     editMototaxi: 'Editar mototaxi',
     requiredField: 'Este campo es obligatorio',

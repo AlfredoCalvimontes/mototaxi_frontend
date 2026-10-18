@@ -154,6 +154,13 @@ export type Driver = {
   lon: number | null;
   location_updated_at: IsoDateTime | null;
   location_source: string | null;
+  /** On the credit scheme: may be offered trips only while the credit lasts. */
+  usage_credit_enabled: boolean;
+  /** Drained to today; may be zero or negative. `null` off the scheme. */
+  usage_credit_balance: number | null;
+  /** The first day the balance is no longer positive. `null` off the scheme. */
+  usage_credit_expires_on: IsoDate | null;
+  usage_credit_expired: boolean;
   created_at: IsoDateTime;
 };
 
@@ -186,6 +193,8 @@ export type CreateDriverPayload = {
   phone_whatsapp: string;
   license_number?: string | null;
   mototaxi_uuid?: UUID | null;
+  /** Starts with an empty balance, so credit has to be added before the first trip. */
+  usage_credit_enabled?: boolean;
 };
 
 /**
@@ -199,7 +208,12 @@ export type UpdateDriverPayload = {
   name?: string;
   phone_whatsapp?: string;
   license_number?: string | null;
+  /** `false` takes the driver off the scheme and discards their balance. */
+  usage_credit_enabled?: boolean;
 };
+
+/** Negative takes credit back; zero is refused (422). */
+export type AddUsageCreditPayload = { amount: number };
 
 export type ChangeDriverStatusPayload = {
   status: DriverStatus;
