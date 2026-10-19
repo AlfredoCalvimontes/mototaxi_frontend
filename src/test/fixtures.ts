@@ -73,6 +73,17 @@ export const sharedLocationSetting: RuntimeSetting = {
   updated_at: null,
 };
 
+export const simDaysSetting: RuntimeSetting = {
+  key: 'sim_days_per_ten_credit',
+  value: 30,
+  default: 30,
+  minimum: 5,
+  maximum: 365,
+  unit: 'days',
+  description: 'How many days ten units of credit keep a tracker SIM alive',
+  updated_at: null,
+};
+
 export const mototaxiSummary: MototaxiSummary = {
   mototaxi_uuid: '55555555-5555-4555-8555-555555555555',
   plate_number: 'ABC123',
@@ -83,6 +94,9 @@ export const mototaxiSummary: MototaxiSummary = {
   location_updated_at: '2026-07-20T14:29:00Z',
   location_source: 'TRACKER',
   has_tracker: true,
+  sim_last_recharge_at: null,
+  sim_last_recharge_amount: null,
+  sim_next_recharge_at: null,
   is_tracker_stale: false,
   current_driver_uuid: '66666666-6666-4666-8666-666666666666',
 };
@@ -103,6 +117,9 @@ export const mototaxiDetail: Mototaxi = {
   brand: 'Honda',
   model: 'CG 125',
   tracker_imei: '860123456789012',
+  sim_last_recharge_at: null,
+  sim_last_recharge_amount: null,
+  sim_next_recharge_at: null,
   status: 'AVAILABLE',
   lat: -21.26235,
   lon: -63.46903,
@@ -137,6 +154,10 @@ export const driver: Driver = {
   lon: null,
   location_updated_at: null,
   location_source: null,
+  usage_credit_enabled: false,
+  usage_credit_balance: null,
+  usage_credit_expires_on: null,
+  usage_credit_expired: false,
   created_at: '2026-05-02T09:00:00Z',
 };
 
@@ -151,6 +172,42 @@ export const driverWithoutCheckin: Driver = {
   current_mototaxi_uuid: null,
   last_checkin_at: '2026-07-18T12:00:00Z',
   has_checked_in_today: false,
+};
+
+/** On the credit scheme with credit left, but not much: the last days show amber. */
+export const driverWithCredit: Driver = {
+  ...driver,
+  driver_uuid: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  name: 'Rafael Soria',
+  ci: '5551234 TJ',
+  phone_whatsapp: '+59170001234',
+  usage_credit_enabled: true,
+  usage_credit_balance: 180,
+  usage_credit_expires_on: '2099-01-01',
+  usage_credit_expired: false,
+};
+
+/** Out of credit: no trips, and the panel paints the row red. */
+export const driverCreditExpired: Driver = {
+  ...driverWithCredit,
+  driver_uuid: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+  name: 'Elena Cruz',
+  ci: '4441234 TJ',
+  phone_whatsapp: '+59170005678',
+  usage_credit_balance: -20,
+  usage_credit_expires_on: '2026-10-01',
+  usage_credit_expired: true,
+};
+
+export const usageCreditSetting: RuntimeSetting = {
+  key: 'usage_credit_per_day',
+  value: 60,
+  default: 60,
+  minimum: 1,
+  maximum: 10000,
+  unit: 'credit/day',
+  description: 'How much usage credit a driver consumes each day',
+  updated_at: null,
 };
 
 export const customer: CustomerSummary = {

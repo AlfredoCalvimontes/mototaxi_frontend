@@ -72,6 +72,12 @@ export type MototaxiSummary = {
   location_source: string | null;
   /** A GPS tracker is fitted. `false`: the driver must share a WhatsApp location. */
   has_tracker: boolean;
+  /** Last top-up of the tracker's SIM; `null` without a tracker or before the first one. */
+  sim_last_recharge_at: IsoDate | null;
+  /** Credit that top-up added. */
+  sim_last_recharge_amount: number | null;
+  /** When the credit should run out: ten units last a month. */
+  sim_next_recharge_at: IsoDate | null;
   /** Position older than the dispatch freshness window (spec §7.4). */
   is_tracker_stale: boolean;
   current_driver_uuid: UUID | null;
@@ -148,6 +154,13 @@ export type Driver = {
   lon: number | null;
   location_updated_at: IsoDateTime | null;
   location_source: string | null;
+  /** On the credit scheme: may be offered trips only while the credit lasts. */
+  usage_credit_enabled: boolean;
+  /** Drained to today; may be zero or negative. `null` off the scheme. */
+  usage_credit_balance: number | null;
+  /** The first day the balance is no longer positive. `null` off the scheme. */
+  usage_credit_expires_on: IsoDate | null;
+  usage_credit_expired: boolean;
   created_at: IsoDateTime;
 };
 
@@ -159,6 +172,9 @@ export type Mototaxi = {
   brand: string | null;
   model: string | null;
   tracker_imei: string | null;
+  sim_last_recharge_at: IsoDate | null;
+  sim_last_recharge_amount: number | null;
+  sim_next_recharge_at: IsoDate | null;
   status: MototaxiStatus;
   lat: number | null;
   lon: number | null;
@@ -177,6 +193,8 @@ export type CreateDriverPayload = {
   phone_whatsapp: string;
   license_number?: string | null;
   mototaxi_uuid?: UUID | null;
+  /** Starts with an empty balance, so credit has to be added before the first trip. */
+  usage_credit_enabled?: boolean;
 };
 
 /**
@@ -190,7 +208,12 @@ export type UpdateDriverPayload = {
   name?: string;
   phone_whatsapp?: string;
   license_number?: string | null;
+  /** `false` takes the driver off the scheme and discards their balance. */
+  usage_credit_enabled?: boolean;
 };
+
+/** Negative takes credit back; zero is refused (422). */
+export type AddUsageCreditPayload = { amount: number };
 
 export type ChangeDriverStatusPayload = {
   status: DriverStatus;
@@ -208,6 +231,9 @@ export type CreateMototaxiPayload = {
   brand?: string | null;
   model?: string | null;
   tracker_imei?: string | null;
+  /** Sent together or not at all; both `null` clears the record. Needs a tracker. */
+  sim_last_recharge_at?: IsoDate | null;
+  sim_last_recharge_amount?: number | null;
   notes?: string | null;
 };
 
@@ -222,6 +248,8 @@ export type UpdateMototaxiPayload = {
   brand?: string | null;
   model?: string | null;
   tracker_imei?: string | null;
+  sim_last_recharge_at?: IsoDate | null;
+  sim_last_recharge_amount?: number | null;
   notes?: string | null;
   last_maintenance_at?: IsoDate | null;
 };

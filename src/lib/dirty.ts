@@ -27,7 +27,11 @@ export type DriverFormValues = {
   name: string;
   phone_whatsapp: string;
   license_number: string;
+  usage_credit_enabled: boolean;
 };
+
+/** The text fields only: the credit switch is a boolean and can always be turned off. */
+type DriverTextField = Exclude<keyof DriverFormValues, 'usage_credit_enabled'>;
 
 export type DriverChanges = {
   payload: UpdateDriverPayload;
@@ -36,12 +40,12 @@ export type DriverChanges = {
    * say so: sending them would be accepted and silently do nothing, leaving
    * the operator believing a value was removed.
    */
-  unclearable: (keyof DriverFormValues)[];
+  unclearable: DriverTextField[];
 };
 
 export function driverChanges(initial: DriverFormValues, current: DriverFormValues): DriverChanges {
   const payload: UpdateDriverPayload = {};
-  const unclearable: (keyof DriverFormValues)[] = [];
+  const unclearable: DriverTextField[] = [];
 
   const name = normalise(current.name);
   if (name !== null && name !== initial.name) payload.name = name;
@@ -55,6 +59,10 @@ export function driverChanges(initial: DriverFormValues, current: DriverFormValu
   if (license !== null && license !== initial.license_number) payload.license_number = license;
   else if (license === null && initial.license_number !== '') unclearable.push('license_number');
 
+  if (current.usage_credit_enabled !== initial.usage_credit_enabled) {
+    payload.usage_credit_enabled = current.usage_credit_enabled;
+  }
+
   return { payload, unclearable };
 }
 
@@ -64,6 +72,8 @@ export type MototaxiFormValues = {
   brand: string;
   model: string;
   tracker_imei: string;
+  sim_last_recharge_at: string;
+  sim_last_recharge_amount: string;
   notes: string;
   last_maintenance_at: string;
 };
@@ -77,6 +87,25 @@ export type MototaxiChanges = {
    */
   detachesTracker: boolean;
 };
+
+/** «10,5» and «10.5» both mean ten and a half; anything unreadable is `NaN`. */
+export function parseCredit(value: string): number | null {
+  const trimmed = value.trim().replace(',', '.');
+  return trimmed === '' ? null : Number(trimmed);
+}
+
+/** The two halves of a SIM recharge travel together, so a change to either sends both. */
+function simRechargeChange(
+  initial: MototaxiFormValues,
+  current: MototaxiFormValues,
+): Pick<UpdateMototaxiPayload, 'sim_last_recharge_at' | 'sim_last_recharge_amount'> {
+  const at = normalise(current.sim_last_recharge_at);
+  const amount = parseCredit(current.sim_last_recharge_amount);
+  const unchanged =
+    at === (normalise(initial.sim_last_recharge_at) ?? null) &&
+    amount === parseCredit(initial.sim_last_recharge_amount);
+  return unchanged ? {} : { sim_last_recharge_at: at, sim_last_recharge_amount: amount };
+}
 
 export function mototaxiChanges(
   initial: MototaxiFormValues,
@@ -101,6 +130,10 @@ export function mototaxiChanges(
 
   const imei = normalise(current.tracker_imei);
   if (imei !== (normalise(initial.tracker_imei) ?? null)) payload.tracker_imei = imei;
+
+  // The SIM belongs to the tracker: without one there is nothing to send (the
+  // server drops the record itself when a tracker is detached).
+  if (imei !== null) Object.assign(payload, simRechargeChange(initial, current));
 
   const notes = normalise(current.notes);
   if (notes !== (normalise(initial.notes) ?? null)) payload.notes = notes;

@@ -34,6 +34,12 @@ function SettingCard({ setting }: { setting: RuntimeSetting }) {
       setDraft(String(updated.value));
       setSaved(true);
       void queryClient.invalidateQueries({ queryKey: queryKeys.settings });
+      // A setting can change what other screens derive from it (SIM due dates).
+      void queryClient.invalidateQueries({ queryKey: queryKeys.mototaxis });
+      void queryClient.invalidateQueries({ queryKey: ['mototaxi'] });
+      // …and so can the usage-credit rate (driver balances and expiry dates).
+      void queryClient.invalidateQueries({ queryKey: ['drivers'] });
+      void queryClient.invalidateQueries({ queryKey: ['driver'] });
     },
   });
 

@@ -168,3 +168,13 @@ export function formatMeters(value: number | null | undefined): string {
 export function markerLabel(unit: { alias: string | null; plate_number: string }): string {
   return unit.alias || unit.plate_number;
 }
+
+/**
+ * `YYYY-MM-DD` as «dd/mm/aaaa». Split rather than parsed: a date-only string
+ * handed to `Date` is read as UTC midnight and shows as the day before in La Paz.
+ */
+export function formatDate(value: string | null | undefined): string {
+  if (!value) return EMPTY;
+  const [year, month, day] = value.split('-');
+  return year && month && day ? `${day}/${month}/${year}` : EMPTY;
+}
