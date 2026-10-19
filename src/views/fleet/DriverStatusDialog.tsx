@@ -4,6 +4,7 @@ import { useState, type FormEvent } from 'react';
 import { changeDriverStatus } from '@/api/admin';
 import type { Driver, DriverStatus } from '@/api/types';
 import { FormDialog } from '@/components/Field';
+import { StatusBadge } from '@/components/StatusBadge';
 import { errorText } from '@/lib/errors';
 import { strings } from '@/lib/strings';
 
@@ -46,6 +47,10 @@ export function DriverStatusDialog({ driver, onClose }: { driver: Driver; onClos
   return (
     <FormDialog title={strings.fleet.changeStatusTitle(driver.name)} onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+        <p className="flex items-center gap-2 text-sm text-slate-600">
+          {strings.fleet.currentDriverStatus}:
+          <StatusBadge kind="driver" value={driver.status} />
+        </p>
         <fieldset className="space-y-2">
           <legend className="text-sm font-medium text-slate-700">{strings.drivers.status}</legend>
           {STATUSES.map((option) => (

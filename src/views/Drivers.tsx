@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 import { deleteDriver, listDrivers, listMototaxis } from '@/api/admin';
@@ -8,7 +8,8 @@ import type { Driver, MototaxiSummary } from '@/api/types';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { DataTable, type Column } from '@/components/DataTable';
 import { ErrorState } from '@/components/ErrorState';
-import { MaskedValue } from '@/components/MaskedValue';
+import { MaskedValue, RevealAllButton } from '@/components/MaskedValue';
+import { useRevealGroup } from '@/components/revealGroup';
 import { StatusBadge, ToneBadge, WarningBadge } from '@/components/StatusBadge';
 import { TableSkeleton } from '@/components/Skeleton';
 import { AssignMototaxiDialog } from '@/views/fleet/AssignMototaxiDialog';
@@ -121,6 +122,8 @@ export default function Drivers() {
   const [dialog, setDialog] = useState<DriverDialog | null>(null);
   const queryClient = useQueryClient();
   const [hideCredit, toggleHideCredit] = usePersistentFlag(HIDE_CREDIT_KEY, false);
+  const phoneGroup = useRevealGroup();
+  const ciGroup = useRevealGroup();
 
   const retire = useMutation({
     mutationFn: ({ driver, reason }: { driver: Driver; reason?: string }) =>
@@ -209,7 +212,9 @@ export default function Drivers() {
         cell: (driver) => (
           <div className="flex items-center gap-2">
             <RowAction onClick={() => setDialog({ kind: 'assign', driver })}>
-              {strings.fleet.assignMototaxi}
+              {driver.current_mototaxi_uuid
+                ? strings.fleet.changeMototaxi
+                : strings.fleet.assignMototaxi}
             </RowAction>
             {driver.current_mototaxi_uuid ? (
               (plates.get(driver.current_mototaxi_uuid) ?? EMPTY)
@@ -250,19 +255,27 @@ export default function Drivers() {
       {
         id: 'phone',
         header: strings.drivers.phone,
+        headerAction: <RevealAllButton group={phoneGroup} label={strings.drivers.phone} />,
         secondary: true,
         // Searchable by the full number even though only the mask is rendered.
         sortValue: (driver) => driver.phone_whatsapp,
         cell: (driver) => (
-          <MaskedValue value={driver.phone_whatsapp} masked={maskPhone(driver.phone_whatsapp)} />
+          <MaskedValue
+            value={driver.phone_whatsapp}
+            masked={maskPhone(driver.phone_whatsapp)}
+            group={phoneGroup}
+          />
         ),
       },
       {
         id: 'ci',
         header: strings.drivers.ci,
+        headerAction: <RevealAllButton group={ciGroup} label={strings.drivers.ci} />,
         secondary: true,
         sortValue: (driver) => driver.ci,
-        cell: (driver) => <MaskedValue value={driver.ci} masked={maskCi(driver.ci)} />,
+        cell: (driver) => (
+          <MaskedValue value={driver.ci} masked={maskCi(driver.ci)} group={ciGroup} />
+        ),
       },
       {
         id: 'trips',
@@ -327,9 +340,21 @@ export default function Drivers() {
             </RowAction>
             <RowAction onClick={() => setDialog({ kind: 'status', driver })}>
               {strings.fleet.changeStatus}
+              <StatusBadge kind="driver" value={driver.status} />
             </RowAction>
-            <RowAction onClick={() => setDialog({ kind: 'phoneKey', driver })}>
-              {`${strings.fleet.phoneKey}${driver.has_phone_key ? ' ✓' : ''}`}
+            <RowAction
+              active={driver.has_phone_key}
+              onClick={() => setDialog({ kind: 'phoneKey', driver })}
+            >
+              {strings.fleet.phoneKey}
+              <ToneBadge
+                tone={driver.has_phone_key ? 'good' : 'idle'}
+                title={driver.has_phone_key ? strings.drivers.phoneKeyBadge : undefined}
+              >
+                {driver.has_phone_key
+                  ? strings.drivers.phoneKeyActive
+                  : strings.drivers.phoneKeyMissing}
+              </ToneBadge>
             </RowAction>
             <RowAction onClick={() => setDialog({ kind: 'position', driver })}>
               {strings.drivers.positionCheck}
@@ -348,7 +373,7 @@ export default function Drivers() {
         ),
       },
     ],
-    [plates, unitOf],
+    [plates, unitOf, phoneGroup, ciGroup],
   );
 
   if (drivers.isPending) return <TableSkeleton rows={5} />;
@@ -472,20 +497,24 @@ function RowAction({
   children,
   onClick,
   danger,
+  active,
 }: {
-  children: string;
+  children: ReactNode;
   onClick: () => void;
   danger?: boolean;
+  /** Something is set up behind this action, so it reads as «on». */
+  active?: boolean;
 }) {
+  const tone = danger
+    ? 'border-red-300 text-red-700 hover:bg-red-50'
+    : active
+      ? 'border-emerald-400 bg-emerald-50 text-emerald-900 hover:bg-emerald-100'
+      : 'border-slate-300 text-slate-700 hover:bg-slate-50';
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`rounded border px-2 py-1 text-xs font-medium whitespace-nowrap ${
-        danger
-          ? 'border-red-300 text-red-700 hover:bg-red-50'
-          : 'border-slate-300 text-slate-700 hover:bg-slate-50'
-      }`}
+      className={`inline-flex items-center gap-1.5 rounded border px-2 py-1 text-xs font-medium whitespace-nowrap ${tone}`}
     >
       {children}
     </button>

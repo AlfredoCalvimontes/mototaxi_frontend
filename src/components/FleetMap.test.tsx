@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, test } from 'vitest';
 
@@ -19,6 +19,16 @@ function markers(container: HTMLElement) {
 
 function colorOf(marker: Element) {
   return marker.querySelector('span')?.getAttribute('style') ?? '';
+}
+
+/** The plate also labels the marker, so the popup's own title is found inside the popup. */
+async function popupTitle(text: string) {
+  const popup = await waitFor(() => {
+    const el = document.querySelector<HTMLElement>('.leaflet-popup-content');
+    if (!el) throw new Error('popup not open yet');
+    return el;
+  });
+  return within(popup).getByText(text);
 }
 
 const FRESH = '#059669';
@@ -87,7 +97,7 @@ describe('detalle de la unidad', () => {
 
     await user.click(markers(container)[0]!);
 
-    expect(await screen.findByText('ABC123')).toBeInTheDocument();
+    expect(await popupTitle('ABC123')).toBeInTheDocument();
     expect(screen.getByText(/Última señal/)).toBeInTheDocument();
   });
 
@@ -97,7 +107,7 @@ describe('detalle de la unidad', () => {
 
     await user.click(markers(container)[0]!);
 
-    expect(await screen.findByText('XYZ789')).toBeInTheDocument();
+    expect(await popupTitle('XYZ789')).toBeInTheDocument();
     expect(screen.getByText('GPS sin señal')).toBeInTheDocument();
   });
 
@@ -107,7 +117,7 @@ describe('detalle de la unidad', () => {
 
     await user.click(markers(container)[0]!);
 
-    await screen.findByText('ABC123');
+    await popupTitle('ABC123');
     expect(screen.queryByText('GPS sin señal')).not.toBeInTheDocument();
   });
 });
@@ -116,5 +126,45 @@ describe('apilamiento', () => {
   test('el mapa abre su propio contexto de apilamiento para no tapar los diálogos', () => {
     const { container } = render(<FleetMap units={[fx.mototaxiSummary]} />);
     expect(container.querySelector('.leaflet-container')).toHaveClass('isolate');
+  });
+});
+
+describe('etiquetas', () => {
+  const labels = (container: HTMLElement) =>
+    Array.from(container.querySelectorAll('.leaflet-tooltip')).map((el) => el.textContent);
+
+  test('cada marcador muestra la placa cuando la unidad no tiene alias', () => {
+    const { container } = render(<FleetMap units={[fx.mototaxiSummary]} />);
+
+    expect(labels(container)).toEqual(['ABC123']);
+  });
+
+  test('cada marcador muestra el alias cuando lo tiene', () => {
+    const { container } = render(
+      <FleetMap
+        units={[
+          { ...fx.mototaxiSummary, alias: 'Rayo' },
+          { ...fx.staleMototaxiSummary, alias: null },
+        ]}
+      />,
+    );
+
+    expect(labels(container).sort()).toEqual(['Rayo', 'XYZ789']);
+  });
+
+  test('un alias vacío cae a la placa', () => {
+    const { container } = render(<FleetMap units={[{ ...fx.mototaxiSummary, alias: '' }]} />);
+
+    expect(labels(container)).toEqual(['ABC123']);
+  });
+
+  test('una unidad sin posición no deja una etiqueta suelta', () => {
+    const { container } = render(
+      <FleetMap
+        units={[fx.mototaxiSummary, { ...fx.staleMototaxiSummary, lat: null, lon: null }]}
+      />,
+    );
+
+    expect(labels(container)).toEqual(['ABC123']);
   });
 });

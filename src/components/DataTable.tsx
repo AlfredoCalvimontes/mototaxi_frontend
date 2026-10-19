@@ -5,6 +5,8 @@ import { EmptyState } from '@/components/EmptyState';
 export type Column<T> = {
   id: string;
   header: string;
+  /** Extra control beside the header (outside the sort button), e.g. «Mostrar todo». */
+  headerAction?: ReactNode;
   cell: (row: T) => ReactNode;
   /** Value used for sorting and text search; omit to make the column inert. */
   sortValue?: (row: T) => string | number | null;
@@ -116,20 +118,23 @@ export function DataTable<T>({
                         column.secondary ? 'hidden sm:table-cell' : ''
                       }`}
                     >
-                      {sortable ? (
-                        <button
-                          type="button"
-                          onClick={() => toggleSort(column.id)}
-                          className="inline-flex items-center gap-1 hover:text-slate-900"
-                        >
-                          {column.header}
-                          <span aria-hidden="true" className="text-[10px]">
-                            {active ? (sort.direction === 'asc' ? '▲' : '▼') : '↕'}
-                          </span>
-                        </button>
-                      ) : (
-                        column.header
-                      )}
+                      <div className="inline-flex items-center gap-2">
+                        {sortable ? (
+                          <button
+                            type="button"
+                            onClick={() => toggleSort(column.id)}
+                            className="inline-flex items-center gap-1 hover:text-slate-900"
+                          >
+                            {column.header}
+                            <span aria-hidden="true" className="text-[10px]">
+                              {active ? (sort.direction === 'asc' ? '▲' : '▼') : '↕'}
+                            </span>
+                          </button>
+                        ) : (
+                          column.header
+                        )}
+                        {column.headerAction}
+                      </div>
                     </th>
                   );
                 })}

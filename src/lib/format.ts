@@ -164,6 +164,11 @@ export function formatMeters(value: number | null | undefined): string {
   return `${(value / 1000).toFixed(1).replace('.', ',')} km`;
 }
 
+/** What a map marker is called: the alias when the unit has one, otherwise its plate. */
+export function markerLabel(unit: { alias: string | null; plate_number: string }): string {
+  return unit.alias || unit.plate_number;
+}
+
 /**
  * `YYYY-MM-DD` as «dd/mm/aaaa». Split rather than parsed: a date-only string
  * handed to `Date` is read as UTC midnight and shows as the day before in La Paz.
