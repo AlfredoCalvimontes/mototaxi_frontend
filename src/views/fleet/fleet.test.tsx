@@ -339,7 +339,7 @@ describe('estado del conductor', () => {
   test('la fecha de descanso solo se ofrece para el estado en descanso', async () => {
     const { user } = renderApp(<Drivers />);
 
-    await user.click((await rowFor('Marco Peña')).getByRole('button', { name: 'Cambiar estado' }));
+    await user.click((await rowFor('Marco Peña')).getByRole('button', { name: /Cambiar estado/ }));
     const dialog = within(screen.getByRole('dialog'));
 
     expect(dialog.queryByLabelText('Descansa hasta')).not.toBeInTheDocument();
@@ -351,7 +351,7 @@ describe('estado del conductor', () => {
     const bodies = captureBody('patch', '/admin/drivers/:uuid/status', fx.driver);
     const { user } = renderApp(<Drivers />);
 
-    await user.click((await rowFor('Marco Peña')).getByRole('button', { name: 'Cambiar estado' }));
+    await user.click((await rowFor('Marco Peña')).getByRole('button', { name: /Cambiar estado/ }));
     const dialog = within(screen.getByRole('dialog'));
     await user.click(dialog.getByRole('radio', { name: 'En descanso' }));
     await user.type(dialog.getByLabelText('Descansa hasta'), '2026-07-20T18:00');
@@ -372,7 +372,7 @@ describe('estado del conductor', () => {
     const bodies = captureBody('patch', '/admin/drivers/:uuid/status', fx.driver);
     const { user } = renderApp(<Drivers />);
 
-    await user.click((await rowFor('Marco Peña')).getByRole('button', { name: 'Cambiar estado' }));
+    await user.click((await rowFor('Marco Peña')).getByRole('button', { name: /Cambiar estado/ }));
     const dialog = within(screen.getByRole('dialog'));
     await user.click(dialog.getByRole('radio', { name: 'Disponible' }));
     await user.click(dialog.getByRole('button', { name: 'Guardar' }));
@@ -388,7 +388,7 @@ describe('asignación de mototaxi', () => {
     const { user } = renderApp(<Drivers />);
 
     await user.click(
-      (await rowFor('Marco Peña')).getByRole('button', { name: 'Asignar mototaxi' }),
+      (await rowFor('Marco Peña')).getByRole('button', { name: 'Cambiar mototaxi' }),
     );
     const dialog = within(screen.getByRole('dialog'));
     await user.selectOptions(dialog.getByLabelText('Mototaxi'), '');
@@ -420,7 +420,7 @@ describe('asignación de mototaxi', () => {
     const { user } = renderApp(<Drivers />);
 
     await user.click(
-      (await rowFor('Marco Peña')).getByRole('button', { name: 'Asignar mototaxi' }),
+      (await rowFor('Marco Peña')).getByRole('button', { name: 'Cambiar mototaxi' }),
     );
     const dialog = within(screen.getByRole('dialog'));
 
@@ -689,5 +689,84 @@ describe('posición del conductor frente a su unidad', () => {
     expect(
       await within(screen.getByRole('dialog')).findByText(/no encontrado/),
     ).toBeInTheDocument();
+  });
+});
+
+describe('lista de conductores: datos a la vista', () => {
+  test('«Mostrar todo» revela la columna entera y «Ocultar todo» la vuelve a tapar', async () => {
+    const { user } = renderApp(<Drivers />);
+    await screen.findByRole('table');
+
+    expect(screen.queryByText(fx.driver.phone_whatsapp)).not.toBeInTheDocument();
+    expect(screen.queryByText(fx.driverWithoutCheckin.phone_whatsapp)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Mostrar todo: WhatsApp' }));
+    expect(screen.getByText(fx.driver.phone_whatsapp)).toBeInTheDocument();
+    expect(screen.getByText(fx.driverWithoutCheckin.phone_whatsapp)).toBeInTheDocument();
+    // La columna de CI es otra: sigue tapada.
+    expect(screen.queryByText(fx.driver.ci)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Ocultar todo: WhatsApp' }));
+    expect(screen.queryByText(fx.driver.phone_whatsapp)).not.toBeInTheDocument();
+    expect(screen.queryByText(fx.driverWithoutCheckin.phone_whatsapp)).not.toBeInTheDocument();
+  });
+
+  test('«Ocultar todo» también tapa lo que se reveló a mano fila por fila', async () => {
+    const { user } = renderApp(<Drivers />);
+    const row = await rowFor('Marco Peña');
+
+    // El primer «Mostrar» de la fila es el del WhatsApp.
+    await user.click(row.getAllByRole('button', { name: /^Mostrar: / })[0]!);
+    expect(screen.getByText(fx.driver.phone_whatsapp)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Mostrar todo: WhatsApp' }));
+    await user.click(screen.getByRole('button', { name: 'Ocultar todo: WhatsApp' }));
+
+    expect(screen.queryByText(fx.driver.phone_whatsapp)).not.toBeInTheDocument();
+  });
+
+  test('el botón de estado muestra el estado actual del conductor', async () => {
+    renderApp(<Drivers />);
+
+    const row = await rowFor('Marco Peña');
+    const button = row.getByRole('button', { name: /Cambiar estado/ });
+    expect(within(button).getByText('Disponible')).toBeInTheDocument();
+  });
+
+  test('el diálogo de estado dice cuál es el estado actual', async () => {
+    const { user } = renderApp(<Drivers />);
+
+    await user.click((await rowFor('Marco Peña')).getByRole('button', { name: /Cambiar estado/ }));
+    const dialog = within(screen.getByRole('dialog'));
+
+    expect(dialog.getByText(/Estado actual/)).toBeInTheDocument();
+    expect(dialog.getAllByText('Disponible').length).toBeGreaterThan(0);
+  });
+
+  test('con mototaxi asignada el botón ofrece cambiarla; sin ella, asignarla', async () => {
+    renderApp(<Drivers />);
+
+    const withMoto = await rowFor('Marco Peña');
+    expect(withMoto.getByRole('button', { name: 'Cambiar mototaxi' })).toBeInTheDocument();
+    expect(withMoto.queryByRole('button', { name: 'Asignar mototaxi' })).not.toBeInTheDocument();
+
+    const without = await rowFor('Lucía Vargas');
+    expect(without.getByRole('button', { name: 'Asignar mototaxi' })).toBeInTheDocument();
+  });
+
+  test('la clave GPS configurada se ve como «Activa»; la que falta, como «Sin clave»', async () => {
+    server.use(
+      http.get(`${BASE}/admin/drivers`, () =>
+        HttpResponse.json([{ ...fx.driver, has_phone_key: true }, fx.driverWithoutCheckin]),
+      ),
+    );
+    renderApp(<Drivers />);
+
+    const set = (await rowFor('Marco Peña')).getByRole('button', { name: /Clave GPS/ });
+    expect(within(set).getByText('Activa')).toBeInTheDocument();
+    expect(set.className).toMatch(/emerald/);
+
+    const missing = (await rowFor('Lucía Vargas')).getByRole('button', { name: /Clave GPS/ });
+    expect(within(missing).getByText('Sin clave')).toBeInTheDocument();
+    expect(missing.className).not.toMatch(/emerald/);
   });
 });
