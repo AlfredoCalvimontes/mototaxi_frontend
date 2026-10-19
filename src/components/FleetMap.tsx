@@ -1,9 +1,9 @@
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet';
+import { MapContainer, Marker, Popup, TileLayer, Tooltip } from 'react-leaflet';
 
 import type { MototaxiSummary } from '@/api/types';
-import { EMPTY, formatRelative } from '@/lib/format';
+import { EMPTY, formatRelative, markerLabel } from '@/lib/format';
 import { strings } from '@/lib/strings';
 
 /** Villa Montes (spec §2), used when nothing has a position to centre on. */
@@ -62,6 +62,10 @@ export function FleetMap({ units }: { units: MototaxiSummary[] }) {
           position={[unit.lat, unit.lon]}
           icon={markerIcon(unit.is_tracker_stale)}
         >
+          {/* Always visible, so a dot can be matched to a unit without clicking it. */}
+          <Tooltip permanent direction="right" offset={[10, 0]}>
+            {markerLabel(unit)}
+          </Tooltip>
           <Popup>
             <p className="font-medium">
               {unit.alias ? `${unit.alias} · ${unit.plate_number}` : unit.plate_number}
