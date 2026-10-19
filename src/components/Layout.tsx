@@ -19,7 +19,7 @@ export function Layout() {
   return (
     <div className="min-h-screen">
       <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-4 py-3">
+        <div className="mx-auto flex max-w-[1800px] flex-wrap items-center justify-between gap-2 px-4 py-3">
           <div>
             <p className="text-sm font-semibold text-slate-900">{strings.app.title}</p>
             <p className="text-xs text-slate-500">{strings.app.city}</p>
@@ -36,7 +36,7 @@ export function Layout() {
           </div>
         </div>
         {/* Scrolls horizontally rather than wrapping into a tall stack on a phone. */}
-        <nav aria-label="Secciones" className="mx-auto max-w-7xl overflow-x-auto px-4">
+        <nav aria-label="Secciones" className="mx-auto max-w-[1800px] overflow-x-auto px-4">
           <ul className="flex gap-1 whitespace-nowrap">
             {navItems.map((item) => (
               <li key={item.to}>
@@ -59,7 +59,7 @@ export function Layout() {
         </nav>
       </header>
 
-      <main className="mx-auto max-w-7xl space-y-6 px-4 py-6">
+      <main className="mx-auto max-w-[1800px] space-y-6 px-4 py-6">
         <Outlet />
       </main>
     </div>

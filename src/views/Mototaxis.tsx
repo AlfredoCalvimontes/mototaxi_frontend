@@ -26,6 +26,9 @@ const FleetMap = lazy(() =>
 /** Set by the dashboard's stale-tracker alert. */
 const STALE_PARAM = 'gps';
 const STALE_VALUE = 'sin-senal';
+/** Set by the dashboard's SIM-credit alert. */
+const SIM_PARAM = 'sim';
+const SIM_VALUE = 'vencida';
 
 type MototaxiDialog =
   | { kind: 'create' }
@@ -78,6 +81,7 @@ function SimNextRecharge({ unit }: { unit: MototaxiSummary }) {
 export default function Mototaxis() {
   const [searchParams, setSearchParams] = useSearchParams();
   const onlyStale = searchParams.get(STALE_PARAM) === STALE_VALUE;
+  const onlyNoSimCredit = searchParams.get(SIM_PARAM) === SIM_VALUE;
   const [dialog, setDialog] = useState<MototaxiDialog | null>(null);
   const [hideSim, toggleHideSim] = usePersistentFlag(HIDE_SIM_KEY, false);
 
@@ -106,8 +110,13 @@ export default function Mototaxis() {
 
   const rows = useMemo(() => {
     const all = mototaxis.data ?? [];
-    return onlyStale ? all.filter((unit) => unit.is_tracker_stale) : all;
-  }, [mototaxis.data, onlyStale]);
+    return all.filter(
+      (unit) =>
+        (!onlyStale || unit.is_tracker_stale) &&
+        (!onlyNoSimCredit ||
+          (unit.has_tracker && simRechargeState(unit.sim_next_recharge_at).state === 'overdue')),
+    );
+  }, [mototaxis.data, onlyStale, onlyNoSimCredit]);
 
   const columns: Column<MototaxiSummary>[] = useMemo(
     () => [
@@ -266,6 +275,19 @@ export default function Mototaxis() {
             className="rounded border-slate-300"
           />
           {strings.mototaxis.staleTracker}
+        </label>
+        <label className="flex items-center gap-2 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            checked={onlyNoSimCredit}
+            onChange={(e) =>
+              setSearchParams(e.target.checked ? { [SIM_PARAM]: SIM_VALUE } : {}, {
+                replace: true,
+              })
+            }
+            className="rounded border-slate-300"
+          />
+          {strings.mototaxis.noSimCredit}
         </label>
       </div>
 
