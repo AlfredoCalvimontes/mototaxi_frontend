@@ -1,12 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { getAlerts, getKpis } from '@/api/admin';
+import { getAlerts, getKpis, listDrivers, listMototaxis } from '@/api/admin';
 import { POLL, queryKeys } from '@/api/queries';
-import { AlertBanner } from '@/components/AlertBanner';
+import { AlertBanner, type PanelAlerts } from '@/components/AlertBanner';
 import { ErrorState } from '@/components/ErrorState';
 import { KpiCard } from '@/components/KpiCard';
 import { CardSkeleton } from '@/components/Skeleton';
 import { EMPTY, formatDuration, formatRating } from '@/lib/format';
+import { simRechargeState } from '@/lib/sim';
 import { strings } from '@/lib/strings';
 
 export default function Dashboard() {
@@ -21,6 +22,30 @@ export default function Dashboard() {
     refetchInterval: POLL.dashboard,
   });
 
+  // Already polled by the fleet views; here they only feed the credit alerts.
+  const mototaxis = useQuery({
+    queryKey: queryKeys.mototaxis,
+    queryFn: listMototaxis,
+    refetchInterval: POLL.mototaxis,
+  });
+  const drivers = useQuery({
+    queryKey: queryKeys.drivers(),
+    queryFn: () => listDrivers(),
+    refetchInterval: POLL.drivers,
+  });
+
+  const panelAlerts: PanelAlerts | null = alerts.data
+    ? {
+        ...alerts.data,
+        trackers_without_credit: (mototaxis.data ?? []).filter(
+          (unit) =>
+            unit.has_tracker && simRechargeState(unit.sim_next_recharge_at).state === 'overdue',
+        ).length,
+        drivers_without_credit: (drivers.data ?? []).filter((driver) => driver.usage_credit_expired)
+          .length,
+      }
+    : null;
+
   return (
     <div className="space-y-6">
       <h1 className="text-xl font-semibold text-slate-900">{strings.dashboard.heading}</h1>
@@ -30,7 +55,7 @@ export default function Dashboard() {
       ) : alerts.isError ? (
         <ErrorState error={alerts.error} onRetry={() => void alerts.refetch()} />
       ) : (
-        <AlertBanner alerts={alerts.data} />
+        <AlertBanner alerts={panelAlerts ?? alerts.data} />
       )}
 
       {kpis.isPending ? (

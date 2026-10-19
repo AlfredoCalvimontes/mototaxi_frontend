@@ -64,6 +64,8 @@ export const strings = {
     alertStaleTrackers: 'GPS sin actualizar',
     alertOverdueTrips: 'viajes demorados',
     alertAutoCompleted: 'viajes cerrados automáticamente por revisar',
+    alertTrackersNoCredit: 'GPS sin crédito en el chip (SIM)',
+    alertDriversNoCredit: 'conductores sin crédito de uso',
     alertNoCheckin: 'conductores sin check-in hoy',
   },
   mototaxis: {
@@ -90,6 +92,7 @@ export const strings = {
     simUrgent: (days: number) => (days === 0 ? 'Hoy' : `En ${days} día${days === 1 ? '' : 's'}`),
     simOverdue: (days: number) => `Vencida hace ${days} día${days === 1 ? '' : 's'}`,
     simHint: 'La fecha se calcula según cuántos días duran diez de crédito (Configuración).',
+    noSimCredit: 'GPS sin crédito',
     hideSim: 'Ocultar SIM',
     showSim: 'Mostrar SIM',
     notes: 'Notas',
@@ -97,6 +100,9 @@ export const strings = {
   },
   drivers: {
     heading: 'Conductores',
+    noCredit: 'Sin crédito de uso',
+    hideCredit: 'Ocultar crédito',
+    showCredit: 'Mostrar crédito',
     name: 'Nombre',
     ci: 'CI',
     phone: 'WhatsApp',

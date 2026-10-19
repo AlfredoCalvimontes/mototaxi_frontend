@@ -28,6 +28,7 @@ import {
   maskPhone,
   vehicleLabel,
 } from '@/lib/format';
+import { usePersistentFlag } from '@/lib/persistentFlag';
 import { strings } from '@/lib/strings';
 import { trackingState, type TrackingState } from '@/lib/tracking';
 import { formatCredit, usageCreditState } from '@/lib/usageCredit';
@@ -35,6 +36,13 @@ import { formatCredit, usageCreditState } from '@/lib/usageCredit';
 /** Set by the dashboard's "sin check-in" alert. */
 const CHECKIN_PARAM = 'checkin';
 const CHECKIN_PENDING = 'pendiente';
+/** Set by the dashboard's usage-credit alert. */
+const CREDIT_PARAM = 'credito';
+const CREDIT_EXHAUSTED = 'agotado';
+
+/** The response-time and usage-credit columns, hidden together by one toggle. */
+const CREDIT_COLUMN_IDS = new Set(['response', 'credit', 'creditExpires']);
+const HIDE_CREDIT_KEY = 'driver.hideCreditColumns';
 
 /** Which dialog is open, and for whom. `null` driver means "register new". */
 type DriverDialog =
@@ -109,8 +117,10 @@ function CreditExpiry({ driver }: { driver: Driver }) {
 export default function Drivers() {
   const [searchParams, setSearchParams] = useSearchParams();
   const onlyWithoutCheckin = searchParams.get(CHECKIN_PARAM) === CHECKIN_PENDING;
+  const onlyNoCredit = searchParams.get(CREDIT_PARAM) === CREDIT_EXHAUSTED;
   const [dialog, setDialog] = useState<DriverDialog | null>(null);
   const queryClient = useQueryClient();
+  const [hideCredit, toggleHideCredit] = usePersistentFlag(HIDE_CREDIT_KEY, false);
 
   const retire = useMutation({
     mutationFn: ({ driver, reason }: { driver: Driver; reason?: string }) =>
@@ -153,8 +163,12 @@ export default function Drivers() {
 
   const rows = useMemo(() => {
     const all = drivers.data ?? [];
-    return onlyWithoutCheckin ? all.filter((driver) => !driver.has_checked_in_today) : all;
-  }, [drivers.data, onlyWithoutCheckin]);
+    return all.filter(
+      (driver) =>
+        (!onlyWithoutCheckin || !driver.has_checked_in_today) &&
+        (!onlyNoCredit || driver.usage_credit_expired),
+    );
+  }, [drivers.data, onlyWithoutCheckin, onlyNoCredit]);
 
   const columns: Column<Driver>[] = useMemo(
     () => [
@@ -192,14 +206,20 @@ export default function Drivers() {
         header: strings.drivers.mototaxi,
         sortValue: (driver) =>
           driver.current_mototaxi_uuid ? (plates.get(driver.current_mototaxi_uuid) ?? '') : null,
-        cell: (driver) =>
-          driver.current_mototaxi_uuid ? (
-            (plates.get(driver.current_mototaxi_uuid) ?? EMPTY)
-          ) : (
-            <WarningBadge title={strings.drivers.noMototaxiHint}>
-              {strings.drivers.noMototaxiBadge}
-            </WarningBadge>
-          ),
+        cell: (driver) => (
+          <div className="flex items-center gap-2">
+            <RowAction onClick={() => setDialog({ kind: 'assign', driver })}>
+              {strings.fleet.assignMototaxi}
+            </RowAction>
+            {driver.current_mototaxi_uuid ? (
+              (plates.get(driver.current_mototaxi_uuid) ?? EMPTY)
+            ) : (
+              <WarningBadge title={strings.drivers.noMototaxiHint}>
+                {strings.drivers.noMototaxiBadge}
+              </WarningBadge>
+            )}
+          </div>
+        ),
       },
       {
         id: 'tracking',
@@ -308,9 +328,6 @@ export default function Drivers() {
             <RowAction onClick={() => setDialog({ kind: 'status', driver })}>
               {strings.fleet.changeStatus}
             </RowAction>
-            <RowAction onClick={() => setDialog({ kind: 'assign', driver })}>
-              {strings.fleet.assignMototaxi}
-            </RowAction>
             <RowAction onClick={() => setDialog({ kind: 'phoneKey', driver })}>
               {`${strings.fleet.phoneKey}${driver.has_phone_key ? ' ✓' : ''}`}
             </RowAction>
@@ -350,6 +367,14 @@ export default function Drivers() {
         >
           {strings.fleet.newDriver}
         </button>
+        <button
+          type="button"
+          onClick={toggleHideCredit}
+          aria-pressed={hideCredit}
+          className="rounded border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        >
+          {hideCredit ? strings.drivers.showCredit : strings.drivers.hideCredit}
+        </button>
         <label className="flex items-center gap-2 text-sm text-slate-700">
           <input
             type="checkbox"
@@ -363,11 +388,26 @@ export default function Drivers() {
           />
           {strings.drivers.onlyWithoutCheckin}
         </label>
+        <label className="flex items-center gap-2 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            checked={onlyNoCredit}
+            onChange={(e) =>
+              setSearchParams(e.target.checked ? { [CREDIT_PARAM]: CREDIT_EXHAUSTED } : {}, {
+                replace: true,
+              })
+            }
+            className="rounded border-slate-300"
+          />
+          {strings.drivers.noCredit}
+        </label>
       </div>
 
       <DataTable
         rows={rows}
-        columns={columns}
+        columns={
+          hideCredit ? columns.filter((column) => !CREDIT_COLUMN_IDS.has(column.id)) : columns
+        }
         rowKey={(driver) => driver.driver_uuid}
         caption={strings.drivers.heading}
         searchPlaceholder={strings.common.search}

@@ -11,7 +11,16 @@ import { strings } from '@/lib/strings';
  * backend and have no screen, so it reports without a link rather than
  * pretending to navigate.
  */
-type AlertItem = { key: keyof Alerts; label: string; to?: string };
+/**
+ * Counts the panel works out itself from the fleet lists, so the server's
+ * alerts need no change; absent while those lists load.
+ */
+export type PanelAlerts = Alerts & {
+  trackers_without_credit?: number;
+  drivers_without_credit?: number;
+};
+
+type AlertItem = { key: keyof PanelAlerts; label: string; to?: string };
 
 const items: AlertItem[] = [
   {
@@ -30,11 +39,21 @@ const items: AlertItem[] = [
     label: strings.dashboard.alertNoCheckin,
     to: '/conductores?checkin=pendiente',
   },
+  {
+    key: 'trackers_without_credit',
+    label: strings.dashboard.alertTrackersNoCredit,
+    to: '/mototaxis?sim=vencida',
+  },
+  {
+    key: 'drivers_without_credit',
+    label: strings.dashboard.alertDriversNoCredit,
+    to: '/conductores?credito=agotado',
+  },
   { key: 'failed_actions', label: strings.dashboard.alertFailedActions },
 ];
 
-export function AlertBanner({ alerts }: { alerts: Alerts }) {
-  const active = items.filter((item) => alerts[item.key] > 0);
+export function AlertBanner({ alerts }: { alerts: PanelAlerts }) {
+  const active = items.filter((item) => (alerts[item.key] ?? 0) > 0);
 
   if (active.length === 0) {
     return (
@@ -52,7 +71,7 @@ export function AlertBanner({ alerts }: { alerts: Alerts }) {
       <h2 className="text-sm font-semibold text-amber-900">{strings.dashboard.alertsHeading}</h2>
       <ul className="mt-2 space-y-1 text-sm text-amber-900">
         {active.map((item) => {
-          const count = alerts[item.key];
+          const count = alerts[item.key] ?? 0;
           const text = `${count} ${item.label}`;
           return (
             <li key={item.key}>
