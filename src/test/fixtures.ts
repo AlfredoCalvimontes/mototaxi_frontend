@@ -15,6 +15,10 @@ import type {
   City,
   Tenant,
   UserCityAccess,
+  WhatsAppConfig,
+  TenantUsage,
+  AuditEntry,
+  TripKpiGroup,
 } from '@/api/types';
 
 export const adminProfile: UserProfile = {
@@ -402,4 +406,66 @@ export const cityGrant: UserCityAccess = {
   user_id: cityAdminProfile.user_uuid,
   city_id: city.city_id,
   created_at: '2026-02-01T10:00:00Z',
+};
+
+export const whatsappConfig: WhatsAppConfig = {
+  tenant_uuid: tenant.tenant_id,
+  phone_number_id: '1090000000000001',
+  waba_id: '1590190706485878',
+  display_phone_number: '+591 7000 0001',
+  is_active: true,
+  updated_at: '2026-10-10T12:00:00Z',
+};
+
+export const usageRows: TenantUsage[] = [
+  {
+    tenant_uuid: tenant.tenant_id,
+    active_drivers: 12,
+    vehicles: 14,
+    trips: 340,
+    inbound_messages: 1200,
+    outbound_messages: 1500,
+  },
+  {
+    tenant_uuid: otherTenant.tenant_id,
+    active_drivers: 3,
+    vehicles: 3,
+    trips: 40,
+    inbound_messages: 90,
+    outbound_messages: 120,
+  },
+];
+
+export const kpiGroups: TripKpiGroup[] = [
+  {
+    group_uuid: tenant.tenant_id,
+    trips: 50,
+    completed: 40,
+    cancelled: 6,
+    no_driver: 4,
+    average_reach_time_seconds: 300,
+    average_rating: 4.6,
+  },
+  {
+    group_uuid: otherTenant.tenant_id,
+    trips: 8,
+    completed: 7,
+    cancelled: 1,
+    no_driver: 0,
+    average_reach_time_seconds: null,
+    average_rating: null,
+  },
+];
+
+export const auditEntry: AuditEntry = {
+  audit_log_uuid: 'abababab-abab-4bab-8bab-abababababab',
+  tenant_uuid: tenant.tenant_id,
+  table_name: 'drivers',
+  entity_id: '66666666-6666-4666-8666-666666666666',
+  action: 'UPDATE',
+  actor_id: superadminProfile.user_uuid,
+  actor_ip: '10.0.0.1',
+  before: { name: 'Marco' },
+  after: { name: 'Marco Peña' },
+  created_at: '2026-10-15T15:00:00Z',
 };

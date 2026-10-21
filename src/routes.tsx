@@ -14,6 +14,8 @@ import CityAccessManager from '@/views/tenancy/CityAccessManager';
 import Cities from '@/views/tenancy/Cities';
 import CityDetail from '@/views/tenancy/CityDetail';
 import TenantDetail from '@/views/tenancy/TenantDetail';
+import Platform from '@/views/tenancy/Platform';
+import WhatsAppConfig from '@/views/tenancy/WhatsAppConfig';
 import Tenants from '@/views/tenancy/Tenants';
 import VehicleTypes from '@/views/tenancy/VehicleTypes';
 import Settings from '@/views/Settings';
@@ -45,6 +47,8 @@ export function AppRoutes() {
           </Route>
           <Route element={<RequireRole roles={SUPERADMIN} />}>
             <Route path="/tenants" element={<Tenants />} />
+            <Route path="/whatsapp" element={<WhatsAppConfig />} />
+            <Route path="/plataforma" element={<Platform />} />
           </Route>
           <Route element={<RequireRole roles={CITY_SCOPED} />}>
             <Route path="/tenants/:tenantId/cities" element={<Cities />} />

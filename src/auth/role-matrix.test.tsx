@@ -34,6 +34,8 @@ const matrix: [path: string, allowed: Record<keyof typeof profiles, boolean>][] 
     { SUPERADMIN: true, TENANT_ADMIN: true, CITY_ADMIN: false, OPERATOR: false },
   ],
   ['/tenants', { SUPERADMIN: true, TENANT_ADMIN: false, CITY_ADMIN: false, OPERATOR: false }],
+  ['/whatsapp', { SUPERADMIN: true, TENANT_ADMIN: false, CITY_ADMIN: false, OPERATOR: false }],
+  ['/plataforma', { SUPERADMIN: true, TENANT_ADMIN: false, CITY_ADMIN: false, OPERATOR: false }],
   [`/tenants/${T}`, { SUPERADMIN: true, TENANT_ADMIN: true, CITY_ADMIN: false, OPERATOR: false }],
   [
     `/tenants/${T}/cities`,
@@ -74,7 +76,7 @@ describe('matriz ruta × rol', () => {
 
 describe('navegación por rol', () => {
   test.each([
-    ['SUPERADMIN', ['Empresas', 'Tipos de vehículo', 'Configuración']],
+    ['SUPERADMIN', ['Empresas', 'WhatsApp', 'Plataforma', 'Tipos de vehículo', 'Configuración']],
     ['TENANT_ADMIN', ['Mi empresa', 'Ciudades', 'Tipos de vehículo', 'Configuración']],
     ['CITY_ADMIN', ['Ciudades']],
     ['OPERATOR', []],
@@ -83,7 +85,15 @@ describe('navegación por rol', () => {
     renderApp(<AppRoutes />);
 
     const nav = await screen.findByRole('navigation', { name: 'Secciones' });
-    const names = ['Empresas', 'Mi empresa', 'Ciudades', 'Tipos de vehículo', 'Configuración'];
+    const names = [
+      'Empresas',
+      'WhatsApp',
+      'Plataforma',
+      'Mi empresa',
+      'Ciudades',
+      'Tipos de vehículo',
+      'Configuración',
+    ];
     for (const name of names) {
       const present = !!within(nav).queryByRole('link', { name });
       expect(present, `${role} / ${name}`).toBe(links.includes(name as never));

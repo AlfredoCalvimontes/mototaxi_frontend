@@ -6,7 +6,7 @@ export type FieldProps = {
   label: string;
   value: string;
   onChange: (value: string) => void;
-  type?: 'text' | 'tel' | 'date';
+  type?: 'text' | 'tel' | 'date' | 'password';
   required?: boolean;
   placeholder?: string;
   hint?: ReactNode;
@@ -35,6 +35,7 @@ export function Field({
       <input
         id={id}
         type={type}
+        autoComplete={type === 'password' ? 'new-password' : undefined}
         value={value}
         disabled={disabled}
         placeholder={placeholder}
