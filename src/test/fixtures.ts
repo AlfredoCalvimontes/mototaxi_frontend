@@ -12,6 +12,9 @@ import type {
   TripSummary,
   UserProfile,
   VehicleType,
+  City,
+  Tenant,
+  UserCityAccess,
 } from '@/api/types';
 
 export const adminProfile: UserProfile = {
@@ -88,6 +91,7 @@ export const sharedLocationSetting: RuntimeSetting = {
   unit: 'minutes',
   description: 'How long a location shared by hand keeps a vehicle dispatchable',
   updated_at: null,
+  source: 'default',
 };
 
 export const simDaysSetting: RuntimeSetting = {
@@ -99,6 +103,7 @@ export const simDaysSetting: RuntimeSetting = {
   unit: 'days',
   description: 'How many days ten units of credit keep a tracker SIM alive',
   updated_at: null,
+  source: 'default',
 };
 
 export const vehicleSummary: VehicleSummary = {
@@ -230,6 +235,7 @@ export const usageCreditSetting: RuntimeSetting = {
   unit: 'credit/day',
   description: 'How much usage credit a driver consumes each day',
   updated_at: null,
+  source: 'default',
 };
 
 export const customer: CustomerSummary = {
@@ -340,4 +346,60 @@ export const ownVanType: VehicleType = {
   is_active: true,
   is_global: false,
   created_at: '2026-10-02T10:00:00Z',
+};
+
+export const tenant: Tenant = {
+  tenant_id: adminProfile.tenant_id as string,
+  name: 'Mototaxi Seguro',
+  slug: 'mototaxi-seguro',
+  is_active: true,
+  contact_email: 'info@mototaxiseguro.bo',
+  contact_phone: '+59171111111',
+  deactivated_at: null,
+  created_at: '2026-01-01T10:00:00Z',
+  updated_at: '2026-01-01T10:00:00Z',
+};
+
+export const otherTenant: Tenant = {
+  ...tenant,
+  tenant_id: '99999999-9999-4999-8999-999999999999',
+  name: 'Taxi Sur',
+  slug: 'taxi-sur',
+};
+
+export const city: City = {
+  city_id: '44444444-4444-4444-8444-444444444444',
+  tenant_id: tenant.tenant_id,
+  name: 'Villa Montes',
+  timezone: 'America/La_Paz',
+  geofence_wkt: 'POLYGON((-63.5 -21.3, -63.4 -21.3, -63.4 -21.2, -63.5 -21.3))',
+  geofence_geojson: {
+    type: 'Polygon',
+    coordinates: [
+      [
+        [-63.5, -21.3],
+        [-63.4, -21.3],
+        [-63.4, -21.2],
+        [-63.5, -21.3],
+      ],
+    ],
+  },
+  is_active: true,
+  created_at: '2026-01-02T10:00:00Z',
+  updated_at: '2026-01-02T10:00:00Z',
+};
+
+export const secondCity: City = {
+  ...city,
+  city_id: '55555555-5555-4555-8555-555555555555',
+  name: 'Yacuiba',
+  geofence_wkt: null,
+  geofence_geojson: null,
+};
+
+export const cityGrant: UserCityAccess = {
+  user_city_access_id: '88888888-8888-4888-8888-888888888888',
+  user_id: cityAdminProfile.user_uuid,
+  city_id: city.city_id,
+  created_at: '2026-02-01T10:00:00Z',
 };

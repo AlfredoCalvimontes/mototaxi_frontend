@@ -9,6 +9,10 @@ import * as fx from '@/test/fixtures';
 
 const BASE = '/api/v1';
 
+function page<T>(items: T[]) {
+  return { items, total: items.length, page: 1, page_size: 100, pages: 1 };
+}
+
 export const handlers = [
   // auth
   http.post(`${BASE}/users/login`, async ({ request }) => {
@@ -40,6 +44,15 @@ export const handlers = [
   http.post(`${BASE}/admin/vehicles`, () => HttpResponse.json(fx.vehicleDetail, { status: 201 })),
   http.patch(`${BASE}/admin/vehicles/:uuid`, () => HttpResponse.json(fx.vehicleDetail)),
   http.patch(`${BASE}/admin/vehicles/:uuid/status`, () => HttpResponse.json(fx.vehicleDetail)),
+
+  // tenancy
+  http.get(`${BASE}/admin/tenants`, () => HttpResponse.json(page([fx.tenant, fx.otherTenant]))),
+  http.get(`${BASE}/admin/tenants/:id`, () => HttpResponse.json(fx.tenant)),
+  http.get(`${BASE}/admin/tenants/:id/cities`, () =>
+    HttpResponse.json(page([fx.city, fx.secondCity])),
+  ),
+  http.get(`${BASE}/admin/cities/:id`, () => HttpResponse.json(fx.city)),
+  http.get(`${BASE}/admin/cities/:id/access`, () => HttpResponse.json([fx.cityGrant])),
 
   http.get(`${BASE}/admin/vehicle-types`, () =>
     HttpResponse.json([fx.globalMotoType, fx.ownVanType]),

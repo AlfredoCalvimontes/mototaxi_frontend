@@ -1,5 +1,5 @@
 import { request } from '@/api/client';
-import type { TokenPair, UserProfile } from '@/api/types';
+import type { Paginated, PaginationParams, TokenPair, UserProfile } from '@/api/types';
 
 /**
  * The login endpoint is an OAuth2 password form, so the credentials go
@@ -27,4 +27,12 @@ export function fetchProfile(): Promise<UserProfile> {
 export async function logout(): Promise<void> {
   // Body required by the endpoint; the refresh token itself comes from the cookie.
   await request<void>('/users/logout', { method: 'POST', json: {}, skipAuthRefresh: true });
+}
+
+/**
+ * Every user, across tenants. `SUPERADMIN`-only on the backend, so only the
+ * city-access picker for a superadmin calls it.
+ */
+export function listUsers(params: PaginationParams = {}): Promise<Paginated<UserProfile>> {
+  return request<Paginated<UserProfile>>('/users/list_users', { query: { ...params } });
 }

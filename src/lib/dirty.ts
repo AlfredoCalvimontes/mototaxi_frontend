@@ -15,7 +15,13 @@
  * so both functions emit dirty fields only — never a whole object.
  */
 
-import type { TrackerType, UpdateDriverPayload, UpdateVehiclePayload } from '@/api/types';
+import type {
+  TrackerType,
+  UpdateCityPayload,
+  UpdateDriverPayload,
+  UpdateTenantPayload,
+  UpdateVehiclePayload,
+} from '@/api/types';
 
 /** Trims and turns an empty input into `null`, which each caller then judges. */
 function normalise(value: string): string | null {
@@ -172,6 +178,38 @@ export function vehicleChanges(
     payload,
     detachesTracker: payload.device_id === null && initial.device_id.trim() !== '',
   };
+}
+
+/**
+ * Tenants and cities behave like drivers: the use cases forward a present field
+ * to a domain method that treats `None` as "leave unchanged", so an explicit
+ * `null` never clears. Blanked fields are reported, not sent.
+ */
+export type TenantFormValues = { name: string; contact_email: string; contact_phone: string };
+export type CityFormValues = { name: string; timezone: string; geofence_wkt: string };
+
+function textChanges<T extends Record<string, string>>(
+  initial: T,
+  current: T,
+): { payload: Partial<Record<keyof T, string>>; unclearable: (keyof T)[] } {
+  const payload: Partial<Record<keyof T, string>> = {};
+  const unclearable: (keyof T)[] = [];
+  for (const key of Object.keys(initial) as (keyof T)[]) {
+    const value = normalise(current[key] as string);
+    if (value !== null && value !== initial[key]) payload[key] = value;
+    else if (value === null && initial[key] !== '') unclearable.push(key);
+  }
+  return { payload, unclearable };
+}
+
+export function tenantChanges(initial: TenantFormValues, current: TenantFormValues) {
+  const { payload, unclearable } = textChanges(initial, current);
+  return { payload: payload as UpdateTenantPayload, unclearable };
+}
+
+export function cityChanges(initial: CityFormValues, current: CityFormValues) {
+  const { payload, unclearable } = textChanges(initial, current);
+  return { payload: payload as UpdateCityPayload, unclearable };
 }
 
 export function hasChanges(payload: object): boolean {

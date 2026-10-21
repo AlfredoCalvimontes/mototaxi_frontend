@@ -2,7 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 
 import { RequireAuth } from '@/auth/RequireAuth';
 import { RequireRole } from '@/auth/RequireRole';
-import { ADMIN, STAFF } from '@/auth/roles';
+import { ADMIN, CITY_SCOPED, STAFF, SUPERADMIN } from '@/auth/roles';
 import { Layout } from '@/components/Layout';
 import Customers from '@/views/Customers';
 import Dashboard from '@/views/Dashboard';
@@ -10,6 +10,11 @@ import Drivers from '@/views/Drivers';
 import LiveTrips from '@/views/LiveTrips';
 import Login from '@/views/Login';
 import Vehicles from '@/views/Vehicles';
+import CityAccessManager from '@/views/tenancy/CityAccessManager';
+import Cities from '@/views/tenancy/Cities';
+import CityDetail from '@/views/tenancy/CityDetail';
+import TenantDetail from '@/views/tenancy/TenantDetail';
+import Tenants from '@/views/tenancy/Tenants';
 import VehicleTypes from '@/views/tenancy/VehicleTypes';
 import Settings from '@/views/Settings';
 import TripHistory from '@/views/TripHistory';
@@ -32,6 +37,18 @@ export function AppRoutes() {
           <Route element={<RequireRole roles={ADMIN} />}>
             <Route path="/configuracion" element={<Settings />} />
             <Route path="/mototaxis/tipos" element={<VehicleTypes />} />
+            <Route path="/tenants/:tenantId" element={<TenantDetail />} />
+            <Route
+              path="/tenants/:tenantId/cities/:cityId/access"
+              element={<CityAccessManager />}
+            />
+          </Route>
+          <Route element={<RequireRole roles={SUPERADMIN} />}>
+            <Route path="/tenants" element={<Tenants />} />
+          </Route>
+          <Route element={<RequireRole roles={CITY_SCOPED} />}>
+            <Route path="/tenants/:tenantId/cities" element={<Cities />} />
+            <Route path="/tenants/:tenantId/cities/:cityId" element={<CityDetail />} />
           </Route>
         </Route>
       </Route>

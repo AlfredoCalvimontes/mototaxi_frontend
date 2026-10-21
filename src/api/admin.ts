@@ -4,6 +4,23 @@ import { request } from '@/api/client';
 import type {
   AddUsageCreditPayload,
   Alerts,
+  AuditEntry,
+  AuditLogParams,
+  City,
+  CreateCityPayload,
+  CreateTenantPayload,
+  GrantCityAccessPayload,
+  MoveToCityPayload,
+  Paginated,
+  PaginationParams,
+  SetWhatsAppConfigPayload,
+  Tenant,
+  TenantUsage,
+  TripKpiGroup,
+  UpdateCityPayload,
+  UpdateTenantPayload,
+  UserCityAccess,
+  WhatsAppConfig,
   AssignVehiclePayload,
   ChangeDriverStatusPayload,
   ChangeVehicleStatusPayload,
@@ -215,5 +232,128 @@ export function updateVehicleType(
   return request<VehicleType>(`/admin/vehicle-types/${vehicleTypeUuid}`, {
     method: 'PATCH',
     json: payload,
+  });
+}
+
+// --- tenants (superadmin lists and provisions; a tenant admin reaches their own) ---
+
+export function listTenants(params: PaginationParams = {}): Promise<Paginated<Tenant>> {
+  return request<Paginated<Tenant>>('/admin/tenants', { query: { ...params } });
+}
+
+export function getTenant(tenantId: UUID): Promise<Tenant> {
+  return request<Tenant>(`/admin/tenants/${tenantId}`);
+}
+
+export function createTenant(payload: CreateTenantPayload): Promise<Tenant> {
+  return request<Tenant>('/admin/tenants', { method: 'POST', json: payload });
+}
+
+export function updateTenant(tenantId: UUID, payload: UpdateTenantPayload): Promise<Tenant> {
+  return request<Tenant>(`/admin/tenants/${tenantId}`, { method: 'PATCH', json: payload });
+}
+
+/** Superadmin-only. Deactivating blocks login and webhook processing tenant-wide. */
+export function setTenantActive(tenantId: UUID, active: boolean): Promise<Tenant> {
+  return request<Tenant>(`/admin/tenants/${tenantId}/${active ? 'activate' : 'deactivate'}`, {
+    method: 'POST',
+  });
+}
+
+// --- cities ---------------------------------------------------------------
+
+export function listCities(
+  tenantId: UUID,
+  params: PaginationParams = {},
+): Promise<Paginated<City>> {
+  return request<Paginated<City>>(`/admin/tenants/${tenantId}/cities`, { query: { ...params } });
+}
+
+export function createCity(tenantId: UUID, payload: CreateCityPayload): Promise<City> {
+  return request<City>(`/admin/tenants/${tenantId}/cities`, { method: 'POST', json: payload });
+}
+
+export function getCity(cityId: UUID): Promise<City> {
+  return request<City>(`/admin/cities/${cityId}`);
+}
+
+export function updateCity(cityId: UUID, payload: UpdateCityPayload): Promise<City> {
+  return request<City>(`/admin/cities/${cityId}`, { method: 'PATCH', json: payload });
+}
+
+export function setCityActive(cityId: UUID, active: boolean): Promise<City> {
+  return request<City>(`/admin/cities/${cityId}/${active ? 'activate' : 'deactivate'}`, {
+    method: 'POST',
+  });
+}
+
+export function listCityAccess(cityId: UUID): Promise<UserCityAccess[]> {
+  return request<UserCityAccess[]>(`/admin/cities/${cityId}/access`);
+}
+
+export function grantCityAccess(
+  cityId: UUID,
+  payload: GrantCityAccessPayload,
+): Promise<UserCityAccess> {
+  return request<UserCityAccess>(`/admin/cities/${cityId}/access`, {
+    method: 'POST',
+    json: payload,
+  });
+}
+
+export function revokeCityAccess(cityId: UUID, userId: UUID): Promise<void> {
+  return request<void>(`/admin/cities/${cityId}/access/${userId}`, { method: 'DELETE' });
+}
+
+/** A driver leaves their vehicle when they change city; the server refuses it while in a trip. */
+export function moveDriverToCity(driverUuid: UUID, payload: MoveToCityPayload): Promise<Driver> {
+  return request<Driver>(`/admin/drivers/${driverUuid}/city`, { method: 'PATCH', json: payload });
+}
+
+export function moveVehicleToCity(vehicleUuid: UUID, payload: MoveToCityPayload): Promise<Vehicle> {
+  return request<Vehicle>(`/admin/vehicles/${vehicleUuid}/city`, {
+    method: 'PATCH',
+    json: payload,
+  });
+}
+
+// --- WhatsApp number (superadmin) -------------------------------------------
+
+/** Every tenant's number — just one when acting as a tenant. */
+export function listWhatsAppConfigs(): Promise<WhatsAppConfig[]> {
+  return request<WhatsAppConfig[]>('/admin/whatsapp-config');
+}
+
+/** The acted-as tenant's number. 404 until one is configured. */
+export function getWhatsAppConfig(): Promise<WhatsAppConfig> {
+  return request<WhatsAppConfig>('/admin/whatsapp-config/current');
+}
+
+/** Create or replace the acted-as tenant's number. Omit the token to keep the stored one. */
+export function setWhatsAppConfig(payload: SetWhatsAppConfigPayload): Promise<WhatsAppConfig> {
+  return request<WhatsAppConfig>('/admin/whatsapp-config', { method: 'PUT', json: payload });
+}
+
+export function deleteWhatsAppConfig(): Promise<void> {
+  return request<void>('/admin/whatsapp-config', { method: 'DELETE' });
+}
+
+// --- platform operations ------------------------------------------------------
+
+export function getUsage(params: { since?: string; until?: string } = {}): Promise<TenantUsage[]> {
+  return request<TenantUsage[]>('/admin/usage', { query: { ...params } });
+}
+
+export function listAuditLogs(params: AuditLogParams = {}): Promise<Paginated<AuditEntry>> {
+  return request<Paginated<AuditEntry>>('/admin/audit-logs', { query: { ...params } });
+}
+
+export function getKpisByTenant(hours?: number): Promise<TripKpiGroup[]> {
+  return request<TripKpiGroup[]>('/admin/kpis/by-tenant', { query: { hours } });
+}
+
+export function getKpisByVehicleType(hours?: number): Promise<TripKpiGroup[]> {
+  return request<TripKpiGroup[]>('/admin/kpis/by-vehicle-type', {
+    query: { hours },
   });
 }

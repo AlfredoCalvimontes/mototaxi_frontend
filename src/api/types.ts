@@ -98,6 +98,8 @@ export type RuntimeSetting = {
   description: string;
   /** `null` until someone changes it from the default. */
   updated_at: IsoDateTime | null;
+  /** Where the effective value comes from. */
+  source: 'tenant' | 'global' | 'default';
 };
 
 export type CustomerSummary = {
@@ -374,4 +376,152 @@ export type DriverPositionCheck = {
   flagged_fixes: number;
   driver_trace: PositionFix[];
   tracker_trace: PositionFix[];
+};
+
+// --- tenancy ----------------------------------------------------------------
+
+export type PaginationParams = { page?: number; page_size?: number };
+
+export type Paginated<T> = {
+  items: T[];
+  total: number;
+  page: number;
+  page_size: number;
+  pages: number;
+};
+
+export type Tenant = {
+  tenant_id: UUID;
+  name: string;
+  slug: string;
+  is_active: boolean;
+  contact_email: string | null;
+  contact_phone: string | null;
+  deactivated_at: IsoDateTime | null;
+  created_at: IsoDateTime;
+  updated_at: IsoDateTime;
+};
+
+/** Superadmin provisions tenants; `slug` is fixed once created. */
+export type CreateTenantPayload = {
+  name: string;
+  slug: string;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+};
+
+/**
+ * `null` is a silent no-op on this route (the use case treats it as "leave
+ * unchanged"), so nothing here can be cleared. See `lib/dirty.ts`.
+ */
+export type UpdateTenantPayload = {
+  name?: string;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+};
+
+export type City = {
+  city_id: UUID;
+  tenant_id: UUID;
+  name: string;
+  timezone: string;
+  /** Service perimeter, WKT SRID 4326. `null` = no geofence drawn. */
+  geofence_wkt: string | null;
+  /** The same polygon as GeoJSON, derived by the server; `null` if absent or unparseable. */
+  geofence_geojson: GeoJsonPolygon | null;
+  is_active: boolean;
+  created_at: IsoDateTime;
+  updated_at: IsoDateTime;
+};
+
+export type GeoJsonPolygon = {
+  type: 'Polygon';
+  /** `[lon, lat]` rings; the first is the outline. */
+  coordinates: number[][][];
+};
+
+export type CreateCityPayload = {
+  name: string;
+  timezone: string;
+  geofence_wkt?: string | null;
+};
+
+/** Same `null`-is-ignored rule as {@link UpdateTenantPayload}. */
+export type UpdateCityPayload = {
+  name?: string;
+  timezone?: string;
+  geofence_wkt?: string | null;
+};
+
+/** One grant scoping a CITY_ADMIN/OPERATOR user to a city. */
+export type UserCityAccess = {
+  user_city_access_id: UUID;
+  user_id: UUID;
+  city_id: UUID;
+  created_at: IsoDateTime;
+};
+
+export type GrantCityAccessPayload = { user_id: UUID };
+
+// --- platform operations (superadmin) ---------------------------------------
+
+/** Never carries the token: it is write-only from here. */
+export type WhatsAppConfig = {
+  tenant_uuid: UUID;
+  phone_number_id: string;
+  waba_id: string | null;
+  display_phone_number: string | null;
+  is_active: boolean;
+  updated_at: IsoDateTime;
+};
+
+/** `access_token` omitted on an update keeps the stored one. */
+export type SetWhatsAppConfigPayload = {
+  phone_number_id: string;
+  access_token?: string | null;
+  waba_id?: string | null;
+  display_phone_number?: string | null;
+  is_active?: boolean;
+};
+
+export type TenantUsage = {
+  tenant_uuid: UUID;
+  active_drivers: number;
+  vehicles: number;
+  trips: number;
+  inbound_messages: number;
+  outbound_messages: number;
+};
+
+export type AuditEntry = {
+  audit_log_uuid: UUID;
+  tenant_uuid: UUID | null;
+  table_name: string;
+  entity_id: UUID;
+  action: string;
+  actor_id: UUID | null;
+  actor_ip: string | null;
+  before: Record<string, unknown> | null;
+  after: Record<string, unknown> | null;
+  created_at: IsoDateTime;
+};
+
+export type AuditLogParams = PaginationParams & {
+  tenant_id?: UUID;
+  table_name?: string;
+  entity_id?: UUID;
+  actor_id?: UUID;
+  since?: IsoDateTime;
+  until?: IsoDateTime;
+};
+
+/** `group_uuid` is the tenant, or the requested vehicle type (`null` = any type). */
+export type TripKpiGroup = {
+  group_uuid: UUID | null;
+  trips: number;
+  completed: number;
+  cancelled: number;
+  no_driver: number;
+  average_reach_time_seconds: number | null;
+  average_rating: number | null;
 };

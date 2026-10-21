@@ -1,8 +1,11 @@
 import { NavLink, Outlet } from 'react-router-dom';
 
-import type { UserRole } from '@/api/types';
+import type { UserProfile, UserRole } from '@/api/types';
 import { useAuth } from '@/auth/context';
 import { ADMIN } from '@/auth/roles';
+import { CitySelector } from '@/components/CitySelector';
+import { TenantSwitcher } from '@/components/TenantSwitcher';
+import { useTenantList } from '@/lib/useTenantList';
 import { strings } from '@/lib/strings';
 
 type NavItem = { to: string; label: string; end: boolean; roles?: readonly UserRole[] };
@@ -18,11 +21,32 @@ const navItems: NavItem[] = [
   { to: '/configuracion', label: strings.nav.settings, end: false, roles: ADMIN },
 ];
 
+/** Entries only some roles get, appended after the base nav. */
+function roleNavItems(user: UserProfile | null, actingAsTenant: string | null): NavItem[] {
+  if (!user) return [];
+  const tenantId = user.tenant_id ?? actingAsTenant;
+  const items: NavItem[] = [];
+  if (user.role === 'SUPERADMIN') {
+    items.push({ to: '/tenants', label: strings.nav.tenants, end: true });
+  }
+  if (tenantId && (user.role === 'TENANT_ADMIN' || user.role === 'SUPERADMIN')) {
+    items.push({ to: `/tenants/${tenantId}`, label: strings.nav.myTenant, end: true });
+  }
+  if (tenantId && user.role !== 'OPERATOR') {
+    items.push({ to: `/tenants/${tenantId}/cities`, label: strings.nav.cities, end: false });
+  }
+  return items;
+}
+
 export function Layout() {
   const { user, signOut, actingAsTenant, setActingAsTenant } = useAuth();
-  const visibleItems = navItems.filter(
-    (item) => !item.roles || (user && item.roles.includes(user.role)),
-  );
+  const visibleItems = [
+    ...navItems.filter((item) => !item.roles || (user && item.roles.includes(user.role))),
+    ...roleNavItems(user, actingAsTenant),
+  ];
+  const tenants = useTenantList(user?.role === 'SUPERADMIN' && !!actingAsTenant);
+  const actingName =
+    tenants.data?.items.find((x) => x.tenant_id === actingAsTenant)?.name ?? actingAsTenant;
 
   return (
     <div className="min-h-screen">
@@ -32,7 +56,7 @@ export function Layout() {
           role="status"
           className="flex items-center justify-center gap-3 bg-amber-100 px-4 py-1 text-sm text-amber-900"
         >
-          <span>{strings.tenancy.actingAs(actingAsTenant)}</span>
+          <span>{strings.tenancy.actingAs(actingName ?? actingAsTenant)}</span>
           <button
             type="button"
             onClick={() => setActingAsTenant(null)}
@@ -49,6 +73,8 @@ export function Layout() {
             <p className="text-xs text-slate-500">{strings.app.city}</p>
           </div>
           <div className="flex items-center gap-3 text-sm">
+            <TenantSwitcher />
+            <CitySelector />
             {user?.name && <span className="text-slate-600">{user.name}</span>}
             <button
               type="button"

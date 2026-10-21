@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { HttpResponse, http } from 'msw';
 import { describe, expect, test } from 'vitest';
 
@@ -22,31 +22,73 @@ const profiles = {
   OPERATOR: fx.operatorProfile,
 };
 
-/** Route × role: who may open a gated route, mirroring the backend dependencies. */
-const settingsAllowed = {
-  SUPERADMIN: true,
-  TENANT_ADMIN: true,
-  CITY_ADMIN: false,
-  OPERATOR: false,
-};
+const T = fx.tenant.tenant_id;
+const C = fx.city.city_id;
+
+/** Route × role, mirroring the backend dependencies (`SuperUser`, `TenantAdminUser`, `AnyAdminUser`). */
+const matrix: [path: string, allowed: Record<keyof typeof profiles, boolean>][] = [
+  ['/', { SUPERADMIN: true, TENANT_ADMIN: true, CITY_ADMIN: true, OPERATOR: true }],
+  ['/configuracion', { SUPERADMIN: true, TENANT_ADMIN: true, CITY_ADMIN: false, OPERATOR: false }],
+  [
+    '/mototaxis/tipos',
+    { SUPERADMIN: true, TENANT_ADMIN: true, CITY_ADMIN: false, OPERATOR: false },
+  ],
+  ['/tenants', { SUPERADMIN: true, TENANT_ADMIN: false, CITY_ADMIN: false, OPERATOR: false }],
+  [`/tenants/${T}`, { SUPERADMIN: true, TENANT_ADMIN: true, CITY_ADMIN: false, OPERATOR: false }],
+  [
+    `/tenants/${T}/cities`,
+    { SUPERADMIN: true, TENANT_ADMIN: true, CITY_ADMIN: true, OPERATOR: false },
+  ],
+  [
+    `/tenants/${T}/cities/${C}`,
+    { SUPERADMIN: true, TENANT_ADMIN: true, CITY_ADMIN: true, OPERATOR: false },
+  ],
+  [
+    `/tenants/${T}/cities/${C}/access`,
+    { SUPERADMIN: true, TENANT_ADMIN: true, CITY_ADMIN: false, OPERATOR: false },
+  ],
+];
 
 describe('matriz ruta × rol', () => {
-  test.each(Object.entries(settingsAllowed))(
-    '/configuracion para %s → %s',
-    async (role, allowed) => {
+  describe.each(matrix)('%s', (path, allowed) => {
+    test.each(Object.entries(allowed))('%s → %s', async (role, canOpen) => {
       asUser(profiles[role as keyof typeof profiles]);
-      renderApp(<AppRoutes />, { route: '/configuracion' });
+      renderApp(<AppRoutes />, { route: path });
 
-      const nav = await screen.findByRole('navigation', { name: 'Secciones' });
-      expect(!!nav.querySelector('a[href="/configuracion"]')).toBe(allowed);
-      // Denied roles land on the dashboard instead of the settings view.
-      if (!allowed) {
+      await screen.findByRole('navigation', { name: 'Secciones' });
+      // A denied role is bounced to the dashboard; an allowed one never reaches
+      // it (except on `/`, where the dashboard is the page).
+      if (path === '/') return;
+      if (canOpen) {
+        expect(
+          screen.queryByRole('heading', { name: /Resumen/, level: 1 }),
+        ).not.toBeInTheDocument();
+      } else {
         expect(
           await screen.findByRole('heading', { name: /Resumen/, level: 1 }),
         ).toBeInTheDocument();
       }
-    },
-  );
+    });
+  });
+});
+
+describe('navegación por rol', () => {
+  test.each([
+    ['SUPERADMIN', ['Empresas', 'Tipos de vehículo', 'Configuración']],
+    ['TENANT_ADMIN', ['Mi empresa', 'Ciudades', 'Tipos de vehículo', 'Configuración']],
+    ['CITY_ADMIN', ['Ciudades']],
+    ['OPERATOR', []],
+  ] as const)('%s ve sus enlaces', async (role, links) => {
+    asUser(profiles[role]);
+    renderApp(<AppRoutes />);
+
+    const nav = await screen.findByRole('navigation', { name: 'Secciones' });
+    const names = ['Empresas', 'Mi empresa', 'Ciudades', 'Tipos de vehículo', 'Configuración'];
+    for (const name of names) {
+      const present = !!within(nav).queryByRole('link', { name });
+      expect(present, `${role} / ${name}`).toBe(links.includes(name as never));
+    }
+  });
 });
 
 describe('actuar como empresa', () => {
