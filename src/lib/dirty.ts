@@ -8,14 +8,14 @@
  * - `PATCH /admin/drivers/{uuid}` — `null` is silently ignored. Nothing on a
  *   driver can be cleared through it.
  * - `PATCH /admin/vehicles/{uuid}` — `null` **clears** the field.
- *   `{tracker_imei: null}` detaches the tracker and drops that IMEI from the
+ *   `{device_id: null}` detaches the tracker and drops that IMEI from the
  *   GT06 allowlist (spec §7.2).
  *
  * Both routes forward only the keys present in the body (`model_fields_set`),
  * so both functions emit dirty fields only — never a whole object.
  */
 
-import type { UpdateDriverPayload, UpdateVehiclePayload } from '@/api/types';
+import type { TrackerType, UpdateDriverPayload, UpdateVehiclePayload } from '@/api/types';
 
 /** Trims and turns an empty input into `null`, which each caller then judges. */
 function normalise(value: string): string | null {
@@ -71,12 +71,24 @@ export type VehicleFormValues = {
   alias: string;
   brand: string;
   model: string;
-  tracker_imei: string;
+  device_id: string;
+  tracker_type: TrackerType;
+  /** Empty string: no type. */
+  vehicle_type_uuid: string;
+  attributes: Record<string, unknown>;
   sim_last_recharge_at: string;
   sim_last_recharge_amount: string;
   notes: string;
   last_maintenance_at: string;
 };
+
+function sameAttributes(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  for (const key of keys) {
+    if (a[key] !== b[key]) return false;
+  }
+  return true;
+}
 
 export type VehicleChanges = {
   payload: UpdateVehiclePayload;
@@ -128,8 +140,21 @@ export function vehicleChanges(
   const model = normalise(current.model);
   if (model !== (normalise(initial.model) ?? null)) payload.model = model;
 
-  const imei = normalise(current.tracker_imei);
-  if (imei !== (normalise(initial.tracker_imei) ?? null)) payload.tracker_imei = imei;
+  const imei = normalise(current.device_id);
+  if (imei !== (normalise(initial.device_id) ?? null)) payload.device_id = imei;
+
+  // Never `null` on the wire; the form always holds a value, so only a change is sent.
+  if (current.tracker_type !== initial.tracker_type) payload.tracker_type = current.tracker_type;
+
+  const vehicleType = normalise(current.vehicle_type_uuid);
+  if (vehicleType !== (normalise(initial.vehicle_type_uuid) ?? null)) {
+    payload.vehicle_type_uuid = vehicleType;
+  }
+
+  // The object travels whole (the server replaces it), and `null` is refused.
+  if (!sameAttributes(initial.attributes, current.attributes)) {
+    payload.attributes = current.attributes;
+  }
 
   // The SIM belongs to the tracker: without one there is nothing to send (the
   // server drops the record itself when a tracker is detached).
@@ -145,7 +170,7 @@ export function vehicleChanges(
 
   return {
     payload,
-    detachesTracker: payload.tracker_imei === null && initial.tracker_imei.trim() !== '',
+    detachesTracker: payload.device_id === null && initial.device_id.trim() !== '',
   };
 }
 

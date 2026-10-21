@@ -1,10 +1,13 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState, type FormEvent } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMemo, useState, type FormEvent } from 'react';
 
-import { createVehicle, updateVehicle } from '@/api/admin';
-import type { Vehicle } from '@/api/types';
+import { createVehicle, listVehicleTypes, updateVehicle } from '@/api/admin';
+import { queryKeys } from '@/api/queries';
+import type { TrackerType, Vehicle } from '@/api/types';
+import { AttributeSchemaForm } from '@/components/AttributeSchemaForm';
+import { attributeErrors, toAttributes, toDraft, type AttributeDraft } from '@/lib/attributes';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
-import { Field, FormDialog } from '@/components/Field';
+import { Field, FormDialog, SelectField } from '@/components/Field';
 import { hasChanges, vehicleChanges, parseCredit, type VehicleFormValues } from '@/lib/dirty';
 import { errorText } from '@/lib/errors';
 import { strings } from '@/lib/strings';
@@ -15,7 +18,10 @@ function toValues(unit: Vehicle): VehicleFormValues {
     alias: unit.alias ?? '',
     brand: unit.brand ?? '',
     model: unit.model ?? '',
-    tracker_imei: unit.tracker_imei ?? '',
+    device_id: unit.device_id ?? '',
+    tracker_type: unit.tracker_type,
+    vehicle_type_uuid: unit.vehicle_type_uuid ?? '',
+    attributes: unit.attributes,
     sim_last_recharge_at: unit.sim_last_recharge_at ?? '',
     sim_last_recharge_amount:
       unit.sim_last_recharge_amount === null ? '' : String(unit.sim_last_recharge_amount),
@@ -29,7 +35,10 @@ const emptyValues: VehicleFormValues = {
   alias: '',
   brand: '',
   model: '',
-  tracker_imei: '',
+  device_id: '',
+  tracker_type: 'GT06',
+  vehicle_type_uuid: '',
+  attributes: {},
   sim_last_recharge_at: '',
   sim_last_recharge_amount: '',
   notes: '',
@@ -64,11 +73,36 @@ export function VehicleForm({
   const queryClient = useQueryClient();
 
   const [values, setValues] = useState<VehicleFormValues>(initial);
+  const [draft, setDraft] = useState<AttributeDraft>({});
+  const [draftType, setDraftType] = useState<string | null>(null);
+
+  const types = useQuery({ queryKey: queryKeys.vehicleTypes, queryFn: () => listVehicleTypes() });
+  const selectedType = types.data?.find((t) => t.vehicle_type_uuid === values.vehicle_type_uuid);
+  const schema = useMemo(() => selectedType?.attribute_schema ?? [], [selectedType]);
+  // Seed the inputs from the stored values once the schema is known, and again
+  // whenever the operator picks another type.
+  if (selectedType && draftType !== selectedType.vehicle_type_uuid) {
+    setDraftType(selectedType.vehicle_type_uuid);
+    setDraft(
+      toDraft(
+        selectedType.attribute_schema,
+        selectedType.vehicle_type_uuid === initial.vehicle_type_uuid ? initial.attributes : {},
+      ),
+    );
+  }
+  // Another type's values are not carried over; the same type keeps unknown stored keys.
+  const attributes = toAttributes(
+    schema,
+    draft,
+    values.vehicle_type_uuid === initial.vehicle_type_uuid ? initial.attributes : {},
+  );
+  const current: VehicleFormValues = { ...values, attributes };
   const [validation, setValidation] = useState<Partial<Record<string, string>>>({});
+  const [attributeProblems, setAttributeProblems] = useState<Record<string, string>>({});
   const [confirmingDetach, setConfirmingDetach] = useState(false);
 
-  const { payload, detachesTracker } = vehicleChanges(initial, values);
-  const hasTracker = values.tracker_imei.trim() !== '';
+  const { payload, detachesTracker } = vehicleChanges(initial, current);
+  const hasTracker = values.device_id.trim() !== '';
 
   const save = useMutation({
     mutationFn: async () => {
@@ -78,7 +112,10 @@ export function VehicleForm({
         alias: values.alias.trim() || null,
         brand: values.brand.trim() || null,
         model: values.model.trim() || null,
-        tracker_imei: values.tracker_imei.trim() || null,
+        device_id: values.device_id.trim() || null,
+        tracker_type: values.tracker_type,
+        vehicle_type_uuid: values.vehicle_type_uuid || null,
+        attributes,
         ...(hasTracker && values.sim_last_recharge_at
           ? {
               sim_last_recharge_at: values.sim_last_recharge_at,
@@ -101,8 +138,10 @@ export function VehicleForm({
     const errors: Record<string, string> = {};
     if (!values.plate_number.trim()) errors.plate = strings.fleet.requiredField;
     if (hasTracker) Object.assign(errors, simErrors(values));
+    const attrErrors = attributeErrors(schema, draft);
+    setAttributeProblems(attrErrors);
     setValidation(errors);
-    if (Object.keys(errors).length > 0) return;
+    if (Object.keys(errors).length + Object.keys(attrErrors).length > 0) return;
     if (editing && !hasChanges(payload)) {
       onClose();
       return;
@@ -151,12 +190,49 @@ export function VehicleForm({
             />
           </div>
 
+          <SelectField
+            label={strings.fleet.vehicleType}
+            value={values.vehicle_type_uuid}
+            onChange={(vehicle_type_uuid) => setValues((v) => ({ ...v, vehicle_type_uuid }))}
+            options={[
+              { value: '', label: strings.fleet.noVehicleType },
+              ...(types.data ?? [])
+                // A type switched off stays selectable on the vehicle that still uses it.
+                .filter((t) => t.is_active || t.vehicle_type_uuid === initial.vehicle_type_uuid)
+                .map((t) => ({ value: t.vehicle_type_uuid, label: t.display_name })),
+            ]}
+          />
+
+          <AttributeSchemaForm
+            schema={schema}
+            draft={draft}
+            errors={attributeProblems}
+            onChange={(key, value) => setDraft((d) => ({ ...d, [key]: value }))}
+          />
+
           <Field
-            label={strings.vehicles.imei}
-            value={values.tracker_imei}
-            onChange={(tracker_imei) => setValues((v) => ({ ...v, tracker_imei }))}
+            label={
+              values.tracker_type === 'GT06' ? strings.vehicles.imei : strings.vehicles.deviceId
+            }
+            value={values.device_id}
+            onChange={(device_id) => setValues((v) => ({ ...v, device_id }))}
             hint={strings.fleet.imeiHint}
           />
+
+          {hasTracker && (
+            <SelectField
+              label={strings.fleet.trackerType}
+              value={values.tracker_type}
+              onChange={(tracker_type) =>
+                setValues((v) => ({ ...v, tracker_type: tracker_type as TrackerType }))
+              }
+              options={[
+                { value: 'GT06', label: 'GT06' },
+                { value: 'SECUREMORE', label: 'SECUREMORE' },
+              ]}
+              hint={strings.fleet.trackerTypeHint}
+            />
+          )}
 
           {hasTracker && (
             <fieldset className="space-y-3 rounded border border-slate-200 p-3">
@@ -230,7 +306,7 @@ export function VehicleForm({
       <ConfirmDialog
         open={confirmingDetach}
         title={strings.fleet.detachTrackerTitle}
-        body={strings.fleet.detachTrackerBody(initial.tracker_imei, values.plate_number)}
+        body={strings.fleet.detachTrackerBody(initial.device_id, values.plate_number)}
         confirmLabel={strings.fleet.detachTrackerConfirm}
         pending={save.isPending}
         error={save.error}

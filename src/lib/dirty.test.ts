@@ -19,7 +19,10 @@ const vehicle: VehicleFormValues = {
   alias: '',
   brand: 'Honda',
   model: 'CG 125',
-  tracker_imei: '860123456789012',
+  device_id: '860123456789012',
+  tracker_type: 'GT06',
+  vehicle_type_uuid: '',
+  attributes: {},
   sim_last_recharge_at: '',
   sim_last_recharge_amount: '',
   notes: '',
@@ -85,9 +88,9 @@ describe('mototaxi: null limpia el campo', () => {
 
   test('un campo intacto nunca se emite como null', () => {
     const { payload } = vehicleChanges(vehicle, { ...vehicle, model: 'CG 150' });
-    // Solo el modelo: emitir tracker_imei: null aquí desconectaría el GPS.
+    // Solo el modelo: emitir device_id: null aquí desconectaría el GPS.
     expect(payload).toEqual({ model: 'CG 150' });
-    expect('tracker_imei' in payload).toBe(false);
+    expect('device_id' in payload).toBe(false);
   });
 
   test('un campo ya vacío en ambos lados no se envía', () => {
@@ -98,23 +101,23 @@ describe('mototaxi: null limpia el campo', () => {
   test('quitar el IMEI se marca como desconexión del GPS', () => {
     const { payload, detachesTracker } = vehicleChanges(vehicle, {
       ...vehicle,
-      tracker_imei: '',
+      device_id: '',
     });
-    expect(payload).toEqual({ tracker_imei: null });
+    expect(payload).toEqual({ device_id: null });
     expect(detachesTracker).toBe(true);
   });
 
   test('cambiar el IMEI por otro no es una desconexión', () => {
     const { payload, detachesTracker } = vehicleChanges(vehicle, {
       ...vehicle,
-      tracker_imei: '860999999999999',
+      device_id: '860999999999999',
     });
-    expect(payload).toEqual({ tracker_imei: '860999999999999' });
+    expect(payload).toEqual({ device_id: '860999999999999' });
     expect(detachesTracker).toBe(false);
   });
 
   test('un vehículo que ya venía sin IMEI no cuenta como desconexión', () => {
-    const sinImei = { ...vehicle, tracker_imei: '' };
+    const sinImei = { ...vehicle, device_id: '' };
     const { detachesTracker } = vehicleChanges(sinImei, sinImei);
     expect(detachesTracker).toBe(false);
   });
@@ -180,9 +183,41 @@ describe('mototaxi: recarga de la SIM', () => {
   test('quitar el GPS no envía la SIM: el servidor la borra con el rastreador', () => {
     const { payload, detachesTracker } = vehicleChanges(recharged, {
       ...recharged,
-      tracker_imei: '',
+      device_id: '',
     });
-    expect(payload).toEqual({ tracker_imei: null });
+    expect(payload).toEqual({ device_id: null });
     expect(detachesTracker).toBe(true);
+  });
+});
+
+describe('mototaxi: tipo y atributos', () => {
+  const typed: VehicleFormValues = {
+    ...vehicle,
+    vehicle_type_uuid: 'type-a',
+    attributes: { seats: 3 },
+  };
+
+  test('sin cambios no envía nada', () => {
+    expect(vehicleChanges(typed, { ...typed, attributes: { seats: 3 } }).payload).toEqual({});
+  });
+
+  test('cambiar un atributo envía el objeto completo', () => {
+    const { payload } = vehicleChanges(typed, {
+      ...typed,
+      attributes: { seats: 4, color: 'rojo' },
+    });
+    expect(payload).toEqual({ attributes: { seats: 4, color: 'rojo' } });
+  });
+
+  test('quitar el tipo lo limpia con null; los atributos nunca van como null', () => {
+    const { payload } = vehicleChanges(typed, { ...typed, vehicle_type_uuid: '', attributes: {} });
+    expect(payload).toEqual({ vehicle_type_uuid: null, attributes: {} });
+  });
+
+  test('el protocolo solo se envía si cambió', () => {
+    expect(vehicleChanges(vehicle, { ...vehicle, tracker_type: 'SECUREMORE' }).payload).toEqual({
+      tracker_type: 'SECUREMORE',
+    });
+    expect('tracker_type' in vehicleChanges(vehicle, vehicle).payload).toBe(false);
   });
 });

@@ -41,6 +41,10 @@ export const handlers = [
   http.patch(`${BASE}/admin/vehicles/:uuid`, () => HttpResponse.json(fx.vehicleDetail)),
   http.patch(`${BASE}/admin/vehicles/:uuid/status`, () => HttpResponse.json(fx.vehicleDetail)),
 
+  http.get(`${BASE}/admin/vehicle-types`, () =>
+    HttpResponse.json([fx.globalMotoType, fx.ownVanType]),
+  ),
+
   http.get(`${BASE}/admin/drivers`, ({ request }) => {
     const status = new URL(request.url).searchParams.get('status');
     const all = [fx.driver, fx.driverWithoutCheckin];

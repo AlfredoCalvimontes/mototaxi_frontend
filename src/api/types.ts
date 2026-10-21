@@ -14,6 +14,8 @@ export type IsoDate = string;
 
 export type DriverStatus = 'AVAILABLE' | 'IN_TRIP' | 'RESTING' | 'OFFLINE' | 'DISABLED';
 export type VehicleStatus = 'AVAILABLE' | 'DISABLED' | 'OUT_OF_SERVICE';
+/** The device protocol, not where a position came from. Only GT06 has a listener. */
+export type TrackerType = 'GT06' | 'SECUREMORE';
 
 export type TripStatus =
   | 'REQUESTED'
@@ -162,6 +164,8 @@ export type Driver = {
   usage_credit_expires_on: IsoDate | null;
   usage_credit_expired: boolean;
   created_at: IsoDateTime;
+  /** Owning city. `null` until an admin assigns one. */
+  city_uuid: UUID | null;
 };
 
 /** Detail shape. The list endpoint returns {@link VehicleSummary} — do not unify. */
@@ -171,7 +175,13 @@ export type Vehicle = {
   alias: string | null;
   brand: string | null;
   model: string | null;
-  tracker_imei: string | null;
+  device_id: string | null;
+  tracker_type: TrackerType;
+  vehicle_type_uuid: UUID | null;
+  /** Validated server-side against the type's `attribute_schema`. */
+  attributes: Record<string, unknown>;
+  /** Owning city. `null` until an admin assigns one. */
+  city_uuid: UUID | null;
   sim_last_recharge_at: IsoDate | null;
   sim_last_recharge_amount: number | null;
   sim_next_recharge_at: IsoDate | null;
@@ -195,6 +205,7 @@ export type CreateDriverPayload = {
   vehicle_uuid?: UUID | null;
   /** Starts with an empty balance, so credit has to be added before the first trip. */
   usage_credit_enabled?: boolean;
+  city_uuid?: UUID | null;
 };
 
 /**
@@ -230,7 +241,11 @@ export type CreateVehiclePayload = {
   alias?: string | null;
   brand?: string | null;
   model?: string | null;
-  tracker_imei?: string | null;
+  device_id?: string | null;
+  tracker_type?: TrackerType;
+  vehicle_type_uuid?: UUID | null;
+  attributes?: Record<string, unknown>;
+  city_uuid?: UUID | null;
   /** Sent together or not at all; both `null` clears the record. Needs a tracker. */
   sim_last_recharge_at?: IsoDate | null;
   sim_last_recharge_amount?: number | null;
@@ -239,7 +254,7 @@ export type CreateVehiclePayload = {
 
 /**
  * Omitted keys are left untouched; an explicit `null` **clears** the field.
- * `{tracker_imei: null}` detaches the tracker and drops the IMEI from the GT06
+ * `{device_id: null}` detaches the tracker and drops the IMEI from the GT06
  * allowlist (spec §7.2) — never emit it for a merely untouched input.
  */
 export type UpdateVehiclePayload = {
@@ -247,7 +262,12 @@ export type UpdateVehiclePayload = {
   alias?: string | null;
   brand?: string | null;
   model?: string | null;
-  tracker_imei?: string | null;
+  device_id?: string | null;
+  /** Cannot be `null`: omit it to leave it as is. */
+  tracker_type?: TrackerType;
+  vehicle_type_uuid?: UUID | null;
+  /** Cannot be `null`: send `{}` to empty it. Replaces the whole object. */
+  attributes?: Record<string, unknown>;
   sim_last_recharge_at?: IsoDate | null;
   sim_last_recharge_amount?: number | null;
   notes?: string | null;
@@ -255,6 +275,48 @@ export type UpdateVehiclePayload = {
 };
 
 export type ChangeVehicleStatusPayload = { status: VehicleStatus };
+
+/** `city_uuid` is required: this is always a deliberate move, never a clear. */
+export type MoveToCityPayload = { city_uuid: UUID };
+
+// --- vehicle types ----------------------------------------------------------
+
+/** What the backend's `ATTRIBUTE_TYPES` accepts. */
+export type AttributeType = 'string' | 'int' | 'float' | 'bool';
+
+export type AttributeSchemaField = {
+  key: string;
+  type: AttributeType;
+  required: boolean;
+  label: string;
+};
+
+export type VehicleType = {
+  vehicle_type_uuid: UUID;
+  /** `null` for a global type, which only a superadmin edits. */
+  tenant_uuid: UUID | null;
+  code: string;
+  display_name: string;
+  attribute_schema: AttributeSchemaField[];
+  is_active: boolean;
+  is_global: boolean;
+  created_at: IsoDateTime;
+};
+
+export type CreateVehicleTypePayload = {
+  code: string;
+  display_name: string;
+  attribute_schema: AttributeSchemaField[];
+  /** Superadmin only; anyone else gets 403. */
+  is_global?: boolean;
+};
+
+/** The code is not editable. A field left out is unchanged. */
+export type UpdateVehicleTypePayload = {
+  display_name?: string;
+  attribute_schema?: AttributeSchemaField[];
+  is_active?: boolean;
+};
 
 // --- auth -----------------------------------------------------------------
 

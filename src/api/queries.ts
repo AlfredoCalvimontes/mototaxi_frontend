@@ -21,6 +21,7 @@ export const queryKeys = {
   alerts: ['alerts'] as const,
   vehicles: ['vehicles'] as const,
   vehicle: (uuid: UUID) => ['vehicle', uuid] as const,
+  vehicleTypes: ['vehicle-types'] as const,
   drivers: (status?: DriverStatus) => ['drivers', status ?? 'all'] as const,
   driver: (uuid: UUID) => ['driver', uuid] as const,
   positionCheck: (uuid: UUID) => ['position-check', uuid] as const,

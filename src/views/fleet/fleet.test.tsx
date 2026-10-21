@@ -126,7 +126,10 @@ describe('registro', () => {
       alias: null,
       brand: null,
       model: null,
-      tracker_imei: '860111222333444',
+      device_id: '860111222333444',
+      tracker_type: 'GT06',
+      vehicle_type_uuid: null,
+      attributes: {},
       notes: null,
     });
   });
@@ -180,7 +183,7 @@ describe('recarga de la SIM en el formulario', () => {
 
     await waitFor(() => expect(bodies).toHaveLength(1));
     expect(bodies[0]).toMatchObject({
-      tracker_imei: '860111222333444',
+      device_id: '860111222333444',
       sim_last_recharge_at: '2026-10-01',
       sim_last_recharge_amount: 10.5,
     });
@@ -317,7 +320,7 @@ describe('desconexión del GPS', () => {
     await user.click(confirm.getByRole('button', { name: 'Desconectar GPS' }));
 
     await waitFor(() => expect(bodies).toHaveLength(1));
-    expect(bodies[0]).toEqual({ tracker_imei: null });
+    expect(bodies[0]).toEqual({ device_id: null });
   });
 
   test('cambiar el IMEI por otro no pide confirmación de desconexión', async () => {
@@ -331,7 +334,7 @@ describe('desconexión del GPS', () => {
     await user.click(form.getByRole('button', { name: 'Guardar' }));
 
     await waitFor(() => expect(bodies).toHaveLength(1));
-    expect(bodies[0]).toEqual({ tracker_imei: '860999999999999' });
+    expect(bodies[0]).toEqual({ device_id: '860999999999999' });
   });
 });
 
@@ -768,5 +771,66 @@ describe('lista de conductores: datos a la vista', () => {
     const missing = (await rowFor('Lucía Vargas')).getByRole('button', { name: /Clave GPS/ });
     expect(within(missing).getByText('Sin clave')).toBeInTheDocument();
     expect(missing.className).not.toMatch(/emerald/);
+  });
+});
+
+describe('vehículo: tipo y atributos', () => {
+  test('el esquema del tipo pide sus datos y los envía tipados', async () => {
+    const bodies = captureBody('post', '/admin/vehicles', fx.vehicleDetail);
+    const { user } = renderApp(<Vehicles />);
+    await screen.findByRole('table');
+
+    await user.click(screen.getByRole('button', { name: 'Registrar mototaxi' }));
+    const dialog = within(screen.getByRole('dialog'));
+    await user.type(dialog.getByLabelText(/Placa/), 'JKL456');
+    await user.selectOptions(
+      await dialog.findByLabelText('Tipo de vehículo'),
+      fx.globalMotoType.vehicle_type_uuid,
+    );
+
+    // Obligatorio: el formulario no llega al servidor sin el dato.
+    await user.click(dialog.getByRole('button', { name: 'Guardar' }));
+    expect(await dialog.findByText('Este dato es obligatorio')).toBeInTheDocument();
+    expect(bodies).toHaveLength(0);
+
+    await user.type(dialog.getByLabelText(/Asientos/), '3');
+    await user.click(dialog.getByRole('button', { name: 'Guardar' }));
+
+    await waitFor(() => expect(bodies).toHaveLength(1));
+    expect(bodies[0]).toMatchObject({
+      vehicle_type_uuid: fx.globalMotoType.vehicle_type_uuid,
+      attributes: { seats: 3 },
+    });
+  });
+
+  test('un entero con decimales se rechaza antes de enviar', async () => {
+    const bodies = captureBody('post', '/admin/vehicles', fx.vehicleDetail);
+    const { user } = renderApp(<Vehicles />);
+    await screen.findByRole('table');
+
+    await user.click(screen.getByRole('button', { name: 'Registrar mototaxi' }));
+    const dialog = within(screen.getByRole('dialog'));
+    await user.type(dialog.getByLabelText(/Placa/), 'JKL456');
+    await user.selectOptions(
+      await dialog.findByLabelText('Tipo de vehículo'),
+      fx.globalMotoType.vehicle_type_uuid,
+    );
+    await user.type(dialog.getByLabelText(/Asientos/), '2.5');
+    await user.click(dialog.getByRole('button', { name: 'Guardar' }));
+
+    expect(await dialog.findByText('Escribe un número válido')).toBeInTheDocument();
+    expect(bodies).toHaveLength(0);
+  });
+
+  test('con otro protocolo el campo deja de llamarse IMEI', async () => {
+    const { user } = renderApp(<Vehicles />);
+    await screen.findByRole('table');
+
+    await user.click(screen.getByRole('button', { name: 'Registrar mototaxi' }));
+    const dialog = within(screen.getByRole('dialog'));
+    await user.type(dialog.getByLabelText(/IMEI/), '860111222333444');
+    await user.selectOptions(dialog.getByLabelText('Protocolo del GPS'), 'SECUREMORE');
+
+    expect(dialog.getByLabelText('ID del dispositivo GPS')).toBeInTheDocument();
   });
 });

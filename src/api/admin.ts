@@ -9,6 +9,7 @@ import type {
   ChangeVehicleStatusPayload,
   CreateDriverPayload,
   CreateVehiclePayload,
+  CreateVehicleTypePayload,
   CustomerSummary,
   Driver,
   DriverStatus,
@@ -22,6 +23,8 @@ import type {
   UUID,
   UpdateDriverPayload,
   UpdateVehiclePayload,
+  UpdateVehicleTypePayload,
+  VehicleType,
 } from '@/api/types';
 
 export type TripHistoryParams = {
@@ -189,4 +192,28 @@ export function listSettings(): Promise<RuntimeSetting[]> {
 
 export function updateSetting(key: string, value: number): Promise<RuntimeSetting> {
   return request<RuntimeSetting>(`/admin/settings/${key}`, { method: 'PUT', json: { value } });
+}
+
+// --- vehicle types ----------------------------------------------------------
+
+/** Global types first, then the caller's own. */
+export function listVehicleTypes(activeOnly = false): Promise<VehicleType[]> {
+  return request<VehicleType[]>('/admin/vehicle-types', {
+    query: { active_only: activeOnly || undefined },
+  });
+}
+
+export function createVehicleType(payload: CreateVehicleTypePayload): Promise<VehicleType> {
+  return request<VehicleType>('/admin/vehicle-types', { method: 'POST', json: payload });
+}
+
+/** Schema edits are additive-only once vehicles use the type; the server answers 4xx otherwise. */
+export function updateVehicleType(
+  vehicleTypeUuid: UUID,
+  payload: UpdateVehicleTypePayload,
+): Promise<VehicleType> {
+  return request<VehicleType>(`/admin/vehicle-types/${vehicleTypeUuid}`, {
+    method: 'PATCH',
+    json: payload,
+  });
 }

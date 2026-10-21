@@ -10,6 +10,7 @@ import Drivers from '@/views/Drivers';
 import LiveTrips from '@/views/LiveTrips';
 import Login from '@/views/Login';
 import Vehicles from '@/views/Vehicles';
+import VehicleTypes from '@/views/tenancy/VehicleTypes';
 import Settings from '@/views/Settings';
 import TripHistory from '@/views/TripHistory';
 
@@ -30,6 +31,7 @@ export function AppRoutes() {
           </Route>
           <Route element={<RequireRole roles={ADMIN} />}>
             <Route path="/configuracion" element={<Settings />} />
+            <Route path="/mototaxis/tipos" element={<VehicleTypes />} />
           </Route>
         </Route>
       </Route>

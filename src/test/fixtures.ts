@@ -11,6 +11,7 @@ import type {
   VehicleSummary,
   TripSummary,
   UserProfile,
+  VehicleType,
 } from '@/api/types';
 
 export const adminProfile: UserProfile = {
@@ -132,7 +133,11 @@ export const vehicleDetail: Vehicle = {
   alias: null,
   brand: 'Honda',
   model: 'CG 125',
-  tracker_imei: '860123456789012',
+  device_id: '860123456789012',
+  tracker_type: 'GT06',
+  vehicle_type_uuid: null,
+  attributes: {},
+  city_uuid: null,
   sim_last_recharge_at: null,
   sim_last_recharge_amount: null,
   sim_next_recharge_at: null,
@@ -175,6 +180,7 @@ export const driver: Driver = {
   usage_credit_expires_on: null,
   usage_credit_expired: false,
   created_at: '2026-05-02T09:00:00Z',
+  city_uuid: null,
 };
 
 /** No check-in today: receives no offers, so the panel must surface it (spec §10.5). */
@@ -312,4 +318,26 @@ export const positionCheck: DriverPositionCheck = {
     },
   ],
   tracker_trace: [],
+};
+
+export const globalMotoType: VehicleType = {
+  vehicle_type_uuid: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  tenant_uuid: null,
+  code: 'moto',
+  display_name: 'Mototaxi',
+  attribute_schema: [{ key: 'seats', type: 'int', required: true, label: 'Asientos' }],
+  is_active: true,
+  is_global: true,
+  created_at: '2026-10-01T10:00:00Z',
+};
+
+export const ownVanType: VehicleType = {
+  vehicle_type_uuid: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+  tenant_uuid: adminProfile.tenant_id ?? null,
+  code: 'minivan',
+  display_name: 'Minivan',
+  attribute_schema: [],
+  is_active: true,
+  is_global: false,
+  created_at: '2026-10-02T10:00:00Z',
 };
