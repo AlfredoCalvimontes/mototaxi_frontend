@@ -9,6 +9,10 @@ export type AuthContextValue = {
   user: UserProfile | null;
   /** True once a session ended because a refresh failed, not by logging out. */
   expired: boolean;
+  /** Tenant a superadmin is acting as; `null` for everyone else or when none is picked. */
+  actingAsTenant: string | null;
+  /** Superadmin only. Drops every cached query so no row of the previous tenant survives. */
+  setActingAsTenant: (tenantId: string | null) => void;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 };

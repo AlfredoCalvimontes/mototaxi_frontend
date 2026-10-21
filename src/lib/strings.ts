@@ -16,6 +16,10 @@ export const strings = {
     settings: 'Configuración',
     logout: 'Cerrar sesión',
   },
+  tenancy: {
+    actingAs: (tenant: string) => `Actuando como ${tenant}`,
+    stopActingAs: 'Salir',
+  },
   login: {
     heading: 'Ingresar al panel',
     email: 'Correo',

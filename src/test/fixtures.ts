@@ -18,9 +18,25 @@ export const adminProfile: UserProfile = {
   email: 'admin@mototaxis.bo',
   name: 'Ana',
   first_lastname: 'Gutiérrez',
-  role: 'ADMIN',
+  role: 'TENANT_ADMIN',
   is_active: true,
+  tenant_id: '33333333-3333-4333-8333-333333333333',
+  city_uuids: [],
 };
+
+export const superadminProfile: UserProfile = {
+  ...adminProfile,
+  role: 'SUPERADMIN',
+  tenant_id: null,
+};
+
+export const cityAdminProfile: UserProfile = {
+  ...adminProfile,
+  role: 'CITY_ADMIN',
+  city_uuids: ['44444444-4444-4444-8444-444444444444'],
+};
+
+export const operatorProfile: UserProfile = { ...cityAdminProfile, role: 'OPERATOR' };
 
 export const activeTrip: TripSummary = {
   trip_uuid: '22222222-2222-4222-8222-222222222222',

@@ -60,6 +60,17 @@ export function setSessionExpiredHandler(listener: SessionExpiredListener | null
   onSessionExpired = listener;
 }
 
+let actAsTenant: string | null = null;
+
+/**
+ * Superadmin "act as" (backend `X-Tenant-Id`). Held at module level, like the
+ * session-expired handler, because every request must carry it and the client
+ * is not a React component. The backend ignores it for any other role.
+ */
+export function setActAsTenant(tenantId: string | null) {
+  actAsTenant = tenantId;
+}
+
 export type RequestOptions = {
   method?: string;
   /** Serialised as JSON. Use `form` for the OAuth2 login endpoint instead. */
@@ -117,6 +128,8 @@ async function parseBody(response: Response): Promise<unknown> {
 async function rawRequest(path: string, options: RequestOptions): Promise<Response> {
   const headers: Record<string, string> = { Accept: 'application/json' };
   let body: BodyInit | undefined;
+
+  if (actAsTenant) headers['X-Tenant-Id'] = actAsTenant;
 
   if (options.form) {
     headers['Content-Type'] = 'application/x-www-form-urlencoded';

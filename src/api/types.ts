@@ -264,14 +264,24 @@ export type TokenPair = {
   token_type: string;
 };
 
+/**
+ * Mirrors the backend `UserRole`, highest to lowest privilege. `CUSTOMER` is
+ * WhatsApp-only and never signs in to this panel.
+ */
+export type UserRole = 'SUPERADMIN' | 'TENANT_ADMIN' | 'CITY_ADMIN' | 'OPERATOR' | 'CUSTOMER';
+
 /** Only the fields the panel actually reads off `GET /users/me`. */
 export type UserProfile = {
   user_uuid: UUID;
   email: string | null;
   name: string;
   first_lastname: string;
-  role: string;
+  role: UserRole;
   is_active: boolean;
+  /** Owning tenant; `null` for a superadmin. Absent until backend P7 adds it to `/users/me`. */
+  tenant_id?: UUID | null;
+  /** Cities a CITY_ADMIN/OPERATOR may act in. Absent until backend P7. */
+  city_uuids?: UUID[];
 };
 
 /** Returned once by `POST /admin/drivers/{uuid}/phone-key`; only a hash is stored. */
