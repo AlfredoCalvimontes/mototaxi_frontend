@@ -60,6 +60,11 @@ export type TripSummary = {
   rating: number | null;
   created_at: IsoDateTime;
   ended_at: IsoDateTime | null;
+  city_uuid: UUID | null;
+  /** What the customer asked for; `null` = any type. */
+  requested_vehicle_type_uuid: UUID | null;
+  /** The assigned vehicle's type; `null` until one is assigned. */
+  vehicle_type_uuid: UUID | null;
 };
 
 export type VehicleSummary = {
@@ -83,6 +88,8 @@ export type VehicleSummary = {
   /** Position older than the dispatch freshness window (spec §7.4). */
   is_tracker_stale: boolean;
   current_driver_uuid: UUID | null;
+  city_uuid: UUID | null;
+  vehicle_type_uuid: UUID | null;
 };
 
 /** A setting the manager can change at runtime (`GET /admin/settings`). */
@@ -111,6 +118,7 @@ export type CustomerSummary = {
   average_rating_given: number | null;
   is_blocked: boolean;
   last_message_at: IsoDateTime | null;
+  city_uuid: UUID | null;
 };
 
 export type KPIs = {

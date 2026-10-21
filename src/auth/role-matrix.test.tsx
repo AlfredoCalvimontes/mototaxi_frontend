@@ -30,7 +30,7 @@ const matrix: [path: string, allowed: Record<keyof typeof profiles, boolean>][] 
   ['/', { SUPERADMIN: true, TENANT_ADMIN: true, CITY_ADMIN: true, OPERATOR: true }],
   ['/configuracion', { SUPERADMIN: true, TENANT_ADMIN: true, CITY_ADMIN: false, OPERATOR: false }],
   [
-    '/mototaxis/tipos',
+    '/vehiculos/tipos',
     { SUPERADMIN: true, TENANT_ADMIN: true, CITY_ADMIN: false, OPERATOR: false },
   ],
   ['/tenants', { SUPERADMIN: true, TENANT_ADMIN: false, CITY_ADMIN: false, OPERATOR: false }],
@@ -137,5 +137,15 @@ describe('actuar como empresa', () => {
     await user.click(screen.getByRole('button', { name: 'Salir' }));
     await waitFor(() => expect(screen.queryByText(/Actuando como/)).not.toBeInTheDocument());
     await waitFor(() => expect(seen.at(-1)).toBeNull());
+  });
+});
+
+describe('rutas antiguas', () => {
+  test('/mototaxis redirige a /vehiculos conservando los filtros', async () => {
+    asUser(profiles.TENANT_ADMIN);
+    renderApp(<AppRoutes />, { route: '/mototaxis?gps=sin-senal' });
+
+    expect(await screen.findByRole('heading', { name: 'Vehículos', level: 1 })).toBeInTheDocument();
+    expect(window.location.pathname).not.toBe('/mototaxis');
   });
 });

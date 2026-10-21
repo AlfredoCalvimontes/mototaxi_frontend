@@ -11,3 +11,7 @@ coverage
 
 # Playwright MCP scratch output
 .playwright-mcp
+
+# Playwright output
+test-results
+playwright-report

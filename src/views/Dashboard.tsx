@@ -4,6 +4,7 @@ import {
   getAlerts,
   getKpis,
   getKpisByVehicleType,
+  getUsage,
   listDrivers,
   listVehicleTypes,
   listVehicles,
@@ -78,8 +79,31 @@ function ByVehicleType() {
   );
 }
 
+/** The company's own numbers for the last 30 days; the server returns only its row. */
+function OwnUsage({ tenantId }: { tenantId: string }) {
+  const usage = useQuery({ queryKey: ['usage', 'own', tenantId], queryFn: () => getUsage() });
+  const mine = usage.data?.find((row) => row.tenant_uuid === tenantId);
+  if (!mine) return null;
+
+  const t = strings.dashboard;
+  return (
+    <section aria-label={t.usageHeading} className="space-y-2">
+      <h2 className="text-sm font-semibold text-slate-900">{t.usageHeading}</h2>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+        <KpiCard label={t.usageDrivers} value={mine.active_drivers} />
+        <KpiCard label={t.usageVehicles} value={mine.vehicles} />
+        <KpiCard label={t.usageTrips} value={mine.trips} />
+        <KpiCard label={t.usageInbound} value={mine.inbound_messages} />
+        <KpiCard label={t.usageOutbound} value={mine.outbound_messages} />
+      </div>
+      <p className="text-xs text-slate-500">{t.usageHint}</p>
+    </section>
+  );
+}
+
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, actingAsTenant } = useAuth();
+  const ownTenant = user?.tenant_id ?? actingAsTenant;
   const isAdmin = user?.role === 'SUPERADMIN' || user?.role === 'TENANT_ADMIN';
   const kpis = useQuery({
     queryKey: queryKeys.kpis,
@@ -94,8 +118,8 @@ export default function Dashboard() {
 
   // Already polled by the fleet views; here they only feed the credit alerts.
   const vehicles = useQuery({
-    queryKey: queryKeys.vehicles,
-    queryFn: listVehicles,
+    queryKey: queryKeys.vehiclesIn(null),
+    queryFn: () => listVehicles(),
     refetchInterval: POLL.vehicles,
   });
   const drivers = useQuery({
@@ -169,6 +193,7 @@ export default function Dashboard() {
         </div>
       )}
       {isAdmin && <ByVehicleType />}
+      {isAdmin && ownTenant && <OwnUsage tenantId={ownTenant} />}
     </div>
   );
 }

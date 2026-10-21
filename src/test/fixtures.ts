@@ -61,6 +61,9 @@ export const activeTrip: TripSummary = {
   rating: null,
   created_at: '2026-07-20T14:00:00Z',
   ended_at: null,
+  city_uuid: null,
+  requested_vehicle_type_uuid: null,
+  vehicle_type_uuid: null,
 };
 
 /** Estimated reach time — the UI must mark this as an estimate (plan §5.6). */
@@ -125,6 +128,8 @@ export const vehicleSummary: VehicleSummary = {
   sim_next_recharge_at: null,
   is_tracker_stale: false,
   current_driver_uuid: '66666666-6666-4666-8666-666666666666',
+  city_uuid: null,
+  vehicle_type_uuid: null,
 };
 
 export const staleVehicleSummary: VehicleSummary = {
@@ -251,6 +256,7 @@ export const customer: CustomerSummary = {
   average_rating_given: 4.5,
   is_blocked: false,
   last_message_at: '2026-07-20T13:45:00Z',
+  city_uuid: null,
 };
 
 export const blockedCustomer: CustomerSummary = {

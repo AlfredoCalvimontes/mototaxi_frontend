@@ -26,7 +26,7 @@ const items: AlertItem[] = [
   {
     key: 'stale_trackers',
     label: strings.dashboard.alertStaleTrackers,
-    to: '/mototaxis?gps=sin-senal',
+    to: '/vehiculos?gps=sin-senal',
   },
   { key: 'overdue_trips', label: strings.dashboard.alertOverdueTrips, to: '/viajes' },
   {
@@ -42,7 +42,7 @@ const items: AlertItem[] = [
   {
     key: 'trackers_without_credit',
     label: strings.dashboard.alertTrackersNoCredit,
-    to: '/mototaxis?sim=vencida',
+    to: '/vehiculos?sim=vencida',
   },
   {
     key: 'drivers_without_credit',

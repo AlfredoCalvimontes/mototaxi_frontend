@@ -7,7 +7,9 @@ import { filterParams } from '@/lib/cityScope';
 import * as fx from '@/test/fixtures';
 import { renderApp } from '@/test/render';
 import { server } from '@/test/server';
+import Customers from '@/views/Customers';
 import Drivers from '@/views/Drivers';
+import LiveTrips from '@/views/LiveTrips';
 import Vehicles from '@/views/Vehicles';
 
 vi.mock('@/components/FleetMap', () => ({
@@ -43,12 +45,35 @@ describe('ciudad en conductores', () => {
     expect((await rowFor('Rosa Yacuiba')).getByText('Yacuiba')).toBeInTheDocument();
   });
 
-  test('la ciudad elegida en la cabecera filtra la lista', async () => {
-    drivers([inVilla, inYacuiba]);
+  test('la ciudad elegida en la cabecera se pide al servidor, no se filtra aquí', async () => {
+    const seen: (string | null)[] = [];
+    server.use(
+      http.get(`${BASE}/admin/drivers`, ({ request }) => {
+        seen.push(new URL(request.url).searchParams.get('city_uuid'));
+        return HttpResponse.json([inYacuiba]);
+      }),
+    );
     renderApp(<Drivers />, { route: `/?city=${fx.secondCity.city_id}` });
 
     await rowFor('Rosa Yacuiba');
-    expect(screen.queryByText('Marco Peña')).not.toBeInTheDocument();
+    expect(seen).toContain(fx.secondCity.city_id);
+  });
+
+  test.each([
+    ['vehicles', Vehicles],
+    ['customers', Customers],
+    ['trips/active', LiveTrips],
+  ])('%s también manda la ciudad elegida', async (path, View) => {
+    const seen: (string | null)[] = [];
+    server.use(
+      http.get(`${BASE}/admin/${path}`, ({ request }) => {
+        seen.push(new URL(request.url).searchParams.get('city_uuid'));
+        return HttpResponse.json([]);
+      }),
+    );
+    renderApp(<View />, { route: `/?city=${fx.secondCity.city_id}` });
+
+    await waitFor(() => expect(seen).toContain(fx.secondCity.city_id));
   });
 
   test('un filtro de la vista no borra la ciudad elegida', () => {

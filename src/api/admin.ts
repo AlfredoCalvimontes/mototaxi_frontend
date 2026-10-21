@@ -55,16 +55,22 @@ export type TripHistoryParams = {
   until?: string;
   /** Server caps this at 1000; default 200. */
   limit?: number;
+  /** Only trips in this city; omitted = every city. */
+  city_uuid?: string;
 };
 
 // --- dispatch board -------------------------------------------------------
 
-export function listVehicles(): Promise<VehicleSummary[]> {
-  return request<VehicleSummary[]>('/admin/vehicles');
+export function listVehicles(cityUuid?: UUID | null): Promise<VehicleSummary[]> {
+  return request<VehicleSummary[]>('/admin/vehicles', {
+    query: { city_uuid: cityUuid ?? undefined },
+  });
 }
 
-export function listActiveTrips(): Promise<TripSummary[]> {
-  return request<TripSummary[]>('/admin/trips/active');
+export function listActiveTrips(cityUuid?: UUID | null): Promise<TripSummary[]> {
+  return request<TripSummary[]>('/admin/trips/active', {
+    query: { city_uuid: cityUuid ?? undefined },
+  });
 }
 
 export function listTripHistory(params: TripHistoryParams = {}): Promise<TripSummary[]> {
@@ -101,9 +107,12 @@ export function getAlerts(): Promise<Alerts> {
 
 // --- customers ------------------------------------------------------------
 
-export function listCustomers(includeBlocked = false): Promise<CustomerSummary[]> {
+export function listCustomers(
+  includeBlocked = false,
+  cityUuid?: UUID | null,
+): Promise<CustomerSummary[]> {
   return request<CustomerSummary[]>('/admin/customers', {
-    query: { include_blocked: includeBlocked },
+    query: { include_blocked: includeBlocked, city_uuid: cityUuid ?? undefined },
   });
 }
 
@@ -120,8 +129,10 @@ export function unblockCustomer(customerUuid: UUID): Promise<void> {
 
 // --- drivers --------------------------------------------------------------
 
-export function listDrivers(status?: DriverStatus): Promise<Driver[]> {
-  return request<Driver[]>('/admin/drivers', { query: { status } });
+export function listDrivers(status?: DriverStatus, cityUuid?: UUID | null): Promise<Driver[]> {
+  return request<Driver[]>('/admin/drivers', {
+    query: { status, city_uuid: cityUuid ?? undefined },
+  });
 }
 
 export function getDriver(driverUuid: UUID): Promise<Driver> {

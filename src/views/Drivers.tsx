@@ -141,14 +141,14 @@ export default function Drivers() {
   });
 
   const drivers = useQuery({
-    queryKey: queryKeys.drivers(),
-    queryFn: () => listDrivers(),
+    queryKey: queryKeys.drivers(undefined, cityScope),
+    queryFn: () => listDrivers(undefined, cityScope),
     refetchInterval: POLL.drivers,
   });
 
   const vehicles = useQuery({
-    queryKey: queryKeys.vehicles,
-    queryFn: listVehicles,
+    queryKey: queryKeys.vehiclesIn(null),
+    queryFn: () => listVehicles(),
     refetchInterval: POLL.vehicles,
   });
 
@@ -175,11 +175,9 @@ export default function Drivers() {
     return all.filter(
       (driver) =>
         (!onlyWithoutCheckin || !driver.has_checked_in_today) &&
-        (!onlyNoCredit || driver.usage_credit_expired) &&
-        // The API has no city filter on this list, so the header selection narrows it here.
-        (!cityScope || driver.city_uuid === cityScope),
+        (!onlyNoCredit || driver.usage_credit_expired),
     );
-  }, [drivers.data, onlyWithoutCheckin, onlyNoCredit, cityScope]);
+  }, [drivers.data, onlyWithoutCheckin, onlyNoCredit]);
 
   const columns: Column<Driver>[] = useMemo(
     () => [

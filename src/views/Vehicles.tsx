@@ -13,6 +13,7 @@ import { EMPTY, formatCoords, formatDate, formatRelative, vehicleLabel } from '@
 import { usePersistentFlag } from '@/lib/persistentFlag';
 import { simRechargeState } from '@/lib/sim';
 import { filterParams, useCityScope } from '@/lib/cityScope';
+import { useVehicleTypeNames } from '@/lib/useVehicleTypes';
 import { useCities } from '@/lib/useCities';
 import { strings } from '@/lib/strings';
 import { MoveToCityDialog } from '@/views/fleet/MoveToCityDialog';
@@ -88,19 +89,20 @@ export default function Vehicles() {
   const onlyNoSimCredit = searchParams.get(SIM_PARAM) === SIM_VALUE;
   const [dialog, setDialog] = useState<VehicleDialog | null>(null);
   const cityScope = useCityScope();
+  const typeNames = useVehicleTypeNames();
   const { cities } = useCities();
   const [hideSim, toggleHideSim] = usePersistentFlag(HIDE_SIM_KEY, false);
 
   const vehicles = useQuery({
-    queryKey: queryKeys.vehicles,
-    queryFn: listVehicles,
+    queryKey: queryKeys.vehiclesIn(cityScope),
+    queryFn: () => listVehicles(cityScope),
     refetchInterval: POLL.vehicles,
   });
 
   // The summary carries a driver uuid, not a name; the drivers list is already
   // polled elsewhere, so this resolves names without a per-row request.
   const drivers = useQuery({
-    queryKey: queryKeys.drivers(),
+    queryKey: queryKeys.drivers(undefined, null),
     queryFn: () => listDrivers(),
     refetchInterval: POLL.drivers,
   });
@@ -115,8 +117,6 @@ export default function Vehicles() {
     unit.current_driver_uuid ? (driverNames.get(unit.current_driver_uuid) ?? null) : null;
 
   const hasCities = cities.length > 0;
-  // The vehicle list carries no city, so the selection can only scope the
-  // perimeters drawn on the map, not the rows.
   const geofences = cities
     .filter((c) => c.is_active && c.geofence_geojson && (!cityScope || c.city_id === cityScope))
     .map((c) => c.geofence_geojson!);
@@ -320,7 +320,7 @@ export default function Vehicles() {
       </div>
 
       <Suspense fallback={<div className="h-72 animate-pulse rounded-lg bg-slate-100" />}>
-        <FleetMap units={rows} geofences={geofences} />
+        <FleetMap units={rows} geofences={geofences} typeNames={typeNames} />
       </Suspense>
 
       <DataTable
@@ -342,7 +342,7 @@ export default function Vehicles() {
           kind="vehicle"
           uuid={dialog.vehicle.vehicle_uuid}
           label={vehicleLabel(dialog.vehicle)}
-          currentCityUuid={null}
+          currentCityUuid={dialog.vehicle.city_uuid}
           onClose={() => setDialog(null)}
         />
       )}

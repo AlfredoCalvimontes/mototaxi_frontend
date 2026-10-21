@@ -23,7 +23,7 @@ async function table() {
   return within(await screen.findByRole('table'));
 }
 
-describe('listado de mototaxis', () => {
+describe('listado de vehículos', () => {
   test('resuelve el nombre del conductor a partir de su uuid', async () => {
     renderApp(<Vehicles />);
     expect(await (await table()).findByText('Marco Peña')).toBeInTheDocument();
@@ -51,7 +51,7 @@ describe('listado de mototaxis', () => {
 
 describe('filtro de GPS sin señal', () => {
   test('la URL del enlace del resumen deja el filtro ya aplicado', async () => {
-    renderApp(<Vehicles />, { route: '/mototaxis?gps=sin-senal' });
+    renderApp(<Vehicles />, { route: '/vehiculos?gps=sin-senal' });
 
     const rows = await (await table()).findAllByRole('row');
     // Cabecera + la única unidad sin señal.
@@ -61,12 +61,12 @@ describe('filtro de GPS sin señal', () => {
   });
 
   test('el mapa refleja el filtro, no la lista completa', async () => {
-    renderApp(<Vehicles />, { route: '/mototaxis?gps=sin-senal' });
+    renderApp(<Vehicles />, { route: '/vehiculos?gps=sin-senal' });
     expect(await screen.findByTestId('mapa')).toHaveTextContent('1');
   });
 
   test('se puede quitar el filtro desde la vista', async () => {
-    const { user } = renderApp(<Vehicles />, { route: '/mototaxis?gps=sin-senal' });
+    const { user } = renderApp(<Vehicles />, { route: '/vehiculos?gps=sin-senal' });
 
     await user.click(await screen.findByRole('checkbox', { name: /GPS sin señal/ }));
 

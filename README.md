@@ -27,6 +27,7 @@ means CORS is never configured anywhere.
 | `npm run dev`        | Dev server with the `/api` proxy              |
 | `npm run build`      | Typecheck, then production build into `dist/` |
 | `npm test`           | Vitest suite (MSW-backed; no backend needed)  |
+| `npm run test:e2e`   | Playwright two-tenant smoke (API mocked)      |
 | `npm run test:watch` | Same, in watch mode                           |
 | `npm run typecheck`  | `tsc --noEmit`                                |
 | `npm run lint`       | ESLint                                        |
@@ -57,12 +58,12 @@ means CORS is never configured anywhere.
 The backend is multi-tenant. The panel adapts to who signed in (`GET /users/me`
 carries `role`, `tenant_id`, `city_uuids`):
 
-| Role | Reaches |
-|---|---|
-| `SUPERADMIN` | Everything, plus tenants, WhatsApp numbers, platform usage/audit. |
-| `TENANT_ADMIN` | Their tenant: fleet, dispatch, settings, vehicle types, cities. |
-| `CITY_ADMIN` | Their cities (list/edit); no settings, no access grants. |
-| `OPERATOR` | The operational screens; no admin pages. |
+| Role           | Reaches                                                           |
+| -------------- | ----------------------------------------------------------------- |
+| `SUPERADMIN`   | Everything, plus tenants, WhatsApp numbers, platform usage/audit. |
+| `TENANT_ADMIN` | Their tenant: fleet, dispatch, settings, vehicle types, cities.   |
+| `CITY_ADMIN`   | Their cities (list/edit); no settings, no access grants.          |
+| `OPERATOR`     | The operational screens; no admin pages.                          |
 
 - **Route gating** is `auth/RequireRole` with the sets in `auth/roles.ts`,
   mirroring the backend dependencies (`SuperUser`, `TenantAdminUser`,
@@ -75,10 +76,21 @@ carries `role`, `tenant_id`, `city_uuids`):
   only, so a reload starts unscoped. Switching **resets the query cache**
   (`resetQueries`, not `clear`: mounted views must refetch) —
   `auth/tenant-switch.test.tsx` pins that no row of the previous tenant survives.
-- **City scope.** The header city selector writes `?city=`. The API has no city
-  filter on its lists, so only the drivers list narrows by it (client-side, from
-  `Driver.city_uuid`); the map draws the selected city's geofence. Existing
-  drivers/vehicles change city through *Mover de ciudad*, never the edit forms.
+- **City scope.** The header city selector writes `?city=`, and the drivers,
+  vehicles, customers, live-trips and trip-history views send it as the
+  `city_uuid` query param (the server filters; query keys include the city).
+  The map draws the selected city's geofence. Existing drivers/vehicles change
+  city through _Mover de ciudad_, never the edit forms. Requires a backend with
+  the `city_uuid` params (branch `feat/tenancy-p8-panel-gaps`).
+- **Vehicle type on trips and the map.** Trip lists show the requested type
+  (or "Cualquiera") and, when a different one arrived, "Pedido (llegó Asignado)".
+  Fleet-map markers append the vehicle's type. Names come from
+  `useVehicleTypeNames`.
+- **Usage.** A tenant admin sees their company's 30-day usage on the dashboard
+  (`GET /admin/usage` returns only their row); superadmins get the full table
+  under _Plataforma_.
+- **Routes.** The vehicles screens live at `/vehiculos`; `/mototaxis` redirects
+  there, keeping the query string, for old bookmarks.
 - **Dynamic vehicle forms.** `VehicleType.attribute_schema` drives the
   attribute inputs (`string|int|float|bool`). The server is the validator.
 - **Settings** show where the effective value comes from (tenant / global /
@@ -126,3 +138,9 @@ Backend-side requirements, if not already in place:
   refresh; an unknown `/api` path must still 404 as JSON, never HTML.
 - Hashed assets get a long `Cache-Control`; `index.html` must be `no-cache`, or
   browsers pin a stale build referencing deleted asset hashes.
+
+### End-to-end smoke
+
+`npm run test:e2e` drives the real SPA in Chromium (port 5199, not the shared 5173) with the API mocked at the network edge: a superadmin acts as one company,
+then another, and the rows and banner follow. First run needs
+`npx playwright install chromium`.

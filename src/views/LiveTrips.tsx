@@ -13,7 +13,9 @@ import { ReachTime } from '@/components/ReachTime';
 import { TableSkeleton } from '@/components/Skeleton';
 import { StatusBadge } from '@/components/StatusBadge';
 import { EMPTY, formatRelative, maskPhone } from '@/lib/format';
+import { useCityScope } from '@/lib/cityScope';
 import { strings } from '@/lib/strings';
+import { tripTypeLabel, useVehicleTypeNames } from '@/lib/useVehicleTypes';
 
 /** How the trip is named in the confirmation, so it is never generic. */
 function tripLabel(trip: TripSummary): string {
@@ -23,12 +25,13 @@ function tripLabel(trip: TripSummary): string {
 
 export default function LiveTrips() {
   const queryClient = useQueryClient();
+  const cityScope = useCityScope();
   const [target, setTarget] = useState<TripSummary | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   const trips = useQuery({
-    queryKey: queryKeys.activeTrips,
-    queryFn: listActiveTrips,
+    queryKey: queryKeys.activeTripsIn(cityScope),
+    queryFn: () => listActiveTrips(cityScope),
     refetchInterval: POLL.activeTrips,
   });
 
@@ -50,6 +53,7 @@ export default function LiveTrips() {
     },
   });
 
+  const typeNames = useVehicleTypeNames();
   const columns: Column<TripSummary>[] = useMemo(
     () => [
       {
@@ -81,6 +85,13 @@ export default function LiveTrips() {
         secondary: true,
         sortValue: (trip) => trip.plate_number,
         cell: (trip) => trip.plate_number ?? EMPTY,
+      },
+      {
+        id: 'type',
+        header: strings.trips.vehicleType,
+        secondary: true,
+        sortValue: (trip) => tripTypeLabel(trip, typeNames),
+        cell: (trip) => tripTypeLabel(trip, typeNames),
       },
       {
         id: 'pickup',
@@ -127,7 +138,7 @@ export default function LiveTrips() {
         ),
       },
     ],
-    [cancel],
+    [cancel, typeNames],
   );
 
   if (trips.isPending) return <TableSkeleton rows={4} />;

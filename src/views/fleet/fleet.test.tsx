@@ -114,7 +114,7 @@ describe('registro', () => {
     const { user } = renderApp(<Vehicles />);
     await screen.findByRole('table');
 
-    await user.click(screen.getByRole('button', { name: 'Registrar mototaxi' }));
+    await user.click(screen.getByRole('button', { name: 'Registrar vehículo' }));
     const dialog = within(screen.getByRole('dialog'));
     await user.type(dialog.getByLabelText(/Placa/), 'JKL456');
     await user.type(dialog.getByLabelText(/IMEI/), '860111222333444');
@@ -143,7 +143,7 @@ describe('registro', () => {
     const { user } = renderApp(<Vehicles />);
     await screen.findByRole('table');
 
-    await user.click(screen.getByRole('button', { name: 'Registrar mototaxi' }));
+    await user.click(screen.getByRole('button', { name: 'Registrar vehículo' }));
     const dialog = within(screen.getByRole('dialog'));
     await user.type(dialog.getByLabelText(/Placa/), 'ABC123');
     await user.click(dialog.getByRole('button', { name: 'Guardar' }));
@@ -155,7 +155,7 @@ describe('registro', () => {
 describe('recarga de la SIM en el formulario', () => {
   async function openNew(user: ReturnType<typeof renderApp>['user']) {
     await screen.findByRole('table');
-    await user.click(screen.getByRole('button', { name: 'Registrar mototaxi' }));
+    await user.click(screen.getByRole('button', { name: 'Registrar vehículo' }));
     return within(screen.getByRole('dialog'));
   }
 
@@ -391,10 +391,10 @@ describe('asignación de mototaxi', () => {
     const { user } = renderApp(<Drivers />);
 
     await user.click(
-      (await rowFor('Marco Peña')).getByRole('button', { name: 'Cambiar mototaxi' }),
+      (await rowFor('Marco Peña')).getByRole('button', { name: 'Cambiar vehículo' }),
     );
     const dialog = within(screen.getByRole('dialog'));
-    await user.selectOptions(dialog.getByLabelText('Mototaxi'), '');
+    await user.selectOptions(dialog.getByLabelText('Vehículo'), '');
     await user.click(dialog.getByRole('button', { name: 'Guardar' }));
 
     await waitFor(() => expect(bodies).toHaveLength(1));
@@ -405,9 +405,9 @@ describe('asignación de mototaxi', () => {
     const { user } = renderApp(<Drivers />);
 
     await user.click(
-      (await rowFor('Lucía Vargas')).getByRole('button', { name: 'Asignar mototaxi' }),
+      (await rowFor('Lucía Vargas')).getByRole('button', { name: 'Asignar vehículo' }),
     );
-    const select = within(screen.getByRole('dialog')).getByLabelText('Mototaxi');
+    const select = within(screen.getByRole('dialog')).getByLabelText('Vehículo');
 
     // ABC123 la conduce Marco; XYZ789 está libre.
     expect(within(select).queryByRole('option', { name: 'ABC123' })).not.toBeInTheDocument();
@@ -423,7 +423,7 @@ describe('asignación de mototaxi', () => {
     const { user } = renderApp(<Drivers />);
 
     await user.click(
-      (await rowFor('Marco Peña')).getByRole('button', { name: 'Cambiar mototaxi' }),
+      (await rowFor('Marco Peña')).getByRole('button', { name: 'Cambiar vehículo' }),
     );
     const dialog = within(screen.getByRole('dialog'));
 
@@ -591,7 +591,7 @@ describe('clave GPS del teléfono (del conductor)', () => {
     const { user } = renderApp(<Drivers />);
 
     const row = await rowFor('Lucía Vargas');
-    expect(row.getByText('Clave sin mototaxi')).toBeInTheDocument();
+    expect(row.getByText('Clave sin vehículo')).toBeInTheDocument();
 
     await user.click(row.getByRole('button', { name: /Clave GPS/ }));
     expect(
@@ -615,7 +615,7 @@ describe('clave GPS del teléfono (del conductor)', () => {
     expect(dialog.queryByTestId('phone-key')).not.toBeInTheDocument();
   });
 
-  test('la lista de mototaxis ya no ofrece la clave GPS', async () => {
+  test('la lista de vehículos ya no ofrece la clave GPS', async () => {
     renderApp(<Vehicles />);
 
     const row = await rowFor('ABC123');
@@ -749,11 +749,11 @@ describe('lista de conductores: datos a la vista', () => {
     renderApp(<Drivers />);
 
     const withMoto = await rowFor('Marco Peña');
-    expect(withMoto.getByRole('button', { name: 'Cambiar mototaxi' })).toBeInTheDocument();
-    expect(withMoto.queryByRole('button', { name: 'Asignar mototaxi' })).not.toBeInTheDocument();
+    expect(withMoto.getByRole('button', { name: 'Cambiar vehículo' })).toBeInTheDocument();
+    expect(withMoto.queryByRole('button', { name: 'Asignar vehículo' })).not.toBeInTheDocument();
 
     const without = await rowFor('Lucía Vargas');
-    expect(without.getByRole('button', { name: 'Asignar mototaxi' })).toBeInTheDocument();
+    expect(without.getByRole('button', { name: 'Asignar vehículo' })).toBeInTheDocument();
   });
 
   test('la clave GPS configurada se ve como «Activa»; la que falta, como «Sin clave»', async () => {
@@ -780,7 +780,7 @@ describe('vehículo: tipo y atributos', () => {
     const { user } = renderApp(<Vehicles />);
     await screen.findByRole('table');
 
-    await user.click(screen.getByRole('button', { name: 'Registrar mototaxi' }));
+    await user.click(screen.getByRole('button', { name: 'Registrar vehículo' }));
     const dialog = within(screen.getByRole('dialog'));
     await user.type(dialog.getByLabelText(/Placa/), 'JKL456');
     await user.selectOptions(
@@ -808,7 +808,7 @@ describe('vehículo: tipo y atributos', () => {
     const { user } = renderApp(<Vehicles />);
     await screen.findByRole('table');
 
-    await user.click(screen.getByRole('button', { name: 'Registrar mototaxi' }));
+    await user.click(screen.getByRole('button', { name: 'Registrar vehículo' }));
     const dialog = within(screen.getByRole('dialog'));
     await user.type(dialog.getByLabelText(/Placa/), 'JKL456');
     await user.selectOptions(
@@ -826,7 +826,7 @@ describe('vehículo: tipo y atributos', () => {
     const { user } = renderApp(<Vehicles />);
     await screen.findByRole('table');
 
-    await user.click(screen.getByRole('button', { name: 'Registrar mototaxi' }));
+    await user.click(screen.getByRole('button', { name: 'Registrar vehículo' }));
     const dialog = within(screen.getByRole('dialog'));
     await user.type(dialog.getByLabelText(/IMEI/), '860111222333444');
     await user.selectOptions(dialog.getByLabelText('Protocolo del GPS'), 'SECUREMORE');

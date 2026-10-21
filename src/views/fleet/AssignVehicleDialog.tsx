@@ -16,7 +16,10 @@ export function AssignVehicleDialog({ driver, onClose }: { driver: Driver; onClo
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState(driver.current_vehicle_uuid ?? DETACH);
 
-  const vehicles = useQuery({ queryKey: queryKeys.vehicles, queryFn: listVehicles });
+  const vehicles = useQuery({
+    queryKey: queryKeys.vehiclesIn(null),
+    queryFn: () => listVehicles(),
+  });
 
   const save = useMutation({
     mutationFn: () =>

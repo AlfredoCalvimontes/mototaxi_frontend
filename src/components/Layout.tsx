@@ -13,11 +13,11 @@ type NavItem = { to: string; label: string; end: boolean; roles?: readonly UserR
 const navItems: NavItem[] = [
   { to: '/', label: strings.nav.dashboard, end: true },
   { to: '/viajes', label: strings.nav.liveTrips, end: false },
-  { to: '/mototaxis', label: strings.nav.vehicles, end: false },
+  { to: '/vehiculos', label: strings.nav.vehicles, end: false },
   { to: '/conductores', label: strings.nav.drivers, end: false },
   { to: '/historial', label: strings.nav.history, end: false },
   { to: '/clientes', label: strings.nav.customers, end: false },
-  { to: '/mototaxis/tipos', label: strings.nav.vehicleTypes, end: false, roles: ADMIN },
+  { to: '/vehiculos/tipos', label: strings.nav.vehicleTypes, end: false, roles: ADMIN },
   { to: '/configuracion', label: strings.nav.settings, end: false, roles: ADMIN },
 ];
 

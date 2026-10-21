@@ -34,12 +34,17 @@ function hasPosition(unit: VehicleSummary): unit is Located {
 export function FleetMap({
   units,
   geofences = [],
+  typeNames,
 }: {
   units: VehicleSummary[];
   /** Service perimeters of the cities in view, drawn under the markers. */
   geofences?: GeoJsonPolygon[];
+  /** Display name per vehicle type uuid; shown next to each marker's label. */
+  typeNames?: Map<string, string>;
 }) {
   const located = units.filter(hasPosition);
+  const typeOf = (unit: VehicleSummary) =>
+    unit.vehicle_type_uuid ? typeNames?.get(unit.vehicle_type_uuid) : undefined;
 
   if (located.length === 0) {
     return (
@@ -81,6 +86,7 @@ export function FleetMap({
           {/* Always visible, so a dot can be matched to a unit without clicking it. */}
           <Tooltip permanent direction="right" offset={[10, 0]}>
             {markerLabel(unit)}
+            {typeOf(unit) && ` · ${typeOf(unit)}`}
           </Tooltip>
           <Popup>
             <p className="font-medium">
