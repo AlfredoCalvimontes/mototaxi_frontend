@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useId, useState, type FormEvent } from 'react';
 
-import { listSettings, updateSetting } from '@/api/admin';
+import { listSettings, resetSetting, updateSetting } from '@/api/admin';
 import { queryKeys } from '@/api/queries';
 import type { RuntimeSetting } from '@/api/types';
+import { useAuth } from '@/auth/context';
 import { ErrorState } from '@/components/ErrorState';
 import { InfoTip } from '@/components/InfoTip';
+import { ToneBadge } from '@/components/StatusBadge';
 import { TableSkeleton } from '@/components/Skeleton';
 import { errorText } from '@/lib/errors';
 import { formatDateTime } from '@/lib/format';
@@ -23,6 +25,13 @@ function SettingCard({ setting }: { setting: RuntimeSetting }) {
   const unit = strings.settings.units[setting.unit] ?? setting.unit;
   const [draft, setDraft] = useState(String(setting.value));
   const [saved, setSaved] = useState(false);
+  const { user, actingAsTenant } = useAuth();
+
+  // A tenant admin (or a superadmin acting as one) writes its own value; a
+  // superadmin with no tenant writes the platform default. "Reset" drops
+  // whichever of the two the caller owns, so the button follows the same split.
+  const tenantScope = !!(user?.tenant_id ?? actingAsTenant);
+  const ownsOverride = tenantScope ? setting.source === 'tenant' : setting.source === 'global';
 
   const parsed = parseWhole(draft);
   const valid = parsed !== null && parsed >= setting.minimum && parsed <= setting.maximum;
@@ -43,6 +52,19 @@ function SettingCard({ setting }: { setting: RuntimeSetting }) {
     },
   });
 
+  const reset = useMutation({
+    mutationFn: () => resetSetting(setting.key),
+    onSuccess: (updated) => {
+      setDraft(String(updated.value));
+      setSaved(true);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.settings });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.vehicles });
+      void queryClient.invalidateQueries({ queryKey: ['vehicle'] });
+      void queryClient.invalidateQueries({ queryKey: ['drivers'] });
+      void queryClient.invalidateQueries({ queryKey: ['driver'] });
+    },
+  });
+
   function submit(event: FormEvent, value: number | null) {
     event.preventDefault();
     if (value === null) return;
@@ -56,11 +78,14 @@ function SettingCard({ setting }: { setting: RuntimeSetting }) {
       noValidate
       className="space-y-3 rounded-lg border border-slate-200 bg-white p-4"
     >
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <label htmlFor={inputId} className="text-sm font-medium text-slate-900">
           {copy?.label ?? setting.key}
         </label>
         {copy && <InfoTip text={copy.tooltip} />}
+        <ToneBadge tone={setting.source === 'tenant' ? 'good' : 'neutral'}>
+          {strings.settings.source[setting.source] ?? setting.source}
+        </ToneBadge>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -86,14 +111,19 @@ function SettingCard({ setting }: { setting: RuntimeSetting }) {
         >
           {strings.settings.save}
         </button>
-        {setting.value !== setting.default && (
+        {ownsOverride && (
           <button
             type="button"
-            disabled={save.isPending}
-            onClick={(event) => submit(event, setting.default)}
+            disabled={save.isPending || reset.isPending}
+            onClick={() => {
+              setSaved(false);
+              reset.mutate();
+            }}
             className="rounded border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
           >
-            {strings.settings.restoreDefault(setting.default, unit)}
+            {tenantScope
+              ? strings.settings.resetTenant
+              : strings.settings.restoreDefault(setting.default, unit)}
           </button>
         )}
       </div>
@@ -107,12 +137,12 @@ function SettingCard({ setting }: { setting: RuntimeSetting }) {
           : strings.settings.neverChanged}
       </p>
 
-      {save.error != null && (
+      {(save.error ?? reset.error) != null && (
         <p
           role="alert"
           className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
         >
-          {errorText(save.error)}
+          {errorText(save.error ?? reset.error)}
         </p>
       )}
       {saved && (

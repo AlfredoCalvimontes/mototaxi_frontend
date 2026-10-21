@@ -296,6 +296,13 @@ export const strings = {
       'Ajustes que puedes cambiar sin esperar una actualización del sistema. Se aplican de inmediato.',
     save: 'Guardar cambio',
     restoreDefault: (value: number, unit: string) => `Restaurar valor original (${value} ${unit})`,
+    resetTenant: 'Quitar el ajuste de la empresa',
+    sourceLabel: 'Origen del valor',
+    source: {
+      tenant: 'Ajuste de la empresa',
+      global: 'Heredado del valor global',
+      default: 'Valor original del sistema',
+    } as Record<string, string>,
     saved: 'Cambio guardado.',
     allowedRange: (min: number, max: number, unit: string) =>
       `Permitido: de ${min} a ${max} ${unit}.`,

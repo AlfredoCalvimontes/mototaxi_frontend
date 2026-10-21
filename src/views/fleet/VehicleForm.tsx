@@ -4,6 +4,7 @@ import { useMemo, useState, type FormEvent } from 'react';
 import { createVehicle, listVehicleTypes, updateVehicle } from '@/api/admin';
 import { queryKeys } from '@/api/queries';
 import type { TrackerType, Vehicle } from '@/api/types';
+import { CityField } from '@/components/CityField';
 import { AttributeSchemaForm } from '@/components/AttributeSchemaForm';
 import { attributeErrors, toAttributes, toDraft, type AttributeDraft } from '@/lib/attributes';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -97,6 +98,7 @@ export function VehicleForm({
     values.vehicle_type_uuid === initial.vehicle_type_uuid ? initial.attributes : {},
   );
   const current: VehicleFormValues = { ...values, attributes };
+  const [cityUuid, setCityUuid] = useState('');
   const [validation, setValidation] = useState<Partial<Record<string, string>>>({});
   const [attributeProblems, setAttributeProblems] = useState<Record<string, string>>({});
   const [confirmingDetach, setConfirmingDetach] = useState(false);
@@ -116,6 +118,7 @@ export function VehicleForm({
         tracker_type: values.tracker_type,
         vehicle_type_uuid: values.vehicle_type_uuid || null,
         attributes,
+        ...(cityUuid && { city_uuid: cityUuid }),
         ...(hasTracker && values.sim_last_recharge_at
           ? {
               sim_last_recharge_at: values.sim_last_recharge_at,
@@ -189,6 +192,8 @@ export function VehicleForm({
               onChange={(model) => setValues((v) => ({ ...v, model }))}
             />
           </div>
+
+          {!editing && <CityField value={cityUuid} onChange={setCityUuid} />}
 
           <SelectField
             label={strings.fleet.vehicleType}

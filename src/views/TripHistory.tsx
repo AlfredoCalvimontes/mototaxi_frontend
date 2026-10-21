@@ -21,6 +21,7 @@ import {
   maskPhone,
   todayInLaPaz,
 } from '@/lib/format';
+import { filterParams } from '@/lib/cityScope';
 import { strings } from '@/lib/strings';
 
 /** The endpoint offers no offset, so the limit is the only lever. */
@@ -228,9 +229,12 @@ export default function TripHistory() {
             type="checkbox"
             checked={onlyAutoCompleted}
             onChange={(e) =>
-              setSearchParams(e.target.checked ? { [REVIEW_PARAM]: REVIEW_VALUE } : {}, {
-                replace: true,
-              })
+              setSearchParams(
+                filterParams(searchParams, REVIEW_PARAM, e.target.checked ? REVIEW_VALUE : null),
+                {
+                  replace: true,
+                },
+              )
             }
             className="rounded border-slate-300"
           />

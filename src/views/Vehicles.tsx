@@ -9,10 +9,13 @@ import { DataTable, type Column } from '@/components/DataTable';
 import { ErrorState } from '@/components/ErrorState';
 import { StatusBadge, ToneBadge, WarningBadge } from '@/components/StatusBadge';
 import { TableSkeleton } from '@/components/Skeleton';
-import { EMPTY, formatCoords, formatDate, formatRelative } from '@/lib/format';
+import { EMPTY, formatCoords, formatDate, formatRelative, vehicleLabel } from '@/lib/format';
 import { usePersistentFlag } from '@/lib/persistentFlag';
 import { simRechargeState } from '@/lib/sim';
+import { filterParams, useCityScope } from '@/lib/cityScope';
+import { useCities } from '@/lib/useCities';
 import { strings } from '@/lib/strings';
+import { MoveToCityDialog } from '@/views/fleet/MoveToCityDialog';
 import { VehicleEditLoader } from '@/views/fleet/VehicleEditLoader';
 import { VehicleForm } from '@/views/fleet/VehicleForm';
 import { VehicleStatusDialog } from '@/views/fleet/VehicleStatusDialog';
@@ -31,7 +34,10 @@ const SIM_PARAM = 'sim';
 const SIM_VALUE = 'vencida';
 
 type VehicleDialog =
-  { kind: 'create' } | { kind: 'edit'; uuid: string } | { kind: 'status'; vehicle: VehicleSummary };
+  | { kind: 'create' }
+  | { kind: 'edit'; uuid: string }
+  | { kind: 'status'; vehicle: VehicleSummary }
+  | { kind: 'city'; vehicle: VehicleSummary };
 
 /** The SIM columns, hidden together by one toggle. */
 const SIM_COLUMN_IDS = new Set(['simLastRecharge', 'simAmount', 'simNext']);
@@ -81,6 +87,8 @@ export default function Vehicles() {
   const onlyStale = searchParams.get(STALE_PARAM) === STALE_VALUE;
   const onlyNoSimCredit = searchParams.get(SIM_PARAM) === SIM_VALUE;
   const [dialog, setDialog] = useState<VehicleDialog | null>(null);
+  const cityScope = useCityScope();
+  const { cities } = useCities();
   const [hideSim, toggleHideSim] = usePersistentFlag(HIDE_SIM_KEY, false);
 
   const vehicles = useQuery({
@@ -105,6 +113,13 @@ export default function Vehicles() {
 
   const driverNameOf = (unit: VehicleSummary) =>
     unit.current_driver_uuid ? (driverNames.get(unit.current_driver_uuid) ?? null) : null;
+
+  const hasCities = cities.length > 0;
+  // The vehicle list carries no city, so the selection can only scope the
+  // perimeters drawn on the map, not the rows.
+  const geofences = cities
+    .filter((c) => c.is_active && c.geofence_geojson && (!cityScope || c.city_id === cityScope))
+    .map((c) => c.geofence_geojson!);
 
   const rows = useMemo(() => {
     const all = vehicles.data ?? [];
@@ -221,6 +236,15 @@ export default function Vehicles() {
             >
               {strings.common.edit}
             </button>
+            {hasCities && (
+              <button
+                type="button"
+                onClick={() => setDialog({ kind: 'city', vehicle: unit })}
+                className="rounded border border-slate-300 px-2 py-1 text-xs font-medium whitespace-nowrap text-slate-700 hover:bg-slate-50"
+              >
+                {strings.tenancy.moveToCity}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setDialog({ kind: 'status', vehicle: unit })}
@@ -233,7 +257,7 @@ export default function Vehicles() {
         ),
       },
     ],
-    [driverNames],
+    [driverNames, hasCities],
   );
 
   if (vehicles.isPending) return <TableSkeleton rows={5} />;
@@ -266,9 +290,12 @@ export default function Vehicles() {
             checked={onlyStale}
             onChange={(e) =>
               // Kept in the URL so the dashboard alert can link straight here.
-              setSearchParams(e.target.checked ? { [STALE_PARAM]: STALE_VALUE } : {}, {
-                replace: true,
-              })
+              setSearchParams(
+                filterParams(searchParams, STALE_PARAM, e.target.checked ? STALE_VALUE : null),
+                {
+                  replace: true,
+                },
+              )
             }
             className="rounded border-slate-300"
           />
@@ -279,9 +306,12 @@ export default function Vehicles() {
             type="checkbox"
             checked={onlyNoSimCredit}
             onChange={(e) =>
-              setSearchParams(e.target.checked ? { [SIM_PARAM]: SIM_VALUE } : {}, {
-                replace: true,
-              })
+              setSearchParams(
+                filterParams(searchParams, SIM_PARAM, e.target.checked ? SIM_VALUE : null),
+                {
+                  replace: true,
+                },
+              )
             }
             className="rounded border-slate-300"
           />
@@ -290,7 +320,7 @@ export default function Vehicles() {
       </div>
 
       <Suspense fallback={<div className="h-72 animate-pulse rounded-lg bg-slate-100" />}>
-        <FleetMap units={rows} />
+        <FleetMap units={rows} geofences={geofences} />
       </Suspense>
 
       <DataTable
@@ -306,6 +336,15 @@ export default function Vehicles() {
       {dialog?.kind === 'create' && <VehicleForm vehicle={null} onClose={() => setDialog(null)} />}
       {dialog?.kind === 'edit' && (
         <VehicleEditLoader uuid={dialog.uuid} onClose={() => setDialog(null)} />
+      )}
+      {dialog?.kind === 'city' && (
+        <MoveToCityDialog
+          kind="vehicle"
+          uuid={dialog.vehicle.vehicle_uuid}
+          label={vehicleLabel(dialog.vehicle)}
+          currentCityUuid={null}
+          onClose={() => setDialog(null)}
+        />
       )}
       {dialog?.kind === 'status' && (
         <VehicleStatusDialog

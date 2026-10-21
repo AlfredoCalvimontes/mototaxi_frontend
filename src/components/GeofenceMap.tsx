@@ -2,11 +2,7 @@ import 'leaflet/dist/leaflet.css';
 import { MapContainer, Polygon, TileLayer } from 'react-leaflet';
 
 import type { GeoJsonPolygon } from '@/api/types';
-
-/** GeoJSON rings are `[lon, lat]`; Leaflet wants `[lat, lon]`. */
-function toLatLngs(polygon: GeoJsonPolygon): [number, number][] {
-  return (polygon.coordinates[0] ?? []).map(([lon, lat]) => [lat as number, lon as number]);
-}
+import { toLatLngs } from '@/lib/geo';
 
 /** Read-only outline of a city's service perimeter. Drawing is deferred (plan §4). */
 export function GeofenceMap({ polygon }: { polygon: GeoJsonPolygon }) {

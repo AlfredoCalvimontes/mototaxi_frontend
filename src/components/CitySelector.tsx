@@ -1,12 +1,9 @@
-import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 
-import { listCities } from '@/api/admin';
 import { useAuth } from '@/auth/context';
+import { CITY_PARAM } from '@/lib/cityScope';
 import { strings } from '@/lib/strings';
-
-/** Shared with the views that filter by it. */
-export const CITY_PARAM = 'city';
+import { useCities } from '@/lib/useCities';
 
 /**
  * Header city scope. A city admin is fixed to their granted cities; a tenant
@@ -17,24 +14,15 @@ export const CITY_PARAM = 'city';
  * scope cannot be resolved to a name.
  */
 export function CitySelector() {
-  const { user, actingAsTenant } = useAuth();
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const selected = searchParams.get(CITY_PARAM) ?? '';
 
-  const tenantId = user?.tenant_id ?? actingAsTenant;
-  const enabled =
-    !!tenantId &&
-    (user?.role === 'TENANT_ADMIN' || user?.role === 'CITY_ADMIN' || user?.role === 'SUPERADMIN');
-
-  const cities = useQuery({
-    queryKey: ['cities', tenantId, 'selector'],
-    queryFn: () => listCities(tenantId!, { page_size: 100 }),
-    enabled,
-  });
+  const { cities, enabled } = useCities();
 
   if (!enabled || !user) return null;
 
-  const options = (cities.data?.items ?? []).filter(
+  const options = cities.filter(
     (c) =>
       c.is_active && (user.role !== 'CITY_ADMIN' || (user.city_uuids ?? []).includes(c.city_id)),
   );

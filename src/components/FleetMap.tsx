@@ -1,8 +1,9 @@
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { MapContainer, Marker, Popup, TileLayer, Tooltip } from 'react-leaflet';
+import { MapContainer, Marker, Polygon, Popup, TileLayer, Tooltip } from 'react-leaflet';
 
-import type { VehicleSummary } from '@/api/types';
+import type { GeoJsonPolygon, VehicleSummary } from '@/api/types';
+import { toLatLngs } from '@/lib/geo';
 import { EMPTY, formatRelative, markerLabel } from '@/lib/format';
 import { strings } from '@/lib/strings';
 
@@ -30,7 +31,14 @@ function hasPosition(unit: VehicleSummary): unit is Located {
   return unit.lat !== null && unit.lon !== null;
 }
 
-export function FleetMap({ units }: { units: VehicleSummary[] }) {
+export function FleetMap({
+  units,
+  geofences = [],
+}: {
+  units: VehicleSummary[];
+  /** Service perimeters of the cities in view, drawn under the markers. */
+  geofences?: GeoJsonPolygon[];
+}) {
   const located = units.filter(hasPosition);
 
   if (located.length === 0) {
@@ -56,6 +64,14 @@ export function FleetMap({ units }: { units: VehicleSummary[] }) {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
+      {geofences.map((polygon, index) => (
+        <Polygon
+          key={index}
+          positions={toLatLngs(polygon)}
+          pathOptions={{ color: '#0f172a', weight: 2, dashArray: '6 4', fillOpacity: 0.05 }}
+          interactive={false}
+        />
+      ))}
       {located.map((unit) => (
         <Marker
           key={unit.vehicle_uuid}

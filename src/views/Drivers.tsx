@@ -12,6 +12,7 @@ import { MaskedValue, RevealAllButton } from '@/components/MaskedValue';
 import { useRevealGroup } from '@/components/revealGroup';
 import { StatusBadge, ToneBadge, WarningBadge } from '@/components/StatusBadge';
 import { TableSkeleton } from '@/components/Skeleton';
+import { MoveToCityDialog } from '@/views/fleet/MoveToCityDialog';
 import { AssignVehicleDialog } from '@/views/fleet/AssignVehicleDialog';
 import { DriverForm } from '@/views/fleet/DriverForm';
 import { DriverStatusDialog } from '@/views/fleet/DriverStatusDialog';
@@ -30,6 +31,8 @@ import {
   vehicleLabel,
 } from '@/lib/format';
 import { usePersistentFlag } from '@/lib/persistentFlag';
+import { filterParams, useCityScope } from '@/lib/cityScope';
+import { useCities } from '@/lib/useCities';
 import { strings } from '@/lib/strings';
 import { trackingState, type TrackingState } from '@/lib/tracking';
 import { formatCredit, usageCreditState } from '@/lib/usageCredit';
@@ -50,6 +53,7 @@ type DriverDialog =
   | { kind: 'form'; driver: Driver | null }
   | { kind: 'status'; driver: Driver }
   | { kind: 'assign'; driver: Driver }
+  | { kind: 'city'; driver: Driver }
   | { kind: 'phoneKey'; driver: Driver }
   | { kind: 'position'; driver: Driver }
   | { kind: 'credit'; driver: Driver }
@@ -122,6 +126,8 @@ export default function Drivers() {
   const [dialog, setDialog] = useState<DriverDialog | null>(null);
   const queryClient = useQueryClient();
   const [hideCredit, toggleHideCredit] = usePersistentFlag(HIDE_CREDIT_KEY, false);
+  const cityScope = useCityScope();
+  const { cities, byId: cityById } = useCities();
   const phoneGroup = useRevealGroup();
   const ciGroup = useRevealGroup();
 
@@ -169,9 +175,11 @@ export default function Drivers() {
     return all.filter(
       (driver) =>
         (!onlyWithoutCheckin || !driver.has_checked_in_today) &&
-        (!onlyNoCredit || driver.usage_credit_expired),
+        (!onlyNoCredit || driver.usage_credit_expired) &&
+        // The API has no city filter on this list, so the header selection narrows it here.
+        (!cityScope || driver.city_uuid === cityScope),
     );
-  }, [drivers.data, onlyWithoutCheckin, onlyNoCredit]);
+  }, [drivers.data, onlyWithoutCheckin, onlyNoCredit, cityScope]);
 
   const columns: Column<Driver>[] = useMemo(
     () => [
@@ -226,6 +234,21 @@ export default function Drivers() {
           </div>
         ),
       },
+      ...(cities.length > 0
+        ? [
+            {
+              id: 'city',
+              header: strings.tenancy.cityFieldLabel,
+              secondary: true,
+              sortValue: (driver: Driver) =>
+                driver.city_uuid ? (cityById.get(driver.city_uuid)?.name ?? '') : null,
+              cell: (driver: Driver) =>
+                driver.city_uuid
+                  ? (cityById.get(driver.city_uuid)?.name ?? EMPTY)
+                  : strings.tenancy.noCity,
+            } satisfies Column<Driver>,
+          ]
+        : []),
       {
         id: 'tracking',
         header: strings.drivers.tracking,
@@ -338,6 +361,15 @@ export default function Drivers() {
             <RowAction onClick={() => setDialog({ kind: 'form', driver })}>
               {strings.common.edit}
             </RowAction>
+            {cities.length > 0 && (
+              <RowAction
+                disabled={driver.status === 'IN_TRIP'}
+                title={driver.status === 'IN_TRIP' ? strings.tenancy.moveBlockedInTrip : undefined}
+                onClick={() => setDialog({ kind: 'city', driver })}
+              >
+                {strings.tenancy.moveToCity}
+              </RowAction>
+            )}
             <RowAction onClick={() => setDialog({ kind: 'status', driver })}>
               {strings.fleet.changeStatus}
               <StatusBadge kind="driver" value={driver.status} />
@@ -373,7 +405,7 @@ export default function Drivers() {
         ),
       },
     ],
-    [plates, unitOf, phoneGroup, ciGroup],
+    [plates, unitOf, phoneGroup, ciGroup, cities.length, cityById],
   );
 
   if (drivers.isPending) return <TableSkeleton rows={5} />;
@@ -405,9 +437,16 @@ export default function Drivers() {
             type="checkbox"
             checked={onlyWithoutCheckin}
             onChange={(e) =>
-              setSearchParams(e.target.checked ? { [CHECKIN_PARAM]: CHECKIN_PENDING } : {}, {
-                replace: true,
-              })
+              setSearchParams(
+                filterParams(
+                  searchParams,
+                  CHECKIN_PARAM,
+                  e.target.checked ? CHECKIN_PENDING : null,
+                ),
+                {
+                  replace: true,
+                },
+              )
             }
             className="rounded border-slate-300"
           />
@@ -418,9 +457,16 @@ export default function Drivers() {
             type="checkbox"
             checked={onlyNoCredit}
             onChange={(e) =>
-              setSearchParams(e.target.checked ? { [CREDIT_PARAM]: CREDIT_EXHAUSTED } : {}, {
-                replace: true,
-              })
+              setSearchParams(
+                filterParams(
+                  searchParams,
+                  CREDIT_PARAM,
+                  e.target.checked ? CREDIT_EXHAUSTED : null,
+                ),
+                {
+                  replace: true,
+                },
+              )
             }
             className="rounded border-slate-300"
           />
@@ -451,6 +497,15 @@ export default function Drivers() {
       )}
       {dialog?.kind === 'status' && (
         <DriverStatusDialog driver={dialog.driver} onClose={() => setDialog(null)} />
+      )}
+      {dialog?.kind === 'city' && (
+        <MoveToCityDialog
+          kind="driver"
+          uuid={dialog.driver.driver_uuid}
+          label={dialog.driver.name}
+          currentCityUuid={dialog.driver.city_uuid}
+          onClose={() => setDialog(null)}
+        />
       )}
       {dialog?.kind === 'assign' && (
         <AssignVehicleDialog driver={dialog.driver} onClose={() => setDialog(null)} />
@@ -498,9 +553,13 @@ function RowAction({
   onClick,
   danger,
   active,
+  disabled,
+  title,
 }: {
   children: ReactNode;
   onClick: () => void;
+  disabled?: boolean;
+  title?: string;
   danger?: boolean;
   /** Something is set up behind this action, so it reads as «on». */
   active?: boolean;
@@ -514,7 +573,9 @@ function RowAction({
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 rounded border px-2 py-1 text-xs font-medium whitespace-nowrap ${tone}`}
+      disabled={disabled}
+      title={title}
+      className={`inline-flex items-center gap-1.5 rounded border px-2 py-1 text-xs font-medium whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 ${tone}`}
     >
       {children}
     </button>
