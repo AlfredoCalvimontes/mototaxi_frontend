@@ -1,6 +1,8 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 import { RequireAuth } from '@/auth/RequireAuth';
+import { RequireRole } from '@/auth/RequireRole';
+import { ADMIN, STAFF } from '@/auth/roles';
 import { Layout } from '@/components/Layout';
 import Customers from '@/views/Customers';
 import Dashboard from '@/views/Dashboard';
@@ -18,13 +20,17 @@ export function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route element={<RequireAuth />}>
         <Route element={<Layout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="/viajes" element={<LiveTrips />} />
-          <Route path="/mototaxis" element={<Mototaxis />} />
-          <Route path="/conductores" element={<Drivers />} />
-          <Route path="/historial" element={<TripHistory />} />
-          <Route path="/clientes" element={<Customers />} />
-          <Route path="/configuracion" element={<Settings />} />
+          <Route element={<RequireRole roles={STAFF} />}>
+            <Route index element={<Dashboard />} />
+            <Route path="/viajes" element={<LiveTrips />} />
+            <Route path="/mototaxis" element={<Mototaxis />} />
+            <Route path="/conductores" element={<Drivers />} />
+            <Route path="/historial" element={<TripHistory />} />
+            <Route path="/clientes" element={<Customers />} />
+          </Route>
+          <Route element={<RequireRole roles={ADMIN} />}>
+            <Route path="/configuracion" element={<Settings />} />
+          </Route>
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

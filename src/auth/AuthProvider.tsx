@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import * as authApi from '@/api/auth';
-import { setSessionExpiredHandler } from '@/api/client';
+import { setActAsTenant, setSessionExpiredHandler } from '@/api/client';
 import type { UserProfile } from '@/api/types';
 import { AuthContext, type AuthStatus } from '@/auth/context';
 
@@ -18,6 +18,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>('checking');
   const [user, setUser] = useState<UserProfile | null>(null);
   const [expired, setExpired] = useState(false);
+  const [actingAsTenant, setActingAsTenantState] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -41,6 +42,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Act-as lives in memory only: a reload or a new login starts unscoped
+  // rather than silently writing into a tenant the operator forgot about.
+  const resetActAs = useCallback(() => {
+    setActAsTenant(null);
+    setActingAsTenantState(null);
+  }, []);
+
+  const setActingAsTenant = useCallback(
+    (tenantId: string | null) => {
+      setActAsTenant(tenantId);
+      setActingAsTenantState(tenantId);
+      // `reset`, not `clear`: mounted views must refetch under the new tenant,
+      // and `clear` would leave them holding detached queries.
+      void queryClient.resetQueries();
+    },
+    [queryClient],
+  );
+
   // The API client cannot navigate; it reports a dead session and this decides
   // what that means for the UI.
   useEffect(() => {
@@ -50,10 +69,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return null;
       });
       setStatus('anonymous');
+      resetActAs();
       queryClient.clear();
     });
     return () => setSessionExpiredHandler(null);
-  }, [queryClient]);
+  }, [queryClient, resetActAs]);
 
   const signIn = useCallback(async (email: string, password: string) => {
     await authApi.login(email, password);
@@ -73,12 +93,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setExpired(false);
     setStatus('anonymous');
+    resetActAs();
     queryClient.clear();
-  }, [queryClient]);
+  }, [queryClient, resetActAs]);
 
   const value = useMemo(
-    () => ({ status, user, expired, signIn, signOut }),
-    [status, user, expired, signIn, signOut],
+    () => ({ status, user, expired, actingAsTenant, setActingAsTenant, signIn, signOut }),
+    [status, user, expired, actingAsTenant, setActingAsTenant, signIn, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
