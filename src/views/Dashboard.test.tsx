@@ -111,3 +111,40 @@ describe('navegación', () => {
     ).toBeInTheDocument();
   });
 });
+
+describe('viajes por tipo de vehículo', () => {
+  test('un tenant admin ve el reparto con el nombre del tipo y "Cualquiera"', async () => {
+    renderApp(<Dashboard />);
+
+    const table = within(await screen.findByRole('table', { name: /Viajes por tipo de vehículo/ }));
+    expect(await table.findByText('Mototaxi')).toBeInTheDocument();
+    expect(table.getByText('Cualquiera')).toBeInTheDocument();
+  });
+
+  test('un solo grupo no se muestra: no hay nada que comparar', async () => {
+    server.use(
+      http.get(`${BASE}/admin/kpis/by-vehicle-type`, () =>
+        HttpResponse.json([{ ...fx.kpiGroups[0], group_uuid: null }]),
+      ),
+    );
+    renderApp(<Dashboard />);
+    await screen.findByText(fx.kpis.trips_today);
+
+    expect(screen.queryByRole('table', { name: /Viajes por tipo/ })).not.toBeInTheDocument();
+  });
+
+  test('un city admin no pide el reparto (la ruta es de administradores)', async () => {
+    server.use(http.get(`${BASE}/users/me`, () => HttpResponse.json(fx.cityAdminProfile)));
+    let asked = false;
+    server.use(
+      http.get(`${BASE}/admin/kpis/by-vehicle-type`, () => {
+        asked = true;
+        return HttpResponse.json([]);
+      }),
+    );
+    renderApp(<Dashboard />);
+    await screen.findByText(fx.kpis.trips_today);
+
+    expect(asked).toBe(false);
+  });
+});

@@ -57,6 +57,12 @@ export const handlers = [
   http.get(`${BASE}/admin/whatsapp-config`, () => HttpResponse.json([fx.whatsappConfig])),
   http.get(`${BASE}/admin/usage`, () => HttpResponse.json(fx.usageRows)),
   http.get(`${BASE}/admin/kpis/by-tenant`, () => HttpResponse.json(fx.kpiGroups)),
+  http.get(`${BASE}/admin/kpis/by-vehicle-type`, () =>
+    HttpResponse.json([
+      { ...fx.kpiGroups[0], group_uuid: fx.globalMotoType.vehicle_type_uuid },
+      { ...fx.kpiGroups[1], group_uuid: null },
+    ]),
+  ),
   http.get(`${BASE}/admin/audit-logs`, () => HttpResponse.json(page([fx.auditEntry]))),
 
   http.get(`${BASE}/admin/vehicle-types`, () =>

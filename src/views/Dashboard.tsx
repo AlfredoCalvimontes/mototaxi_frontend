@@ -1,16 +1,86 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { getAlerts, getKpis, listDrivers, listVehicles } from '@/api/admin';
+import {
+  getAlerts,
+  getKpis,
+  getKpisByVehicleType,
+  listDrivers,
+  listVehicleTypes,
+  listVehicles,
+} from '@/api/admin';
 import { POLL, queryKeys } from '@/api/queries';
+import { useAuth } from '@/auth/context';
 import { AlertBanner, type PanelAlerts } from '@/components/AlertBanner';
 import { ErrorState } from '@/components/ErrorState';
 import { KpiCard } from '@/components/KpiCard';
 import { CardSkeleton } from '@/components/Skeleton';
+import { DataTable, type Column } from '@/components/DataTable';
+import type { TripKpiGroup } from '@/api/types';
 import { EMPTY, formatDuration, formatRating } from '@/lib/format';
 import { simRechargeState } from '@/lib/sim';
 import { strings } from '@/lib/strings';
 
+/** Today's demand split by the vehicle type the customer asked for. */
+function ByVehicleType() {
+  const groups = useQuery({
+    queryKey: ['kpis', 'by-vehicle-type'],
+    queryFn: () => getKpisByVehicleType(24),
+    refetchInterval: POLL.dashboard,
+  });
+  const types = useQuery({ queryKey: queryKeys.vehicleTypes, queryFn: () => listVehicleTypes() });
+
+  // A split of one row says nothing; show it once there is something to compare.
+  if (!groups.data || groups.data.length < 2) return null;
+
+  const names = new Map((types.data ?? []).map((x) => [x.vehicle_type_uuid, x.display_name]));
+  const nameOf = (id: string | null) => (id ? (names.get(id) ?? id) : strings.dashboard.byTypeAny);
+
+  const columns: Column<TripKpiGroup>[] = [
+    {
+      id: 'type',
+      header: strings.dashboard.byTypeType,
+      sortValue: (g) => nameOf(g.group_uuid),
+      cell: (g) => <span className="font-medium text-slate-900">{nameOf(g.group_uuid)}</span>,
+    },
+    {
+      id: 'trips',
+      header: strings.platform.trips,
+      align: 'right',
+      sortValue: (g) => g.trips,
+      cell: (g) => g.trips,
+    },
+    {
+      id: 'completed',
+      header: strings.platform.completed,
+      align: 'right',
+      cell: (g) => g.completed,
+    },
+    {
+      id: 'cancelled',
+      header: strings.platform.cancelled,
+      align: 'right',
+      cell: (g) => g.cancelled,
+    },
+    { id: 'noDriver', header: strings.platform.noDriver, align: 'right', cell: (g) => g.no_driver },
+  ];
+
+  return (
+    <section className="space-y-2">
+      <h2 className="text-base font-semibold text-slate-900">{strings.dashboard.byTypeHeading}</h2>
+      <DataTable
+        rows={groups.data}
+        columns={columns}
+        rowKey={(g) => g.group_uuid ?? 'any'}
+        caption={strings.dashboard.byTypeHeading}
+        initialSort={{ columnId: 'trips', direction: 'desc' }}
+      />
+    </section>
+  );
+}
+
 export default function Dashboard() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'SUPERADMIN' || user?.role === 'TENANT_ADMIN';
   const kpis = useQuery({
     queryKey: queryKeys.kpis,
     queryFn: getKpis,
@@ -98,6 +168,7 @@ export default function Dashboard() {
           />
         </div>
       )}
+      {isAdmin && <ByVehicleType />}
     </div>
   );
 }

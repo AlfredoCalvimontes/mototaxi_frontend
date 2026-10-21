@@ -52,14 +52,51 @@ means CORS is never configured anywhere.
   The CSV export is the other sanctioned way to see full values, and it says so
   before you click it.
 
+### Tenants, roles and cities
+
+The backend is multi-tenant. The panel adapts to who signed in (`GET /users/me`
+carries `role`, `tenant_id`, `city_uuids`):
+
+| Role | Reaches |
+|---|---|
+| `SUPERADMIN` | Everything, plus tenants, WhatsApp numbers, platform usage/audit. |
+| `TENANT_ADMIN` | Their tenant: fleet, dispatch, settings, vehicle types, cities. |
+| `CITY_ADMIN` | Their cities (list/edit); no settings, no access grants. |
+| `OPERATOR` | The operational screens; no admin pages. |
+
+- **Route gating** is `auth/RequireRole` with the sets in `auth/roles.ts`,
+  mirroring the backend dependencies (`SuperUser`, `TenantAdminUser`,
+  `AnyAdminUser`). The backend enforces; the panel only hides what would 403.
+  `auth/role-matrix.test.tsx` pins route × role.
+- **Act as (superadmin).** The header switcher sends `X-Tenant-Id` on every
+  request (`api/client.ts` → `setActAsTenant`). A banner stays visible while
+  acting. Without a tenant selected a superadmin sees read-only cross-tenant
+  data; writes that need a tenant fail on the server. The choice lives in memory
+  only, so a reload starts unscoped. Switching **resets the query cache**
+  (`resetQueries`, not `clear`: mounted views must refetch) —
+  `auth/tenant-switch.test.tsx` pins that no row of the previous tenant survives.
+- **City scope.** The header city selector writes `?city=`. The API has no city
+  filter on its lists, so only the drivers list narrows by it (client-side, from
+  `Driver.city_uuid`); the map draws the selected city's geofence. Existing
+  drivers/vehicles change city through *Mover de ciudad*, never the edit forms.
+- **Dynamic vehicle forms.** `VehicleType.attribute_schema` drives the
+  attribute inputs (`string|int|float|bool`). The server is the validator.
+- **Settings** show where the effective value comes from (tenant / global /
+  default) and "quitar el ajuste" calls `DELETE /admin/settings/{key}`.
+- **Secrets are write-only.** The WhatsApp token is never read back or prefilled;
+  a blank value on an update keeps the stored one.
+- Every dynamic URL segment goes through `encodeURIComponent` (`api/admin.ts`
+  `seg`): route params are decoded by the router.
+
 ### The one contract trap
 
-`PATCH /admin/drivers/{uuid}` and `PATCH /admin/mototaxis/{uuid}` disagree about
-what `null` means:
+`PATCH /admin/drivers/{uuid}` and `PATCH /admin/vehicles/{uuid}` disagree about
+what `null` means (tenants and cities behave like drivers):
 
 - **driver** — `null` is silently ignored; nothing can be cleared this way.
-- **mototaxi** — `null` clears the field, and `{tracker_imei: null}` detaches
-  the tracker and drops it from the GT06 allowlist (spec §7.2).
+- **vehicle** — `null` clears the field, and `{device_id: null}` detaches
+  the tracker and drops it from the GT06 allowlist (spec §7.2). `tracker_type`
+  and `attributes` cannot be `null` (omit, or send `{}`).
 
 `lib/dirty.ts` therefore has **two serialisers with no shared helper**, and
 `lib/dirty.test.ts` pins both directions. If you add a form, do not unify them:
