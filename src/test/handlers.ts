@@ -9,6 +9,10 @@ import * as fx from '@/test/fixtures';
 
 const BASE = '/api/v1';
 
+function page<T>(items: T[]) {
+  return { items, total: items.length, page: 1, page_size: 100, pages: 1 };
+}
+
 export const handlers = [
   // auth
   http.post(`${BASE}/users/login`, async ({ request }) => {
@@ -33,13 +37,37 @@ export const handlers = [
   http.get(`${BASE}/admin/alerts`, () => HttpResponse.json(fx.alerts)),
 
   // fleet
-  http.get(`${BASE}/admin/mototaxis`, () =>
-    HttpResponse.json([fx.mototaxiSummary, fx.staleMototaxiSummary]),
+  http.get(`${BASE}/admin/vehicles`, () =>
+    HttpResponse.json([fx.vehicleSummary, fx.staleVehicleSummary]),
   ),
-  http.get(`${BASE}/admin/mototaxis/:uuid`, () => HttpResponse.json(fx.mototaxiDetail)),
-  http.post(`${BASE}/admin/mototaxis`, () => HttpResponse.json(fx.mototaxiDetail, { status: 201 })),
-  http.patch(`${BASE}/admin/mototaxis/:uuid`, () => HttpResponse.json(fx.mototaxiDetail)),
-  http.patch(`${BASE}/admin/mototaxis/:uuid/status`, () => HttpResponse.json(fx.mototaxiDetail)),
+  http.get(`${BASE}/admin/vehicles/:uuid`, () => HttpResponse.json(fx.vehicleDetail)),
+  http.post(`${BASE}/admin/vehicles`, () => HttpResponse.json(fx.vehicleDetail, { status: 201 })),
+  http.patch(`${BASE}/admin/vehicles/:uuid`, () => HttpResponse.json(fx.vehicleDetail)),
+  http.patch(`${BASE}/admin/vehicles/:uuid/status`, () => HttpResponse.json(fx.vehicleDetail)),
+
+  // tenancy
+  http.get(`${BASE}/admin/tenants`, () => HttpResponse.json(page([fx.tenant, fx.otherTenant]))),
+  http.get(`${BASE}/admin/tenants/:id`, () => HttpResponse.json(fx.tenant)),
+  http.get(`${BASE}/admin/tenants/:id/cities`, () =>
+    HttpResponse.json(page([fx.city, fx.secondCity])),
+  ),
+  http.get(`${BASE}/admin/cities/:id`, () => HttpResponse.json(fx.city)),
+  http.get(`${BASE}/admin/cities/:id/access`, () => HttpResponse.json([fx.cityGrant])),
+
+  http.get(`${BASE}/admin/whatsapp-config`, () => HttpResponse.json([fx.whatsappConfig])),
+  http.get(`${BASE}/admin/usage`, () => HttpResponse.json(fx.usageRows)),
+  http.get(`${BASE}/admin/kpis/by-tenant`, () => HttpResponse.json(fx.kpiGroups)),
+  http.get(`${BASE}/admin/kpis/by-vehicle-type`, () =>
+    HttpResponse.json([
+      { ...fx.kpiGroups[0], group_uuid: fx.globalMotoType.vehicle_type_uuid },
+      { ...fx.kpiGroups[1], group_uuid: null },
+    ]),
+  ),
+  http.get(`${BASE}/admin/audit-logs`, () => HttpResponse.json(page([fx.auditEntry]))),
+
+  http.get(`${BASE}/admin/vehicle-types`, () =>
+    HttpResponse.json([fx.globalMotoType, fx.ownVanType]),
+  ),
 
   http.get(`${BASE}/admin/drivers`, ({ request }) => {
     const status = new URL(request.url).searchParams.get('status');
@@ -61,7 +89,7 @@ export const handlers = [
   http.post(`${BASE}/admin/drivers`, () => HttpResponse.json(fx.driver, { status: 201 })),
   http.patch(`${BASE}/admin/drivers/:uuid`, () => HttpResponse.json(fx.driver)),
   http.patch(`${BASE}/admin/drivers/:uuid/status`, () => HttpResponse.json(fx.driver)),
-  http.patch(`${BASE}/admin/drivers/:uuid/mototaxi`, () => HttpResponse.json(fx.driver)),
+  http.patch(`${BASE}/admin/drivers/:uuid/vehicle`, () => HttpResponse.json(fx.driver)),
   http.delete(`${BASE}/admin/drivers/:uuid`, () => new HttpResponse(null, { status: 204 })),
 
   // settings

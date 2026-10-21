@@ -10,6 +10,7 @@ import { ErrorState } from '@/components/ErrorState';
 import { MaskedValue } from '@/components/MaskedValue';
 import { TableSkeleton } from '@/components/Skeleton';
 import { EMPTY, formatDateTime, formatRating, maskPhone } from '@/lib/format';
+import { useCityScope } from '@/lib/cityScope';
 import { strings } from '@/lib/strings';
 
 type PendingAction = { customer: CustomerSummary; action: 'block' | 'unblock' };
@@ -21,12 +22,13 @@ function customerLabel(customer: CustomerSummary): string {
 
 export default function Customers() {
   const queryClient = useQueryClient();
+  const cityScope = useCityScope();
   const [includeBlocked, setIncludeBlocked] = useState(false);
   const [pending, setPending] = useState<PendingAction | null>(null);
 
   const customers = useQuery({
-    queryKey: queryKeys.customers(includeBlocked),
-    queryFn: () => listCustomers(includeBlocked),
+    queryKey: queryKeys.customers(includeBlocked, cityScope),
+    queryFn: () => listCustomers(includeBlocked, cityScope),
   });
 
   const mutation = useMutation({

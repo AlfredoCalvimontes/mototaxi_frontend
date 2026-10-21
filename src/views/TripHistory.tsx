@@ -21,7 +21,9 @@ import {
   maskPhone,
   todayInLaPaz,
 } from '@/lib/format';
+import { filterParams, useCityScope } from '@/lib/cityScope';
 import { strings } from '@/lib/strings';
+import { tripTypeLabel, useVehicleTypeNames } from '@/lib/useVehicleTypes';
 
 /** The endpoint offers no offset, so the limit is the only lever. */
 const LIMIT_OPTIONS = [200, 500, 1000] as const;
@@ -43,6 +45,7 @@ function triggerDownload(blob: Blob, filename: string) {
 
 export default function TripHistory() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const cityScope = useCityScope();
   const onlyAutoCompleted = searchParams.get(REVIEW_PARAM) === REVIEW_VALUE;
 
   const today = todayInLaPaz();
@@ -59,8 +62,9 @@ export default function TripHistory() {
       since: laPazDayStartIso(since),
       until: laPazDayEndIso(until),
       limit,
+      ...(cityScope && { city_uuid: cityScope }),
     }),
-    [since, until, limit],
+    [since, until, limit, cityScope],
   );
 
   const history = useQuery({
@@ -78,6 +82,7 @@ export default function TripHistory() {
   // window as the whole story.
   const truncated = (history.data?.length ?? 0) >= limit;
 
+  const typeNames = useVehicleTypeNames();
   const columns: Column<TripSummary>[] = useMemo(
     () => [
       {
@@ -118,6 +123,13 @@ export default function TripHistory() {
         secondary: true,
         sortValue: (trip) => trip.plate_number,
         cell: (trip) => trip.plate_number ?? EMPTY,
+      },
+      {
+        id: 'type',
+        header: strings.trips.vehicleType,
+        secondary: true,
+        sortValue: (trip) => tripTypeLabel(trip, typeNames),
+        cell: (trip) => tripTypeLabel(trip, typeNames),
       },
       {
         id: 'pickup',
@@ -167,7 +179,7 @@ export default function TripHistory() {
         cell: (trip) => formatDateTime(trip.ended_at),
       },
     ],
-    [],
+    [typeNames],
   );
 
   async function handleExport() {
@@ -228,9 +240,12 @@ export default function TripHistory() {
             type="checkbox"
             checked={onlyAutoCompleted}
             onChange={(e) =>
-              setSearchParams(e.target.checked ? { [REVIEW_PARAM]: REVIEW_VALUE } : {}, {
-                replace: true,
-              })
+              setSearchParams(
+                filterParams(searchParams, REVIEW_PARAM, e.target.checked ? REVIEW_VALUE : null),
+                {
+                  replace: true,
+                },
+              )
             }
             className="rounded border-slate-300"
           />

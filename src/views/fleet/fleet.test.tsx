@@ -6,7 +6,7 @@ import * as fx from '@/test/fixtures';
 import { renderApp } from '@/test/render';
 import { server } from '@/test/server';
 import Drivers from '@/views/Drivers';
-import Mototaxis from '@/views/Mototaxis';
+import Vehicles from '@/views/Vehicles';
 
 // Not the subject here, and rendering tiles per test is wasted work. The real
 // component is covered in FleetMap.test.tsx.
@@ -110,11 +110,11 @@ describe('registro', () => {
   });
 
   test('una mototaxi nueva envía los opcionales vacíos como null', async () => {
-    const bodies = captureBody('post', '/admin/mototaxis', fx.mototaxiDetail);
-    const { user } = renderApp(<Mototaxis />);
+    const bodies = captureBody('post', '/admin/vehicles', fx.vehicleDetail);
+    const { user } = renderApp(<Vehicles />);
     await screen.findByRole('table');
 
-    await user.click(screen.getByRole('button', { name: 'Registrar mototaxi' }));
+    await user.click(screen.getByRole('button', { name: 'Registrar vehículo' }));
     const dialog = within(screen.getByRole('dialog'));
     await user.type(dialog.getByLabelText(/Placa/), 'JKL456');
     await user.type(dialog.getByLabelText(/IMEI/), '860111222333444');
@@ -126,21 +126,24 @@ describe('registro', () => {
       alias: null,
       brand: null,
       model: null,
-      tracker_imei: '860111222333444',
+      device_id: '860111222333444',
+      tracker_type: 'GT06',
+      vehicle_type_uuid: null,
+      attributes: {},
       notes: null,
     });
   });
 
   test('un alta duplicada muestra el mensaje del servidor', async () => {
     server.use(
-      http.post(`${BASE}/admin/mototaxis`, () =>
+      http.post(`${BASE}/admin/vehicles`, () =>
         HttpResponse.json({ detail: 'La placa ya está registrada' }, { status: 409 }),
       ),
     );
-    const { user } = renderApp(<Mototaxis />);
+    const { user } = renderApp(<Vehicles />);
     await screen.findByRole('table');
 
-    await user.click(screen.getByRole('button', { name: 'Registrar mototaxi' }));
+    await user.click(screen.getByRole('button', { name: 'Registrar vehículo' }));
     const dialog = within(screen.getByRole('dialog'));
     await user.type(dialog.getByLabelText(/Placa/), 'ABC123');
     await user.click(dialog.getByRole('button', { name: 'Guardar' }));
@@ -152,12 +155,12 @@ describe('registro', () => {
 describe('recarga de la SIM en el formulario', () => {
   async function openNew(user: ReturnType<typeof renderApp>['user']) {
     await screen.findByRole('table');
-    await user.click(screen.getByRole('button', { name: 'Registrar mototaxi' }));
+    await user.click(screen.getByRole('button', { name: 'Registrar vehículo' }));
     return within(screen.getByRole('dialog'));
   }
 
   test('los campos de la SIM solo aparecen cuando hay un GPS', async () => {
-    const { user } = renderApp(<Mototaxis />);
+    const { user } = renderApp(<Vehicles />);
     const dialog = await openNew(user);
 
     expect(dialog.queryByLabelText('Última recarga')).not.toBeInTheDocument();
@@ -168,8 +171,8 @@ describe('recarga de la SIM en el formulario', () => {
   });
 
   test('una alta con GPS y recarga envía la fecha y el crédito', async () => {
-    const bodies = captureBody('post', '/admin/mototaxis', fx.mototaxiDetail);
-    const { user } = renderApp(<Mototaxis />);
+    const bodies = captureBody('post', '/admin/vehicles', fx.vehicleDetail);
+    const { user } = renderApp(<Vehicles />);
     const dialog = await openNew(user);
 
     await user.type(dialog.getByLabelText(/Placa/), 'JKL456');
@@ -180,15 +183,15 @@ describe('recarga de la SIM en el formulario', () => {
 
     await waitFor(() => expect(bodies).toHaveLength(1));
     expect(bodies[0]).toMatchObject({
-      tracker_imei: '860111222333444',
+      device_id: '860111222333444',
       sim_last_recharge_at: '2026-10-01',
       sim_last_recharge_amount: 10.5,
     });
   });
 
   test('la fecha sin el crédito (o al revés) no se envía y lo explica', async () => {
-    const bodies = captureBody('post', '/admin/mototaxis', fx.mototaxiDetail);
-    const { user } = renderApp(<Mototaxis />);
+    const bodies = captureBody('post', '/admin/vehicles', fx.vehicleDetail);
+    const { user } = renderApp(<Vehicles />);
     const dialog = await openNew(user);
 
     await user.type(dialog.getByLabelText(/Placa/), 'JKL456');
@@ -201,8 +204,8 @@ describe('recarga de la SIM en el formulario', () => {
   });
 
   test('un crédito que no es un número positivo se rechaza', async () => {
-    const bodies = captureBody('post', '/admin/mototaxis', fx.mototaxiDetail);
-    const { user } = renderApp(<Mototaxis />);
+    const bodies = captureBody('post', '/admin/vehicles', fx.vehicleDetail);
+    const { user } = renderApp(<Vehicles />);
     const dialog = await openNew(user);
 
     await user.type(dialog.getByLabelText(/Placa/), 'JKL456');
@@ -217,17 +220,17 @@ describe('recarga de la SIM en el formulario', () => {
 
   test('al editar, los valores guardados vienen cargados y se puede limpiar', async () => {
     server.use(
-      http.get(`${BASE}/admin/mototaxis/:uuid`, () =>
+      http.get(`${BASE}/admin/vehicles/:uuid`, () =>
         HttpResponse.json({
-          ...fx.mototaxiDetail,
+          ...fx.vehicleDetail,
           sim_last_recharge_at: '2026-10-01',
           sim_last_recharge_amount: 10,
           sim_next_recharge_at: '2026-10-31',
         }),
       ),
     );
-    const bodies = captureBody('patch', '/admin/mototaxis/:uuid', fx.mototaxiDetail);
-    const { user } = renderApp(<Mototaxis />);
+    const bodies = captureBody('patch', '/admin/vehicles/:uuid', fx.vehicleDetail);
+    const { user } = renderApp(<Vehicles />);
 
     await user.click((await rowFor('ABC123')).getByRole('button', { name: 'Editar' }));
     const dialog = within(await screen.findByRole('dialog'));
@@ -244,17 +247,17 @@ describe('recarga de la SIM en el formulario', () => {
 
   test('cambiar solo el crédito reenvía el par completo', async () => {
     server.use(
-      http.get(`${BASE}/admin/mototaxis/:uuid`, () =>
+      http.get(`${BASE}/admin/vehicles/:uuid`, () =>
         HttpResponse.json({
-          ...fx.mototaxiDetail,
+          ...fx.vehicleDetail,
           sim_last_recharge_at: '2026-10-01',
           sim_last_recharge_amount: 10,
           sim_next_recharge_at: '2026-10-31',
         }),
       ),
     );
-    const bodies = captureBody('patch', '/admin/mototaxis/:uuid', fx.mototaxiDetail);
-    const { user } = renderApp(<Mototaxis />);
+    const bodies = captureBody('patch', '/admin/vehicles/:uuid', fx.vehicleDetail);
+    const { user } = renderApp(<Vehicles />);
 
     await user.click((await rowFor('ABC123')).getByRole('button', { name: 'Editar' }));
     const dialog = within(await screen.findByRole('dialog'));
@@ -270,8 +273,8 @@ describe('recarga de la SIM en el formulario', () => {
 
 describe('edición de mototaxi: null limpia', () => {
   test('vaciar un campo opcional lo borra explícitamente', async () => {
-    const bodies = captureBody('patch', '/admin/mototaxis/:uuid', fx.mototaxiDetail);
-    const { user } = renderApp(<Mototaxis />);
+    const bodies = captureBody('patch', '/admin/vehicles/:uuid', fx.vehicleDetail);
+    const { user } = renderApp(<Vehicles />);
 
     await user.click((await rowFor('ABC123')).getByRole('button', { name: 'Editar' }));
     const dialog = within(await screen.findByRole('dialog'));
@@ -283,8 +286,8 @@ describe('edición de mototaxi: null limpia', () => {
   });
 
   test('un campo intacto nunca viaja como null', async () => {
-    const bodies = captureBody('patch', '/admin/mototaxis/:uuid', fx.mototaxiDetail);
-    const { user } = renderApp(<Mototaxis />);
+    const bodies = captureBody('patch', '/admin/vehicles/:uuid', fx.vehicleDetail);
+    const { user } = renderApp(<Vehicles />);
 
     await user.click((await rowFor('ABC123')).getByRole('button', { name: 'Editar' }));
     const dialog = within(await screen.findByRole('dialog'));
@@ -300,8 +303,8 @@ describe('edición de mototaxi: null limpia', () => {
 
 describe('desconexión del GPS', () => {
   test('vaciar el IMEI exige una confirmación propia antes de guardar', async () => {
-    const bodies = captureBody('patch', '/admin/mototaxis/:uuid', fx.mototaxiDetail);
-    const { user } = renderApp(<Mototaxis />);
+    const bodies = captureBody('patch', '/admin/vehicles/:uuid', fx.vehicleDetail);
+    const { user } = renderApp(<Vehicles />);
 
     await user.click((await rowFor('ABC123')).getByRole('button', { name: 'Editar' }));
     const form = within(await screen.findByRole('dialog'));
@@ -317,12 +320,12 @@ describe('desconexión del GPS', () => {
     await user.click(confirm.getByRole('button', { name: 'Desconectar GPS' }));
 
     await waitFor(() => expect(bodies).toHaveLength(1));
-    expect(bodies[0]).toEqual({ tracker_imei: null });
+    expect(bodies[0]).toEqual({ device_id: null });
   });
 
   test('cambiar el IMEI por otro no pide confirmación de desconexión', async () => {
-    const bodies = captureBody('patch', '/admin/mototaxis/:uuid', fx.mototaxiDetail);
-    const { user } = renderApp(<Mototaxis />);
+    const bodies = captureBody('patch', '/admin/vehicles/:uuid', fx.vehicleDetail);
+    const { user } = renderApp(<Vehicles />);
 
     await user.click((await rowFor('ABC123')).getByRole('button', { name: 'Editar' }));
     const form = within(await screen.findByRole('dialog'));
@@ -331,7 +334,7 @@ describe('desconexión del GPS', () => {
     await user.click(form.getByRole('button', { name: 'Guardar' }));
 
     await waitFor(() => expect(bodies).toHaveLength(1));
-    expect(bodies[0]).toEqual({ tracker_imei: '860999999999999' });
+    expect(bodies[0]).toEqual({ device_id: '860999999999999' });
   });
 });
 
@@ -384,27 +387,27 @@ describe('estado del conductor', () => {
 
 describe('asignación de mototaxi', () => {
   test('quitar la asignación se envía como null explícito', async () => {
-    const bodies = captureBody('patch', '/admin/drivers/:uuid/mototaxi', fx.driver);
+    const bodies = captureBody('patch', '/admin/drivers/:uuid/vehicle', fx.driver);
     const { user } = renderApp(<Drivers />);
 
     await user.click(
-      (await rowFor('Marco Peña')).getByRole('button', { name: 'Cambiar mototaxi' }),
+      (await rowFor('Marco Peña')).getByRole('button', { name: 'Cambiar vehículo' }),
     );
     const dialog = within(screen.getByRole('dialog'));
-    await user.selectOptions(dialog.getByLabelText('Mototaxi'), '');
+    await user.selectOptions(dialog.getByLabelText('Vehículo'), '');
     await user.click(dialog.getByRole('button', { name: 'Guardar' }));
 
     await waitFor(() => expect(bodies).toHaveLength(1));
-    expect(bodies[0]).toEqual({ mototaxi_uuid: null });
+    expect(bodies[0]).toEqual({ vehicle_uuid: null });
   });
 
   test('no ofrece vehículos que ya conduce otra persona', async () => {
     const { user } = renderApp(<Drivers />);
 
     await user.click(
-      (await rowFor('Lucía Vargas')).getByRole('button', { name: 'Asignar mototaxi' }),
+      (await rowFor('Lucía Vargas')).getByRole('button', { name: 'Asignar vehículo' }),
     );
-    const select = within(screen.getByRole('dialog')).getByLabelText('Mototaxi');
+    const select = within(screen.getByRole('dialog')).getByLabelText('Vehículo');
 
     // ABC123 la conduce Marco; XYZ789 está libre.
     expect(within(select).queryByRole('option', { name: 'ABC123' })).not.toBeInTheDocument();
@@ -420,7 +423,7 @@ describe('asignación de mototaxi', () => {
     const { user } = renderApp(<Drivers />);
 
     await user.click(
-      (await rowFor('Marco Peña')).getByRole('button', { name: 'Cambiar mototaxi' }),
+      (await rowFor('Marco Peña')).getByRole('button', { name: 'Cambiar vehículo' }),
     );
     const dialog = within(screen.getByRole('dialog'));
 
@@ -431,8 +434,8 @@ describe('asignación de mototaxi', () => {
 
 describe('estado del vehículo', () => {
   test('envía el nuevo estado de la unidad', async () => {
-    const bodies = captureBody('patch', '/admin/mototaxis/:uuid/status', fx.mototaxiDetail);
-    const { user } = renderApp(<Mototaxis />);
+    const bodies = captureBody('patch', '/admin/vehicles/:uuid/status', fx.vehicleDetail);
+    const { user } = renderApp(<Vehicles />);
 
     await user.click(
       (await rowFor('ABC123')).getByRole('button', { name: /^Estado del vehículo/ }),
@@ -446,7 +449,7 @@ describe('estado del vehículo', () => {
   });
 
   test('no ofrece estados de conductor: son cosas distintas', async () => {
-    const { user } = renderApp(<Mototaxis />);
+    const { user } = renderApp(<Vehicles />);
 
     await user.click(
       (await rowFor('ABC123')).getByRole('button', { name: /^Estado del vehículo/ }),
@@ -461,11 +464,11 @@ describe('estado del vehículo', () => {
 
   test('un rechazo del servidor se muestra dentro del diálogo', async () => {
     server.use(
-      http.patch(`${BASE}/admin/mototaxis/:uuid/status`, () =>
+      http.patch(`${BASE}/admin/vehicles/:uuid/status`, () =>
         HttpResponse.json({ detail: 'El conductor está en viaje' }, { status: 409 }),
       ),
     );
-    const { user } = renderApp(<Mototaxis />);
+    const { user } = renderApp(<Vehicles />);
 
     await user.click(
       (await rowFor('ABC123')).getByRole('button', { name: /^Estado del vehículo/ }),
@@ -581,14 +584,14 @@ describe('clave GPS del teléfono (del conductor)', () => {
     server.use(
       http.get(`${BASE}/admin/drivers`, () =>
         HttpResponse.json([
-          { ...fx.driverWithoutCheckin, has_phone_key: true, current_mototaxi_uuid: null },
+          { ...fx.driverWithoutCheckin, has_phone_key: true, current_vehicle_uuid: null },
         ]),
       ),
     );
     const { user } = renderApp(<Drivers />);
 
     const row = await rowFor('Lucía Vargas');
-    expect(row.getByText('Clave sin mototaxi')).toBeInTheDocument();
+    expect(row.getByText('Clave sin vehículo')).toBeInTheDocument();
 
     await user.click(row.getByRole('button', { name: /Clave GPS/ }));
     expect(
@@ -612,8 +615,8 @@ describe('clave GPS del teléfono (del conductor)', () => {
     expect(dialog.queryByTestId('phone-key')).not.toBeInTheDocument();
   });
 
-  test('la lista de mototaxis ya no ofrece la clave GPS', async () => {
-    renderApp(<Mototaxis />);
+  test('la lista de vehículos ya no ofrece la clave GPS', async () => {
+    renderApp(<Vehicles />);
 
     const row = await rowFor('ABC123');
     expect(row.queryByRole('button', { name: /Clave GPS/ })).not.toBeInTheDocument();
@@ -746,11 +749,11 @@ describe('lista de conductores: datos a la vista', () => {
     renderApp(<Drivers />);
 
     const withMoto = await rowFor('Marco Peña');
-    expect(withMoto.getByRole('button', { name: 'Cambiar mototaxi' })).toBeInTheDocument();
-    expect(withMoto.queryByRole('button', { name: 'Asignar mototaxi' })).not.toBeInTheDocument();
+    expect(withMoto.getByRole('button', { name: 'Cambiar vehículo' })).toBeInTheDocument();
+    expect(withMoto.queryByRole('button', { name: 'Asignar vehículo' })).not.toBeInTheDocument();
 
     const without = await rowFor('Lucía Vargas');
-    expect(without.getByRole('button', { name: 'Asignar mototaxi' })).toBeInTheDocument();
+    expect(without.getByRole('button', { name: 'Asignar vehículo' })).toBeInTheDocument();
   });
 
   test('la clave GPS configurada se ve como «Activa»; la que falta, como «Sin clave»', async () => {
@@ -768,5 +771,66 @@ describe('lista de conductores: datos a la vista', () => {
     const missing = (await rowFor('Lucía Vargas')).getByRole('button', { name: /Clave GPS/ });
     expect(within(missing).getByText('Sin clave')).toBeInTheDocument();
     expect(missing.className).not.toMatch(/emerald/);
+  });
+});
+
+describe('vehículo: tipo y atributos', () => {
+  test('el esquema del tipo pide sus datos y los envía tipados', async () => {
+    const bodies = captureBody('post', '/admin/vehicles', fx.vehicleDetail);
+    const { user } = renderApp(<Vehicles />);
+    await screen.findByRole('table');
+
+    await user.click(screen.getByRole('button', { name: 'Registrar vehículo' }));
+    const dialog = within(screen.getByRole('dialog'));
+    await user.type(dialog.getByLabelText(/Placa/), 'JKL456');
+    await user.selectOptions(
+      await dialog.findByLabelText('Tipo de vehículo'),
+      fx.globalMotoType.vehicle_type_uuid,
+    );
+
+    // Obligatorio: el formulario no llega al servidor sin el dato.
+    await user.click(dialog.getByRole('button', { name: 'Guardar' }));
+    expect(await dialog.findByText('Este dato es obligatorio')).toBeInTheDocument();
+    expect(bodies).toHaveLength(0);
+
+    await user.type(dialog.getByLabelText(/Asientos/), '3');
+    await user.click(dialog.getByRole('button', { name: 'Guardar' }));
+
+    await waitFor(() => expect(bodies).toHaveLength(1));
+    expect(bodies[0]).toMatchObject({
+      vehicle_type_uuid: fx.globalMotoType.vehicle_type_uuid,
+      attributes: { seats: 3 },
+    });
+  });
+
+  test('un entero con decimales se rechaza antes de enviar', async () => {
+    const bodies = captureBody('post', '/admin/vehicles', fx.vehicleDetail);
+    const { user } = renderApp(<Vehicles />);
+    await screen.findByRole('table');
+
+    await user.click(screen.getByRole('button', { name: 'Registrar vehículo' }));
+    const dialog = within(screen.getByRole('dialog'));
+    await user.type(dialog.getByLabelText(/Placa/), 'JKL456');
+    await user.selectOptions(
+      await dialog.findByLabelText('Tipo de vehículo'),
+      fx.globalMotoType.vehicle_type_uuid,
+    );
+    await user.type(dialog.getByLabelText(/Asientos/), '2.5');
+    await user.click(dialog.getByRole('button', { name: 'Guardar' }));
+
+    expect(await dialog.findByText('Escribe un número válido')).toBeInTheDocument();
+    expect(bodies).toHaveLength(0);
+  });
+
+  test('con otro protocolo el campo deja de llamarse IMEI', async () => {
+    const { user } = renderApp(<Vehicles />);
+    await screen.findByRole('table');
+
+    await user.click(screen.getByRole('button', { name: 'Registrar vehículo' }));
+    const dialog = within(screen.getByRole('dialog'));
+    await user.type(dialog.getByLabelText(/IMEI/), '860111222333444');
+    await user.selectOptions(dialog.getByLabelText('Protocolo del GPS'), 'SECUREMORE');
+
+    expect(dialog.getByLabelText('ID del dispositivo GPS')).toBeInTheDocument();
   });
 });

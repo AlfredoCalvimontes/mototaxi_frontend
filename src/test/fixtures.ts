@@ -7,10 +7,18 @@ import type {
   Driver,
   KPIs,
   RuntimeSetting,
-  Mototaxi,
-  MototaxiSummary,
+  Vehicle,
+  VehicleSummary,
   TripSummary,
   UserProfile,
+  VehicleType,
+  City,
+  Tenant,
+  UserCityAccess,
+  WhatsAppConfig,
+  TenantUsage,
+  AuditEntry,
+  TripKpiGroup,
 } from '@/api/types';
 
 export const adminProfile: UserProfile = {
@@ -18,9 +26,25 @@ export const adminProfile: UserProfile = {
   email: 'admin@mototaxis.bo',
   name: 'Ana',
   first_lastname: 'Gutiérrez',
-  role: 'ADMIN',
+  role: 'TENANT_ADMIN',
   is_active: true,
+  tenant_id: '33333333-3333-4333-8333-333333333333',
+  city_uuids: [],
 };
+
+export const superadminProfile: UserProfile = {
+  ...adminProfile,
+  role: 'SUPERADMIN',
+  tenant_id: null,
+};
+
+export const cityAdminProfile: UserProfile = {
+  ...adminProfile,
+  role: 'CITY_ADMIN',
+  city_uuids: ['44444444-4444-4444-8444-444444444444'],
+};
+
+export const operatorProfile: UserProfile = { ...cityAdminProfile, role: 'OPERATOR' };
 
 export const activeTrip: TripSummary = {
   trip_uuid: '22222222-2222-4222-8222-222222222222',
@@ -37,6 +61,9 @@ export const activeTrip: TripSummary = {
   rating: null,
   created_at: '2026-07-20T14:00:00Z',
   ended_at: null,
+  city_uuid: null,
+  requested_vehicle_type_uuid: null,
+  vehicle_type_uuid: null,
 };
 
 /** Estimated reach time — the UI must mark this as an estimate (plan §5.6). */
@@ -69,8 +96,9 @@ export const sharedLocationSetting: RuntimeSetting = {
   minimum: 5,
   maximum: 480,
   unit: 'minutes',
-  description: 'How long a location shared by hand keeps a mototaxi dispatchable',
+  description: 'How long a location shared by hand keeps a vehicle dispatchable',
   updated_at: null,
+  source: 'default',
 };
 
 export const simDaysSetting: RuntimeSetting = {
@@ -82,10 +110,11 @@ export const simDaysSetting: RuntimeSetting = {
   unit: 'days',
   description: 'How many days ten units of credit keep a tracker SIM alive',
   updated_at: null,
+  source: 'default',
 };
 
-export const mototaxiSummary: MototaxiSummary = {
-  mototaxi_uuid: '55555555-5555-4555-8555-555555555555',
+export const vehicleSummary: VehicleSummary = {
+  vehicle_uuid: '55555555-5555-4555-8555-555555555555',
   plate_number: 'ABC123',
   alias: null,
   status: 'AVAILABLE',
@@ -99,24 +128,30 @@ export const mototaxiSummary: MototaxiSummary = {
   sim_next_recharge_at: null,
   is_tracker_stale: false,
   current_driver_uuid: '66666666-6666-4666-8666-666666666666',
+  city_uuid: null,
+  vehicle_type_uuid: null,
 };
 
-export const staleMototaxiSummary: MototaxiSummary = {
-  ...mototaxiSummary,
-  mototaxi_uuid: '77777777-7777-4777-8777-777777777777',
+export const staleVehicleSummary: VehicleSummary = {
+  ...vehicleSummary,
+  vehicle_uuid: '77777777-7777-4777-8777-777777777777',
   plate_number: 'XYZ789',
   location_updated_at: '2026-07-20T13:00:00Z',
   is_tracker_stale: true,
   current_driver_uuid: null,
 };
 
-export const mototaxiDetail: Mototaxi = {
-  mototaxi_uuid: mototaxiSummary.mototaxi_uuid,
+export const vehicleDetail: Vehicle = {
+  vehicle_uuid: vehicleSummary.vehicle_uuid,
   plate_number: 'ABC123',
   alias: null,
   brand: 'Honda',
   model: 'CG 125',
-  tracker_imei: '860123456789012',
+  device_id: '860123456789012',
+  tracker_type: 'GT06',
+  vehicle_type_uuid: null,
+  attributes: {},
+  city_uuid: null,
   sim_last_recharge_at: null,
   sim_last_recharge_amount: null,
   sim_next_recharge_at: null,
@@ -139,7 +174,7 @@ export const driver: Driver = {
   phone_whatsapp: '+59171234567',
   license_number: 'LIC-4421',
   status: 'AVAILABLE',
-  current_mototaxi_uuid: mototaxiSummary.mototaxi_uuid,
+  current_vehicle_uuid: vehicleSummary.vehicle_uuid,
   offer_accepted_count: 42,
   offer_declined_count: 3,
   offer_timeout_count: 1,
@@ -159,6 +194,7 @@ export const driver: Driver = {
   usage_credit_expires_on: null,
   usage_credit_expired: false,
   created_at: '2026-05-02T09:00:00Z',
+  city_uuid: null,
 };
 
 /** No check-in today: receives no offers, so the panel must surface it (spec §10.5). */
@@ -169,7 +205,7 @@ export const driverWithoutCheckin: Driver = {
   ci: '1234567 TJ',
   phone_whatsapp: '+59176543210',
   status: 'OFFLINE',
-  current_mototaxi_uuid: null,
+  current_vehicle_uuid: null,
   last_checkin_at: '2026-07-18T12:00:00Z',
   has_checked_in_today: false,
 };
@@ -208,6 +244,7 @@ export const usageCreditSetting: RuntimeSetting = {
   unit: 'credit/day',
   description: 'How much usage credit a driver consumes each day',
   updated_at: null,
+  source: 'default',
 };
 
 export const customer: CustomerSummary = {
@@ -219,6 +256,7 @@ export const customer: CustomerSummary = {
   average_rating_given: 4.5,
   is_blocked: false,
   last_message_at: '2026-07-20T13:45:00Z',
+  city_uuid: null,
 };
 
 export const blockedCustomer: CustomerSummary = {
@@ -259,7 +297,7 @@ export const noAlerts: Alerts = {
 
 export const positionCheck: DriverPositionCheck = {
   driver_uuid: driver.driver_uuid,
-  mototaxi_uuid: mototaxiSummary.mototaxi_uuid,
+  vehicle_uuid: vehicleSummary.vehicle_uuid,
   driver_fix: {
     lat: -21.2625,
     lon: -63.469,
@@ -296,4 +334,144 @@ export const positionCheck: DriverPositionCheck = {
     },
   ],
   tracker_trace: [],
+};
+
+export const globalMotoType: VehicleType = {
+  vehicle_type_uuid: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  tenant_uuid: null,
+  code: 'moto',
+  display_name: 'Mototaxi',
+  attribute_schema: [{ key: 'seats', type: 'int', required: true, label: 'Asientos' }],
+  is_active: true,
+  is_global: true,
+  created_at: '2026-10-01T10:00:00Z',
+};
+
+export const ownVanType: VehicleType = {
+  vehicle_type_uuid: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+  tenant_uuid: adminProfile.tenant_id ?? null,
+  code: 'minivan',
+  display_name: 'Minivan',
+  attribute_schema: [],
+  is_active: true,
+  is_global: false,
+  created_at: '2026-10-02T10:00:00Z',
+};
+
+export const tenant: Tenant = {
+  tenant_id: adminProfile.tenant_id as string,
+  name: 'Mototaxi Seguro',
+  slug: 'mototaxi-seguro',
+  is_active: true,
+  contact_email: 'info@mototaxiseguro.bo',
+  contact_phone: '+59171111111',
+  deactivated_at: null,
+  created_at: '2026-01-01T10:00:00Z',
+  updated_at: '2026-01-01T10:00:00Z',
+};
+
+export const otherTenant: Tenant = {
+  ...tenant,
+  tenant_id: '99999999-9999-4999-8999-999999999999',
+  name: 'Taxi Sur',
+  slug: 'taxi-sur',
+};
+
+export const city: City = {
+  city_id: '44444444-4444-4444-8444-444444444444',
+  tenant_id: tenant.tenant_id,
+  name: 'Villa Montes',
+  timezone: 'America/La_Paz',
+  geofence_wkt: 'POLYGON((-63.5 -21.3, -63.4 -21.3, -63.4 -21.2, -63.5 -21.3))',
+  geofence_geojson: {
+    type: 'Polygon',
+    coordinates: [
+      [
+        [-63.5, -21.3],
+        [-63.4, -21.3],
+        [-63.4, -21.2],
+        [-63.5, -21.3],
+      ],
+    ],
+  },
+  is_active: true,
+  created_at: '2026-01-02T10:00:00Z',
+  updated_at: '2026-01-02T10:00:00Z',
+};
+
+export const secondCity: City = {
+  ...city,
+  city_id: '55555555-5555-4555-8555-555555555555',
+  name: 'Yacuiba',
+  geofence_wkt: null,
+  geofence_geojson: null,
+};
+
+export const cityGrant: UserCityAccess = {
+  user_city_access_id: '88888888-8888-4888-8888-888888888888',
+  user_id: cityAdminProfile.user_uuid,
+  city_id: city.city_id,
+  created_at: '2026-02-01T10:00:00Z',
+};
+
+export const whatsappConfig: WhatsAppConfig = {
+  tenant_uuid: tenant.tenant_id,
+  phone_number_id: '1090000000000001',
+  waba_id: '1590190706485878',
+  display_phone_number: '+591 7000 0001',
+  is_active: true,
+  updated_at: '2026-10-10T12:00:00Z',
+};
+
+export const usageRows: TenantUsage[] = [
+  {
+    tenant_uuid: tenant.tenant_id,
+    active_drivers: 12,
+    vehicles: 14,
+    trips: 340,
+    inbound_messages: 1200,
+    outbound_messages: 1500,
+  },
+  {
+    tenant_uuid: otherTenant.tenant_id,
+    active_drivers: 3,
+    vehicles: 3,
+    trips: 40,
+    inbound_messages: 90,
+    outbound_messages: 120,
+  },
+];
+
+export const kpiGroups: TripKpiGroup[] = [
+  {
+    group_uuid: tenant.tenant_id,
+    trips: 50,
+    completed: 40,
+    cancelled: 6,
+    no_driver: 4,
+    average_reach_time_seconds: 300,
+    average_rating: 4.6,
+  },
+  {
+    group_uuid: otherTenant.tenant_id,
+    trips: 8,
+    completed: 7,
+    cancelled: 1,
+    no_driver: 0,
+    average_reach_time_seconds: null,
+    average_rating: null,
+  },
+];
+
+export const auditEntry: AuditEntry = {
+  audit_log_uuid: 'abababab-abab-4bab-8bab-abababababab',
+  tenant_uuid: tenant.tenant_id,
+  table_name: 'drivers',
+  entity_id: '66666666-6666-4666-8666-666666666666',
+  action: 'UPDATE',
+  actor_id: superadminProfile.user_uuid,
+  actor_ip: '10.0.0.1',
+  before: { name: 'Marco' },
+  after: { name: 'Marco Peña' },
+  created_at: '2026-10-15T15:00:00Z',
 };

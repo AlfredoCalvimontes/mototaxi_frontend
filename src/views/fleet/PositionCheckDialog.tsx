@@ -34,8 +34,8 @@ export function PositionCheckDialog({ driver, onClose }: { driver: Driver; onClo
 
         {check.data && (
           <>
-            {check.data.mototaxi_uuid === null && (
-              <p className="text-sm text-slate-600">{strings.drivers.positionCheckNoMototaxi}</p>
+            {check.data.vehicle_uuid === null && (
+              <p className="text-sm text-slate-600">{strings.drivers.positionCheckNoVehicle}</p>
             )}
 
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">

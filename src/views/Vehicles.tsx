@@ -2,20 +2,24 @@ import { useQuery } from '@tanstack/react-query';
 import { lazy, Suspense, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
-import { listDrivers, listMototaxis } from '@/api/admin';
+import { listDrivers, listVehicles } from '@/api/admin';
 import { POLL, queryKeys } from '@/api/queries';
-import type { MototaxiSummary } from '@/api/types';
+import type { VehicleSummary } from '@/api/types';
 import { DataTable, type Column } from '@/components/DataTable';
 import { ErrorState } from '@/components/ErrorState';
 import { StatusBadge, ToneBadge, WarningBadge } from '@/components/StatusBadge';
 import { TableSkeleton } from '@/components/Skeleton';
-import { EMPTY, formatCoords, formatDate, formatRelative } from '@/lib/format';
+import { EMPTY, formatCoords, formatDate, formatRelative, vehicleLabel } from '@/lib/format';
 import { usePersistentFlag } from '@/lib/persistentFlag';
 import { simRechargeState } from '@/lib/sim';
+import { filterParams, useCityScope } from '@/lib/cityScope';
+import { useVehicleTypeNames } from '@/lib/useVehicleTypes';
+import { useCities } from '@/lib/useCities';
 import { strings } from '@/lib/strings';
-import { MototaxiEditLoader } from '@/views/fleet/MototaxiEditLoader';
-import { MototaxiForm } from '@/views/fleet/MototaxiForm';
-import { MototaxiStatusDialog } from '@/views/fleet/MototaxiStatusDialog';
+import { MoveToCityDialog } from '@/views/fleet/MoveToCityDialog';
+import { VehicleEditLoader } from '@/views/fleet/VehicleEditLoader';
+import { VehicleForm } from '@/views/fleet/VehicleForm';
+import { VehicleStatusDialog } from '@/views/fleet/VehicleStatusDialog';
 
 // Leaflet and its CSS are the heaviest thing in the bundle and only one view
 // needs them, so the map loads on demand.
@@ -30,10 +34,11 @@ const STALE_VALUE = 'sin-senal';
 const SIM_PARAM = 'sim';
 const SIM_VALUE = 'vencida';
 
-type MototaxiDialog =
+type VehicleDialog =
   | { kind: 'create' }
   | { kind: 'edit'; uuid: string }
-  | { kind: 'status'; mototaxi: MototaxiSummary };
+  | { kind: 'status'; vehicle: VehicleSummary }
+  | { kind: 'city'; vehicle: VehicleSummary };
 
 /** The SIM columns, hidden together by one toggle. */
 const SIM_COLUMN_IDS = new Set(['simLastRecharge', 'simAmount', 'simNext']);
@@ -54,47 +59,50 @@ const SIM_BADGES = {
 } as const;
 
 /** The next top-up date, coloured as it nears: yellow within a week, red within three days. */
-function SimNextRecharge({ unit }: { unit: MototaxiSummary }) {
+function SimNextRecharge({ unit }: { unit: VehicleSummary }) {
   if (!unit.has_tracker || !unit.sim_next_recharge_at) return null;
   const { state, daysLeft } = simRechargeState(unit.sim_next_recharge_at);
   if (state === 'none' || daysLeft === null) return null;
   const label =
     state === 'overdue'
-      ? strings.mototaxis.simOverdue(-daysLeft)
+      ? strings.vehicles.simOverdue(-daysLeft)
       : state === 'urgent'
-        ? strings.mototaxis.simUrgent(daysLeft)
+        ? strings.vehicles.simUrgent(daysLeft)
         : state === 'soon'
-          ? strings.mototaxis.simSoon(daysLeft)
-          : strings.mototaxis.simOk(daysLeft);
+          ? strings.vehicles.simSoon(daysLeft)
+          : strings.vehicles.simOk(daysLeft);
   return (
     <div className="flex flex-col items-start gap-0.5">
       <span className={`tabular-nums ${SIM_TEXT[state]}`}>
         {formatDate(unit.sim_next_recharge_at)}
       </span>
-      <ToneBadge tone={SIM_BADGES[state].tone} title={strings.mototaxis.simHint}>
+      <ToneBadge tone={SIM_BADGES[state].tone} title={strings.vehicles.simHint}>
         {label}
       </ToneBadge>
     </div>
   );
 }
 
-export default function Mototaxis() {
+export default function Vehicles() {
   const [searchParams, setSearchParams] = useSearchParams();
   const onlyStale = searchParams.get(STALE_PARAM) === STALE_VALUE;
   const onlyNoSimCredit = searchParams.get(SIM_PARAM) === SIM_VALUE;
-  const [dialog, setDialog] = useState<MototaxiDialog | null>(null);
+  const [dialog, setDialog] = useState<VehicleDialog | null>(null);
+  const cityScope = useCityScope();
+  const typeNames = useVehicleTypeNames();
+  const { cities } = useCities();
   const [hideSim, toggleHideSim] = usePersistentFlag(HIDE_SIM_KEY, false);
 
-  const mototaxis = useQuery({
-    queryKey: queryKeys.mototaxis,
-    queryFn: listMototaxis,
-    refetchInterval: POLL.mototaxis,
+  const vehicles = useQuery({
+    queryKey: queryKeys.vehiclesIn(cityScope),
+    queryFn: () => listVehicles(cityScope),
+    refetchInterval: POLL.vehicles,
   });
 
   // The summary carries a driver uuid, not a name; the drivers list is already
   // polled elsewhere, so this resolves names without a per-row request.
   const drivers = useQuery({
-    queryKey: queryKeys.drivers(),
+    queryKey: queryKeys.drivers(undefined, null),
     queryFn: () => listDrivers(),
     refetchInterval: POLL.drivers,
   });
@@ -105,24 +113,29 @@ export default function Mototaxis() {
     return map;
   }, [drivers.data]);
 
-  const driverNameOf = (unit: MototaxiSummary) =>
+  const driverNameOf = (unit: VehicleSummary) =>
     unit.current_driver_uuid ? (driverNames.get(unit.current_driver_uuid) ?? null) : null;
 
+  const hasCities = cities.length > 0;
+  const geofences = cities
+    .filter((c) => c.is_active && c.geofence_geojson && (!cityScope || c.city_id === cityScope))
+    .map((c) => c.geofence_geojson!);
+
   const rows = useMemo(() => {
-    const all = mototaxis.data ?? [];
+    const all = vehicles.data ?? [];
     return all.filter(
       (unit) =>
         (!onlyStale || unit.is_tracker_stale) &&
         (!onlyNoSimCredit ||
           (unit.has_tracker && simRechargeState(unit.sim_next_recharge_at).state === 'overdue')),
     );
-  }, [mototaxis.data, onlyStale, onlyNoSimCredit]);
+  }, [vehicles.data, onlyStale, onlyNoSimCredit]);
 
-  const columns: Column<MototaxiSummary>[] = useMemo(
+  const columns: Column<VehicleSummary>[] = useMemo(
     () => [
       {
         id: 'plate',
-        header: strings.mototaxis.plate,
+        header: strings.vehicles.plate,
         sortValue: (unit) => unit.plate_number,
         searchValue: (unit) => `${unit.alias ?? ''} ${unit.plate_number}`,
         cell: (unit) => (
@@ -136,14 +149,14 @@ export default function Mototaxis() {
       },
       {
         id: 'status',
-        header: strings.mototaxis.status,
+        header: strings.vehicles.status,
         sortValue: (unit) => unit.status,
         cell: (unit) => (
           <div className="flex flex-wrap items-center gap-1">
-            <StatusBadge kind="mototaxi" value={unit.status} />
+            <StatusBadge kind="vehicle" value={unit.status} />
             {unit.is_tracker_stale && (
-              <WarningBadge title={strings.mototaxis.staleHint}>
-                {strings.mototaxis.staleTracker}
+              <WarningBadge title={strings.vehicles.staleHint}>
+                {strings.vehicles.staleTracker}
               </WarningBadge>
             )}
           </div>
@@ -151,7 +164,7 @@ export default function Mototaxis() {
       },
       {
         id: 'driver',
-        header: strings.mototaxis.driver,
+        header: strings.vehicles.driver,
         sortValue: (unit) =>
           unit.current_driver_uuid ? (driverNames.get(unit.current_driver_uuid) ?? '') : null,
         cell: (unit) =>
@@ -159,7 +172,7 @@ export default function Mototaxis() {
       },
       {
         id: 'position',
-        header: strings.mototaxis.position,
+        header: strings.vehicles.position,
         secondary: true,
         sortValue: (unit) => formatCoords(unit.lat, unit.lon),
         cell: (unit) => (
@@ -168,7 +181,7 @@ export default function Mototaxis() {
       },
       {
         id: 'lastUpdate',
-        header: strings.mototaxis.lastUpdate,
+        header: strings.vehicles.lastUpdate,
         // Sorting by the raw timestamp, not by the rendered "hace 3 min".
         sortValue: (unit) => unit.location_updated_at ?? null,
         cell: (unit) =>
@@ -182,12 +195,12 @@ export default function Mototaxis() {
               )}
             </div>
           ) : (
-            strings.mototaxis.noPosition
+            strings.vehicles.noPosition
           ),
       },
       {
         id: 'simLastRecharge',
-        header: strings.mototaxis.simLastRecharge,
+        header: strings.vehicles.simLastRecharge,
         secondary: true,
         sortValue: (unit) => unit.sim_last_recharge_at ?? null,
         // Empty — not a dash — when there is no tracker, so no SIM: it does not apply.
@@ -195,7 +208,7 @@ export default function Mototaxis() {
       },
       {
         id: 'simAmount',
-        header: strings.mototaxis.simAmount,
+        header: strings.vehicles.simAmount,
         align: 'right',
         secondary: true,
         sortValue: (unit) => unit.sim_last_recharge_amount ?? null,
@@ -206,7 +219,7 @@ export default function Mototaxis() {
       },
       {
         id: 'simNext',
-        header: strings.mototaxis.simNextRecharge,
+        header: strings.vehicles.simNextRecharge,
         secondary: true,
         sortValue: (unit) => unit.sim_next_recharge_at ?? null,
         cell: (unit) => <SimNextRecharge unit={unit} />,
@@ -218,41 +231,50 @@ export default function Mototaxis() {
           <div className="flex flex-wrap justify-end gap-1">
             <button
               type="button"
-              onClick={() => setDialog({ kind: 'edit', uuid: unit.mototaxi_uuid })}
+              onClick={() => setDialog({ kind: 'edit', uuid: unit.vehicle_uuid })}
               className="rounded border border-slate-300 px-2 py-1 text-xs font-medium whitespace-nowrap text-slate-700 hover:bg-slate-50"
             >
               {strings.common.edit}
             </button>
+            {hasCities && (
+              <button
+                type="button"
+                onClick={() => setDialog({ kind: 'city', vehicle: unit })}
+                className="rounded border border-slate-300 px-2 py-1 text-xs font-medium whitespace-nowrap text-slate-700 hover:bg-slate-50"
+              >
+                {strings.tenancy.moveToCity}
+              </button>
+            )}
             <button
               type="button"
-              onClick={() => setDialog({ kind: 'status', mototaxi: unit })}
+              onClick={() => setDialog({ kind: 'status', vehicle: unit })}
               className="inline-flex items-center gap-1.5 rounded border border-slate-300 px-2 py-1 text-xs font-medium whitespace-nowrap text-slate-700 hover:bg-slate-50"
             >
               {strings.fleet.vehicleStatus}
-              <StatusBadge kind="mototaxi" value={unit.status} />
+              <StatusBadge kind="vehicle" value={unit.status} />
             </button>
           </div>
         ),
       },
     ],
-    [driverNames],
+    [driverNames, hasCities],
   );
 
-  if (mototaxis.isPending) return <TableSkeleton rows={5} />;
-  if (mototaxis.isError) {
-    return <ErrorState error={mototaxis.error} onRetry={() => void mototaxis.refetch()} />;
+  if (vehicles.isPending) return <TableSkeleton rows={5} />;
+  if (vehicles.isError) {
+    return <ErrorState error={vehicles.error} onRetry={() => void vehicles.refetch()} />;
   }
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold text-slate-900">{strings.mototaxis.heading}</h1>
+        <h1 className="text-xl font-semibold text-slate-900">{strings.vehicles.heading}</h1>
         <button
           type="button"
           onClick={() => setDialog({ kind: 'create' })}
           className="rounded bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
         >
-          {strings.fleet.newMototaxi}
+          {strings.fleet.newVehicle}
         </button>
         <button
           type="button"
@@ -260,7 +282,7 @@ export default function Mototaxis() {
           aria-pressed={hideSim}
           className="rounded border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
         >
-          {hideSim ? strings.mototaxis.showSim : strings.mototaxis.hideSim}
+          {hideSim ? strings.vehicles.showSim : strings.vehicles.hideSim}
         </button>
         <label className="flex items-center gap-2 text-sm text-slate-700">
           <input
@@ -268,53 +290,66 @@ export default function Mototaxis() {
             checked={onlyStale}
             onChange={(e) =>
               // Kept in the URL so the dashboard alert can link straight here.
-              setSearchParams(e.target.checked ? { [STALE_PARAM]: STALE_VALUE } : {}, {
-                replace: true,
-              })
+              setSearchParams(
+                filterParams(searchParams, STALE_PARAM, e.target.checked ? STALE_VALUE : null),
+                {
+                  replace: true,
+                },
+              )
             }
             className="rounded border-slate-300"
           />
-          {strings.mototaxis.staleTracker}
+          {strings.vehicles.staleTracker}
         </label>
         <label className="flex items-center gap-2 text-sm text-slate-700">
           <input
             type="checkbox"
             checked={onlyNoSimCredit}
             onChange={(e) =>
-              setSearchParams(e.target.checked ? { [SIM_PARAM]: SIM_VALUE } : {}, {
-                replace: true,
-              })
+              setSearchParams(
+                filterParams(searchParams, SIM_PARAM, e.target.checked ? SIM_VALUE : null),
+                {
+                  replace: true,
+                },
+              )
             }
             className="rounded border-slate-300"
           />
-          {strings.mototaxis.noSimCredit}
+          {strings.vehicles.noSimCredit}
         </label>
       </div>
 
       <Suspense fallback={<div className="h-72 animate-pulse rounded-lg bg-slate-100" />}>
-        <FleetMap units={rows} />
+        <FleetMap units={rows} geofences={geofences} typeNames={typeNames} />
       </Suspense>
 
       <DataTable
         rows={rows}
         columns={hideSim ? columns.filter((column) => !SIM_COLUMN_IDS.has(column.id)) : columns}
-        rowKey={(unit) => unit.mototaxi_uuid}
-        caption={strings.mototaxis.heading}
+        rowKey={(unit) => unit.vehicle_uuid}
+        caption={strings.vehicles.heading}
         searchPlaceholder={strings.common.search}
         initialSort={{ columnId: 'plate', direction: 'asc' }}
         rowClassName={(unit) => (unit.is_tracker_stale ? 'bg-amber-50/60' : 'hover:bg-slate-50')}
       />
 
-      {dialog?.kind === 'create' && (
-        <MototaxiForm mototaxi={null} onClose={() => setDialog(null)} />
-      )}
+      {dialog?.kind === 'create' && <VehicleForm vehicle={null} onClose={() => setDialog(null)} />}
       {dialog?.kind === 'edit' && (
-        <MototaxiEditLoader uuid={dialog.uuid} onClose={() => setDialog(null)} />
+        <VehicleEditLoader uuid={dialog.uuid} onClose={() => setDialog(null)} />
+      )}
+      {dialog?.kind === 'city' && (
+        <MoveToCityDialog
+          kind="vehicle"
+          uuid={dialog.vehicle.vehicle_uuid}
+          label={vehicleLabel(dialog.vehicle)}
+          currentCityUuid={dialog.vehicle.city_uuid}
+          onClose={() => setDialog(null)}
+        />
       )}
       {dialog?.kind === 'status' && (
-        <MototaxiStatusDialog
-          mototaxi={dialog.mototaxi}
-          driverName={driverNameOf(dialog.mototaxi)}
+        <VehicleStatusDialog
+          vehicle={dialog.vehicle}
+          driverName={driverNameOf(dialog.vehicle)}
           onClose={() => setDialog(null)}
         />
       )}

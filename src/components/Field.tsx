@@ -6,7 +6,7 @@ export type FieldProps = {
   label: string;
   value: string;
   onChange: (value: string) => void;
-  type?: 'text' | 'tel' | 'date';
+  type?: 'text' | 'tel' | 'date' | 'password';
   required?: boolean;
   placeholder?: string;
   hint?: ReactNode;
@@ -35,6 +35,7 @@ export function Field({
       <input
         id={id}
         type={type}
+        autoComplete={type === 'password' ? 'new-password' : undefined}
         value={value}
         disabled={disabled}
         placeholder={placeholder}
@@ -89,6 +90,50 @@ export function FormDialog({
         </div>
         {children}
       </div>
+    </div>
+  );
+}
+
+export type SelectOption = { value: string; label: string };
+
+export function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+  hint,
+  disabled,
+  required,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: SelectOption[];
+  hint?: ReactNode;
+  disabled?: boolean;
+  required?: boolean;
+}) {
+  const id = useId();
+  return (
+    <div className="space-y-1">
+      <label htmlFor={id} className="block text-sm font-medium text-slate-700">
+        {label}
+        {required && <span className="text-red-600"> *</span>}
+      </label>
+      <select
+        id={id}
+        value={value}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm focus:border-slate-500 focus:outline-none disabled:bg-slate-100"
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      {hint && <p className="text-xs text-slate-500">{hint}</p>}
     </div>
   );
 }

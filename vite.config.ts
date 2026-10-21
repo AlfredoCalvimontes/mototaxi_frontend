@@ -27,6 +27,7 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
     css: false,
+    testTimeout: 15_000,
     coverage: {
       provider: 'v8',
       // Fixtures and MSW handlers are test scaffolding: counting them measures

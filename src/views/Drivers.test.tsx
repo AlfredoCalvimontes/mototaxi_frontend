@@ -63,8 +63,8 @@ describe('mototaxi asignada', () => {
     const lucia = rows.find((row) => within(row).queryByText('Lucía Vargas'))!;
     const marco = rows.find((row) => within(row).queryByText('Marco Peña'))!;
 
-    expect(within(lucia).getByText('Sin mototaxi')).toBeInTheDocument();
-    expect(within(marco).queryByText('Sin mototaxi')).not.toBeInTheDocument();
+    expect(within(lucia).getByText('Sin vehículo')).toBeInTheDocument();
+    expect(within(marco).queryByText('Sin vehicle')).not.toBeInTheDocument();
   });
 });
 

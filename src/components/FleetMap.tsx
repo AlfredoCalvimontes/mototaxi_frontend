@@ -1,8 +1,9 @@
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { MapContainer, Marker, Popup, TileLayer, Tooltip } from 'react-leaflet';
+import { MapContainer, Marker, Polygon, Popup, TileLayer, Tooltip } from 'react-leaflet';
 
-import type { MototaxiSummary } from '@/api/types';
+import type { GeoJsonPolygon, VehicleSummary } from '@/api/types';
+import { toLatLngs } from '@/lib/geo';
 import { EMPTY, formatRelative, markerLabel } from '@/lib/format';
 import { strings } from '@/lib/strings';
 
@@ -24,19 +25,31 @@ function markerIcon(stale: boolean) {
   });
 }
 
-type Located = MototaxiSummary & { lat: number; lon: number };
+type Located = VehicleSummary & { lat: number; lon: number };
 
-function hasPosition(unit: MototaxiSummary): unit is Located {
+function hasPosition(unit: VehicleSummary): unit is Located {
   return unit.lat !== null && unit.lon !== null;
 }
 
-export function FleetMap({ units }: { units: MototaxiSummary[] }) {
+export function FleetMap({
+  units,
+  geofences = [],
+  typeNames,
+}: {
+  units: VehicleSummary[];
+  /** Service perimeters of the cities in view, drawn under the markers. */
+  geofences?: GeoJsonPolygon[];
+  /** Display name per vehicle type uuid; shown next to each marker's label. */
+  typeNames?: Map<string, string>;
+}) {
   const located = units.filter(hasPosition);
+  const typeOf = (unit: VehicleSummary) =>
+    unit.vehicle_type_uuid ? typeNames?.get(unit.vehicle_type_uuid) : undefined;
 
   if (located.length === 0) {
     return (
       <div className="grid h-72 place-items-center rounded-lg border border-dashed border-slate-300 bg-white text-sm text-slate-500">
-        {strings.mototaxis.mapUnavailable}
+        {strings.vehicles.mapUnavailable}
       </div>
     );
   }
@@ -56,25 +69,34 @@ export function FleetMap({ units }: { units: MototaxiSummary[] }) {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
+      {geofences.map((polygon, index) => (
+        <Polygon
+          key={index}
+          positions={toLatLngs(polygon)}
+          pathOptions={{ color: '#0f172a', weight: 2, dashArray: '6 4', fillOpacity: 0.05 }}
+          interactive={false}
+        />
+      ))}
       {located.map((unit) => (
         <Marker
-          key={unit.mototaxi_uuid}
+          key={unit.vehicle_uuid}
           position={[unit.lat, unit.lon]}
           icon={markerIcon(unit.is_tracker_stale)}
         >
           {/* Always visible, so a dot can be matched to a unit without clicking it. */}
           <Tooltip permanent direction="right" offset={[10, 0]}>
             {markerLabel(unit)}
+            {typeOf(unit) && ` · ${typeOf(unit)}`}
           </Tooltip>
           <Popup>
             <p className="font-medium">
               {unit.alias ? `${unit.alias} · ${unit.plate_number}` : unit.plate_number}
             </p>
             <p className="text-xs text-slate-600">
-              {strings.mototaxis.lastUpdate}: {formatRelative(unit.location_updated_at) || EMPTY}
+              {strings.vehicles.lastUpdate}: {formatRelative(unit.location_updated_at) || EMPTY}
             </p>
             {unit.is_tracker_stale && (
-              <p className="text-xs font-medium text-amber-700">{strings.mototaxis.staleTracker}</p>
+              <p className="text-xs font-medium text-amber-700">{strings.vehicles.staleTracker}</p>
             )}
           </Popup>
         </Marker>

@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, test } from 'vitest';
 
-import type { MototaxiSummary } from '@/api/types';
+import type { VehicleSummary } from '@/api/types';
 import { FleetMap } from '@/components/FleetMap';
 import * as fx from '@/test/fixtures';
 
@@ -37,7 +37,7 @@ const STALE = '#d97706';
 describe('unidades sin posición', () => {
   test('sin ninguna posición no dibuja el mapa y lo explica', () => {
     const { container } = render(
-      <FleetMap units={[{ ...fx.mototaxiSummary, lat: null, lon: null }]} />,
+      <FleetMap units={[{ ...fx.vehicleSummary, lat: null, lon: null }]} />,
     );
 
     expect(screen.getByText(/Ninguna unidad tiene posición/)).toBeInTheDocument();
@@ -50,12 +50,12 @@ describe('unidades sin posición', () => {
   });
 
   test('las unidades sin posición se omiten, no se dibujan en 0,0', () => {
-    const sinPosicion: MototaxiSummary = {
-      ...fx.staleMototaxiSummary,
+    const sinPosicion: VehicleSummary = {
+      ...fx.staleVehicleSummary,
       lat: null,
       lon: null,
     };
-    const { container } = render(<FleetMap units={[fx.mototaxiSummary, sinPosicion]} />);
+    const { container } = render(<FleetMap units={[fx.vehicleSummary, sinPosicion]} />);
 
     // Golfo de Guinea: una unidad dibujada en 0,0 es un bug clásico de mapas.
     expect(markers(container)).toHaveLength(1);
@@ -64,16 +64,12 @@ describe('unidades sin posición', () => {
 
 describe('marcadores', () => {
   test('dibuja un marcador por unidad localizada', () => {
-    const { container } = render(
-      <FleetMap units={[fx.mototaxiSummary, fx.staleMototaxiSummary]} />,
-    );
+    const { container } = render(<FleetMap units={[fx.vehicleSummary, fx.staleVehicleSummary]} />);
     expect(markers(container)).toHaveLength(2);
   });
 
   test('el GPS sin señal se distingue por color del que reporta', () => {
-    const { container } = render(
-      <FleetMap units={[fx.mototaxiSummary, fx.staleMototaxiSummary]} />,
-    );
+    const { container } = render(<FleetMap units={[fx.vehicleSummary, fx.staleVehicleSummary]} />);
     const [fresh, stale] = markers(container);
 
     expect(colorOf(fresh!)).toContain(FRESH);
@@ -83,7 +79,7 @@ describe('marcadores', () => {
   test('los iconos no dependen de imágenes externas', () => {
     // Los iconos por defecto de Leaflet apuntan a un CDN que no existe en el
     // bundle: con ellos los marcadores desaparecen en silencio.
-    const { container } = render(<FleetMap units={[fx.mototaxiSummary]} />);
+    const { container } = render(<FleetMap units={[fx.vehicleSummary]} />);
 
     expect(container.querySelector('.leaflet-marker-icon img')).toBeNull();
     expect(colorOf(markers(container)[0]!)).toContain('border-radius');
@@ -93,7 +89,7 @@ describe('marcadores', () => {
 describe('detalle de la unidad', () => {
   test('al abrir el marcador muestra placa y antigüedad de la señal', async () => {
     const user = userEvent.setup();
-    const { container } = render(<FleetMap units={[fx.mototaxiSummary]} />);
+    const { container } = render(<FleetMap units={[fx.vehicleSummary]} />);
 
     await user.click(markers(container)[0]!);
 
@@ -103,7 +99,7 @@ describe('detalle de la unidad', () => {
 
   test('una unidad sin señal lo dice también en su detalle', async () => {
     const user = userEvent.setup();
-    const { container } = render(<FleetMap units={[fx.staleMototaxiSummary]} />);
+    const { container } = render(<FleetMap units={[fx.staleVehicleSummary]} />);
 
     await user.click(markers(container)[0]!);
 
@@ -113,7 +109,7 @@ describe('detalle de la unidad', () => {
 
   test('una unidad que reporta no muestra la advertencia', async () => {
     const user = userEvent.setup();
-    const { container } = render(<FleetMap units={[fx.mototaxiSummary]} />);
+    const { container } = render(<FleetMap units={[fx.vehicleSummary]} />);
 
     await user.click(markers(container)[0]!);
 
@@ -124,7 +120,7 @@ describe('detalle de la unidad', () => {
 
 describe('apilamiento', () => {
   test('el mapa abre su propio contexto de apilamiento para no tapar los diálogos', () => {
-    const { container } = render(<FleetMap units={[fx.mototaxiSummary]} />);
+    const { container } = render(<FleetMap units={[fx.vehicleSummary]} />);
     expect(container.querySelector('.leaflet-container')).toHaveClass('isolate');
   });
 });
@@ -134,7 +130,7 @@ describe('etiquetas', () => {
     Array.from(container.querySelectorAll('.leaflet-tooltip')).map((el) => el.textContent);
 
   test('cada marcador muestra la placa cuando la unidad no tiene alias', () => {
-    const { container } = render(<FleetMap units={[fx.mototaxiSummary]} />);
+    const { container } = render(<FleetMap units={[fx.vehicleSummary]} />);
 
     expect(labels(container)).toEqual(['ABC123']);
   });
@@ -143,8 +139,8 @@ describe('etiquetas', () => {
     const { container } = render(
       <FleetMap
         units={[
-          { ...fx.mototaxiSummary, alias: 'Rayo' },
-          { ...fx.staleMototaxiSummary, alias: null },
+          { ...fx.vehicleSummary, alias: 'Rayo' },
+          { ...fx.staleVehicleSummary, alias: null },
         ]}
       />,
     );
@@ -153,16 +149,14 @@ describe('etiquetas', () => {
   });
 
   test('un alias vacío cae a la placa', () => {
-    const { container } = render(<FleetMap units={[{ ...fx.mototaxiSummary, alias: '' }]} />);
+    const { container } = render(<FleetMap units={[{ ...fx.vehicleSummary, alias: '' }]} />);
 
     expect(labels(container)).toEqual(['ABC123']);
   });
 
   test('una unidad sin posición no deja una etiqueta suelta', () => {
     const { container } = render(
-      <FleetMap
-        units={[fx.mototaxiSummary, { ...fx.staleMototaxiSummary, lat: null, lon: null }]}
-      />,
+      <FleetMap units={[fx.vehicleSummary, { ...fx.staleVehicleSummary, lat: null, lon: null }]} />,
     );
 
     expect(labels(container)).toEqual(['ABC123']);

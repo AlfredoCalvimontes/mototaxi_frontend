@@ -2,6 +2,7 @@ import { screen, within } from '@testing-library/react';
 import { HttpResponse, http } from 'msw';
 import { describe, expect, test } from 'vitest';
 
+import * as fx from '@/test/fixtures';
 import { renderApp } from '@/test/render';
 import { server } from '@/test/server';
 import LiveTrips from '@/views/LiveTrips';
@@ -32,6 +33,30 @@ describe('tablero en curso', () => {
     const enRoute = await rowFor('En camino');
     expect(enRoute.queryByText('(estimado)')).not.toBeInTheDocument();
     expect(enRoute.getByText('4 min')).toBeInTheDocument();
+  });
+});
+
+describe('tipo de vehículo', () => {
+  test('muestra el tipo pedido y, si difiere, el que llegó', async () => {
+    server.use(
+      http.get(`${BASE}/admin/vehicle-types`, () =>
+        HttpResponse.json([fx.globalMotoType, fx.ownVanType]),
+      ),
+      http.get(`${BASE}/admin/trips/active`, () =>
+        HttpResponse.json([
+          {
+            ...fx.activeTrip,
+            requested_vehicle_type_uuid: fx.ownVanType.vehicle_type_uuid,
+            vehicle_type_uuid: fx.globalMotoType.vehicle_type_uuid,
+          },
+          { ...fx.searchingTrip },
+        ]),
+      ),
+    );
+    renderApp(<LiveTrips />);
+
+    expect(await screen.findByText('Minivan (llegó Mototaxi)')).toBeInTheDocument();
+    expect(screen.getByText('Cualquiera')).toBeInTheDocument();
   });
 });
 

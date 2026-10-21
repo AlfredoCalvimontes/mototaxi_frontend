@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { HttpResponse, http } from 'msw';
 import { describe, expect, test } from 'vitest';
 
@@ -74,12 +74,44 @@ describe('configuración', () => {
     },
   );
 
-  test('ofrece restaurar el valor original solo cuando fue cambiado', async () => {
+  test('con un ajuste propio de la empresa ofrece quitarlo con DELETE', async () => {
+    const overridden = { ...fx.sharedLocationSetting, value: 90, source: 'tenant' as const };
+    const deleted: string[] = [];
+    server.use(
+      http.get(`${BASE}/admin/settings`, () => HttpResponse.json([overridden])),
+      http.delete(`${BASE}/admin/settings/:key`, ({ params }) => {
+        deleted.push(String(params.key));
+        return HttpResponse.json({ ...fx.sharedLocationSetting, source: 'global' });
+      }),
+    );
+    const { user } = renderApp(<Settings />);
+
+    expect(await screen.findByText('Ajuste de la empresa')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Quitar el ajuste de la empresa' }));
+
+    await waitFor(() => expect(deleted).toEqual([fx.sharedLocationSetting.key]));
+  });
+
+  test('un valor heredado del global no ofrece quitar nada', async () => {
     server.use(
       http.get(`${BASE}/admin/settings`, () =>
-        HttpResponse.json([
-          { ...fx.sharedLocationSetting, value: 90, updated_at: '2026-09-24T18:00:00Z' },
-        ]),
+        HttpResponse.json([{ ...fx.sharedLocationSetting, value: 90, source: 'global' }]),
+      ),
+    );
+    renderApp(<Settings />);
+
+    expect(await screen.findByText('Heredado del valor global')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Quitar el ajuste/ })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Restaurar valor original/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  test('un superadmin sin empresa restaura el valor global', async () => {
+    server.use(
+      http.get(`${BASE}/users/me`, () => HttpResponse.json(fx.superadminProfile)),
+      http.get(`${BASE}/admin/settings`, () =>
+        HttpResponse.json([{ ...fx.sharedLocationSetting, value: 90, source: 'global' }]),
       ),
     );
     renderApp(<Settings />);
@@ -93,10 +125,9 @@ describe('configuración', () => {
     renderApp(<Settings />);
     await screen.findByLabelText(LABEL);
 
-    expect(
-      screen.queryByRole('button', { name: /Restaurar valor original/ }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Quitar el ajuste/ })).not.toBeInTheDocument();
     expect(screen.getByText(/Nunca se ha cambiado/)).toBeInTheDocument();
+    expect(screen.getByText('Valor original del sistema')).toBeInTheDocument();
   });
 
   test('muestra el error del servidor si el cambio es rechazado', async () => {

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 
-import { assignMototaxi, listMototaxis } from '@/api/admin';
+import { assignVehicle, listVehicles } from '@/api/admin';
 import { queryKeys } from '@/api/queries';
 import type { Driver } from '@/api/types';
 import { FormDialog } from '@/components/Field';
@@ -12,20 +12,23 @@ import { strings } from '@/lib/strings';
 /** Sent as `null` to detach; the field is required, so `{}` would be a 422. */
 const DETACH = '';
 
-export function AssignMototaxiDialog({ driver, onClose }: { driver: Driver; onClose: () => void }) {
+export function AssignVehicleDialog({ driver, onClose }: { driver: Driver; onClose: () => void }) {
   const queryClient = useQueryClient();
-  const [selected, setSelected] = useState(driver.current_mototaxi_uuid ?? DETACH);
+  const [selected, setSelected] = useState(driver.current_vehicle_uuid ?? DETACH);
 
-  const mototaxis = useQuery({ queryKey: queryKeys.mototaxis, queryFn: listMototaxis });
+  const vehicles = useQuery({
+    queryKey: queryKeys.vehiclesIn(null),
+    queryFn: () => listVehicles(),
+  });
 
   const save = useMutation({
     mutationFn: () =>
-      assignMototaxi(driver.driver_uuid, {
-        mototaxi_uuid: selected === DETACH ? null : selected,
+      assignVehicle(driver.driver_uuid, {
+        vehicle_uuid: selected === DETACH ? null : selected,
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['drivers'] });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.mototaxis });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.vehicles });
       onClose();
     },
   });
@@ -37,27 +40,27 @@ export function AssignMototaxiDialog({ driver, onClose }: { driver: Driver; onCl
 
   // A vehicle already driven by someone else would be refused with a 409, so
   // it is not offered in the first place.
-  const available = (mototaxis.data ?? []).filter(
+  const available = (vehicles.data ?? []).filter(
     (unit) => unit.current_driver_uuid === null || unit.current_driver_uuid === driver.driver_uuid,
   );
 
   return (
-    <FormDialog title={strings.fleet.assignMototaxiTitle(driver.name)} onClose={onClose}>
+    <FormDialog title={strings.fleet.assignVehicleTitle(driver.name)} onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
         <div className="space-y-1">
-          <label htmlFor="mototaxi" className="block text-sm font-medium text-slate-700">
-            {strings.drivers.mototaxi}
+          <label htmlFor="vehicle" className="block text-sm font-medium text-slate-700">
+            {strings.drivers.vehicle}
           </label>
           <select
-            id="mototaxi"
+            id="vehicle"
             value={selected}
             onChange={(e) => setSelected(e.target.value)}
             className="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
           >
             {/* Detaching is spelled out rather than reachable by clearing. */}
-            <option value={DETACH}>{strings.fleet.detachMototaxi}</option>
+            <option value={DETACH}>{strings.fleet.detachVehicle}</option>
             {available.map((unit) => (
-              <option key={unit.mototaxi_uuid} value={unit.mototaxi_uuid}>
+              <option key={unit.vehicle_uuid} value={unit.vehicle_uuid}>
                 {vehicleLabel(unit)}
               </option>
             ))}

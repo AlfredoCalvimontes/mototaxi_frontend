@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react';
 
 import { createDriver, updateDriver } from '@/api/admin';
 import type { Driver } from '@/api/types';
+import { CityField } from '@/components/CityField';
 import { Field, FormDialog } from '@/components/Field';
 import { driverChanges, hasChanges, type DriverFormValues } from '@/lib/dirty';
 import { errorText } from '@/lib/errors';
@@ -33,6 +34,7 @@ export function DriverForm({ driver, onClose }: { driver: Driver | null; onClose
   // Registration only: the API refuses to edit a CI, since it is the identity
   // the driver was verified under in person.
   const [ci, setCi] = useState('');
+  const [cityUuid, setCityUuid] = useState('');
   const [validation, setValidation] = useState<Partial<Record<string, string>>>({});
 
   const { payload, unclearable } = driverChanges(initial, values);
@@ -45,6 +47,7 @@ export function DriverForm({ driver, onClose }: { driver: Driver | null; onClose
         ci: ci.trim(),
         phone_whatsapp: values.phone_whatsapp.trim(),
         license_number: values.license_number.trim() || null,
+        ...(cityUuid && { city_uuid: cityUuid }),
         // Only sent when on: off is the default, and it keeps the request minimal.
         ...(values.usage_credit_enabled && { usage_credit_enabled: true }),
       });
@@ -115,6 +118,8 @@ export function DriverForm({ driver, onClose }: { driver: Driver | null; onClose
           value={values.license_number}
           onChange={(license_number) => setValues((v) => ({ ...v, license_number }))}
         />
+
+        {!editing && <CityField value={cityUuid} onChange={setCityUuid} />}
 
         <div className="space-y-1">
           <label className="flex items-center gap-2 text-sm font-medium text-slate-700">

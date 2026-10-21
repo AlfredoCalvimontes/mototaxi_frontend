@@ -1,21 +1,28 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState, type FormEvent } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMemo, useState, type FormEvent } from 'react';
 
-import { createMototaxi, updateMototaxi } from '@/api/admin';
-import type { Mototaxi } from '@/api/types';
+import { createVehicle, listVehicleTypes, updateVehicle } from '@/api/admin';
+import { queryKeys } from '@/api/queries';
+import type { TrackerType, Vehicle } from '@/api/types';
+import { CityField } from '@/components/CityField';
+import { AttributeSchemaForm } from '@/components/AttributeSchemaForm';
+import { attributeErrors, toAttributes, toDraft, type AttributeDraft } from '@/lib/attributes';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
-import { Field, FormDialog } from '@/components/Field';
-import { hasChanges, mototaxiChanges, parseCredit, type MototaxiFormValues } from '@/lib/dirty';
+import { Field, FormDialog, SelectField } from '@/components/Field';
+import { hasChanges, vehicleChanges, parseCredit, type VehicleFormValues } from '@/lib/dirty';
 import { errorText } from '@/lib/errors';
 import { strings } from '@/lib/strings';
 
-function toValues(unit: Mototaxi): MototaxiFormValues {
+function toValues(unit: Vehicle): VehicleFormValues {
   return {
     plate_number: unit.plate_number,
     alias: unit.alias ?? '',
     brand: unit.brand ?? '',
     model: unit.model ?? '',
-    tracker_imei: unit.tracker_imei ?? '',
+    device_id: unit.device_id ?? '',
+    tracker_type: unit.tracker_type,
+    vehicle_type_uuid: unit.vehicle_type_uuid ?? '',
+    attributes: unit.attributes,
     sim_last_recharge_at: unit.sim_last_recharge_at ?? '',
     sim_last_recharge_amount:
       unit.sim_last_recharge_amount === null ? '' : String(unit.sim_last_recharge_amount),
@@ -24,12 +31,15 @@ function toValues(unit: Mototaxi): MototaxiFormValues {
   };
 }
 
-const emptyValues: MototaxiFormValues = {
+const emptyValues: VehicleFormValues = {
   plate_number: '',
   alias: '',
   brand: '',
   model: '',
-  tracker_imei: '',
+  device_id: '',
+  tracker_type: 'GT06',
+  vehicle_type_uuid: '',
+  attributes: {},
   sim_last_recharge_at: '',
   sim_last_recharge_amount: '',
   notes: '',
@@ -37,7 +47,7 @@ const emptyValues: MototaxiFormValues = {
 };
 
 /** The date and the credit go together; one without the other cannot give a next date. */
-function simErrors(values: MototaxiFormValues): Record<string, string> {
+function simErrors(values: VehicleFormValues): Record<string, string> {
   const errors: Record<string, string> = {};
   const hasDate = values.sim_last_recharge_at.trim() !== '';
   const hasAmount = values.sim_last_recharge_amount.trim() !== '';
@@ -52,33 +62,63 @@ function simErrors(values: MototaxiFormValues): Record<string, string> {
   return errors;
 }
 
-export function MototaxiForm({
-  mototaxi,
+export function VehicleForm({
+  vehicle,
   onClose,
 }: {
-  mototaxi: Mototaxi | null;
+  vehicle: Vehicle | null;
   onClose: () => void;
 }) {
-  const editing = mototaxi !== null;
-  const initial = mototaxi ? toValues(mototaxi) : emptyValues;
+  const editing = vehicle !== null;
+  const initial = vehicle ? toValues(vehicle) : emptyValues;
   const queryClient = useQueryClient();
 
-  const [values, setValues] = useState<MototaxiFormValues>(initial);
+  const [values, setValues] = useState<VehicleFormValues>(initial);
+  const [draft, setDraft] = useState<AttributeDraft>({});
+  const [draftType, setDraftType] = useState<string | null>(null);
+
+  const types = useQuery({ queryKey: queryKeys.vehicleTypes, queryFn: () => listVehicleTypes() });
+  const selectedType = types.data?.find((t) => t.vehicle_type_uuid === values.vehicle_type_uuid);
+  const schema = useMemo(() => selectedType?.attribute_schema ?? [], [selectedType]);
+  // Seed the inputs from the stored values once the schema is known, and again
+  // whenever the operator picks another type.
+  if (selectedType && draftType !== selectedType.vehicle_type_uuid) {
+    setDraftType(selectedType.vehicle_type_uuid);
+    setDraft(
+      toDraft(
+        selectedType.attribute_schema,
+        selectedType.vehicle_type_uuid === initial.vehicle_type_uuid ? initial.attributes : {},
+      ),
+    );
+  }
+  // Another type's values are not carried over; the same type keeps unknown stored keys.
+  const attributes = toAttributes(
+    schema,
+    draft,
+    values.vehicle_type_uuid === initial.vehicle_type_uuid ? initial.attributes : {},
+  );
+  const current: VehicleFormValues = { ...values, attributes };
+  const [cityUuid, setCityUuid] = useState('');
   const [validation, setValidation] = useState<Partial<Record<string, string>>>({});
+  const [attributeProblems, setAttributeProblems] = useState<Record<string, string>>({});
   const [confirmingDetach, setConfirmingDetach] = useState(false);
 
-  const { payload, detachesTracker } = mototaxiChanges(initial, values);
-  const hasTracker = values.tracker_imei.trim() !== '';
+  const { payload, detachesTracker } = vehicleChanges(initial, current);
+  const hasTracker = values.device_id.trim() !== '';
 
   const save = useMutation({
     mutationFn: async () => {
-      if (editing) return updateMototaxi(mototaxi.mototaxi_uuid, payload);
-      return createMototaxi({
+      if (editing) return updateVehicle(vehicle.vehicle_uuid, payload);
+      return createVehicle({
         plate_number: values.plate_number.trim(),
         alias: values.alias.trim() || null,
         brand: values.brand.trim() || null,
         model: values.model.trim() || null,
-        tracker_imei: values.tracker_imei.trim() || null,
+        device_id: values.device_id.trim() || null,
+        tracker_type: values.tracker_type,
+        vehicle_type_uuid: values.vehicle_type_uuid || null,
+        attributes,
+        ...(cityUuid && { city_uuid: cityUuid }),
         ...(hasTracker && values.sim_last_recharge_at
           ? {
               sim_last_recharge_at: values.sim_last_recharge_at,
@@ -89,8 +129,8 @@ export function MototaxiForm({
       });
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['mototaxis'] });
-      void queryClient.invalidateQueries({ queryKey: ['mototaxi'] });
+      void queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      void queryClient.invalidateQueries({ queryKey: ['vehicle'] });
       setConfirmingDetach(false);
       onClose();
     },
@@ -101,8 +141,10 @@ export function MototaxiForm({
     const errors: Record<string, string> = {};
     if (!values.plate_number.trim()) errors.plate = strings.fleet.requiredField;
     if (hasTracker) Object.assign(errors, simErrors(values));
+    const attrErrors = attributeErrors(schema, draft);
+    setAttributeProblems(attrErrors);
     setValidation(errors);
-    if (Object.keys(errors).length > 0) return;
+    if (Object.keys(errors).length + Object.keys(attrErrors).length > 0) return;
     if (editing && !hasChanges(payload)) {
       onClose();
       return;
@@ -119,12 +161,12 @@ export function MototaxiForm({
   return (
     <>
       <FormDialog
-        title={editing ? strings.fleet.editMototaxi : strings.fleet.newMototaxi}
+        title={editing ? strings.fleet.editVehicle : strings.fleet.newVehicle}
         onClose={onClose}
       >
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <Field
-            label={strings.mototaxis.plate}
+            label={strings.vehicles.plate}
             value={values.plate_number}
             onChange={(plate_number) => setValues((v) => ({ ...v, plate_number }))}
             required
@@ -132,7 +174,7 @@ export function MototaxiForm({
           />
 
           <Field
-            label={strings.mototaxis.alias}
+            label={strings.vehicles.alias}
             value={values.alias}
             onChange={(alias) => setValues((v) => ({ ...v, alias }))}
             hint={strings.fleet.aliasHint}
@@ -140,23 +182,62 @@ export function MototaxiForm({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Field
-              label={strings.mototaxis.brand}
+              label={strings.vehicles.brand}
               value={values.brand}
               onChange={(brand) => setValues((v) => ({ ...v, brand }))}
             />
             <Field
-              label={strings.mototaxis.model}
+              label={strings.vehicles.model}
               value={values.model}
               onChange={(model) => setValues((v) => ({ ...v, model }))}
             />
           </div>
 
+          {!editing && <CityField value={cityUuid} onChange={setCityUuid} />}
+
+          <SelectField
+            label={strings.fleet.vehicleType}
+            value={values.vehicle_type_uuid}
+            onChange={(vehicle_type_uuid) => setValues((v) => ({ ...v, vehicle_type_uuid }))}
+            options={[
+              { value: '', label: strings.fleet.noVehicleType },
+              ...(types.data ?? [])
+                // A type switched off stays selectable on the vehicle that still uses it.
+                .filter((t) => t.is_active || t.vehicle_type_uuid === initial.vehicle_type_uuid)
+                .map((t) => ({ value: t.vehicle_type_uuid, label: t.display_name })),
+            ]}
+          />
+
+          <AttributeSchemaForm
+            schema={schema}
+            draft={draft}
+            errors={attributeProblems}
+            onChange={(key, value) => setDraft((d) => ({ ...d, [key]: value }))}
+          />
+
           <Field
-            label={strings.mototaxis.imei}
-            value={values.tracker_imei}
-            onChange={(tracker_imei) => setValues((v) => ({ ...v, tracker_imei }))}
+            label={
+              values.tracker_type === 'GT06' ? strings.vehicles.imei : strings.vehicles.deviceId
+            }
+            value={values.device_id}
+            onChange={(device_id) => setValues((v) => ({ ...v, device_id }))}
             hint={strings.fleet.imeiHint}
           />
+
+          {hasTracker && (
+            <SelectField
+              label={strings.fleet.trackerType}
+              value={values.tracker_type}
+              onChange={(tracker_type) =>
+                setValues((v) => ({ ...v, tracker_type: tracker_type as TrackerType }))
+              }
+              options={[
+                { value: 'GT06', label: 'GT06' },
+                { value: 'SECUREMORE', label: 'SECUREMORE' },
+              ]}
+              hint={strings.fleet.trackerTypeHint}
+            />
+          )}
 
           {hasTracker && (
             <fieldset className="space-y-3 rounded border border-slate-200 p-3">
@@ -187,14 +268,14 @@ export function MototaxiForm({
           )}
 
           <Field
-            label={strings.mototaxis.lastMaintenance}
+            label={strings.vehicles.lastMaintenance}
             type="date"
             value={values.last_maintenance_at}
             onChange={(last_maintenance_at) => setValues((v) => ({ ...v, last_maintenance_at }))}
           />
 
           <Field
-            label={strings.mototaxis.notes}
+            label={strings.vehicles.notes}
             value={values.notes}
             onChange={(notes) => setValues((v) => ({ ...v, notes }))}
           />
@@ -230,7 +311,7 @@ export function MototaxiForm({
       <ConfirmDialog
         open={confirmingDetach}
         title={strings.fleet.detachTrackerTitle}
-        body={strings.fleet.detachTrackerBody(initial.tracker_imei, values.plate_number)}
+        body={strings.fleet.detachTrackerBody(initial.device_id, values.plate_number)}
         confirmLabel={strings.fleet.detachTrackerConfirm}
         pending={save.isPending}
         error={save.error}

@@ -7,15 +7,21 @@
  *
  * - `PATCH /admin/drivers/{uuid}` — `null` is silently ignored. Nothing on a
  *   driver can be cleared through it.
- * - `PATCH /admin/mototaxis/{uuid}` — `null` **clears** the field.
- *   `{tracker_imei: null}` detaches the tracker and drops that IMEI from the
+ * - `PATCH /admin/vehicles/{uuid}` — `null` **clears** the field.
+ *   `{device_id: null}` detaches the tracker and drops that IMEI from the
  *   GT06 allowlist (spec §7.2).
  *
  * Both routes forward only the keys present in the body (`model_fields_set`),
  * so both functions emit dirty fields only — never a whole object.
  */
 
-import type { UpdateDriverPayload, UpdateMototaxiPayload } from '@/api/types';
+import type {
+  TrackerType,
+  UpdateCityPayload,
+  UpdateDriverPayload,
+  UpdateTenantPayload,
+  UpdateVehiclePayload,
+} from '@/api/types';
 
 /** Trims and turns an empty input into `null`, which each caller then judges. */
 function normalise(value: string): string | null {
@@ -66,20 +72,32 @@ export function driverChanges(initial: DriverFormValues, current: DriverFormValu
   return { payload, unclearable };
 }
 
-export type MototaxiFormValues = {
+export type VehicleFormValues = {
   plate_number: string;
   alias: string;
   brand: string;
   model: string;
-  tracker_imei: string;
+  device_id: string;
+  tracker_type: TrackerType;
+  /** Empty string: no type. */
+  vehicle_type_uuid: string;
+  attributes: Record<string, unknown>;
   sim_last_recharge_at: string;
   sim_last_recharge_amount: string;
   notes: string;
   last_maintenance_at: string;
 };
 
-export type MototaxiChanges = {
-  payload: UpdateMototaxiPayload;
+function sameAttributes(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  for (const key of keys) {
+    if (a[key] !== b[key]) return false;
+  }
+  return true;
+}
+
+export type VehicleChanges = {
+  payload: UpdateVehiclePayload;
   /**
    * True when the payload detaches the tracker. The IMEI is not a field to tab
    * through: dropping it removes the vehicle from the GT06 allowlist, so the
@@ -96,9 +114,9 @@ export function parseCredit(value: string): number | null {
 
 /** The two halves of a SIM recharge travel together, so a change to either sends both. */
 function simRechargeChange(
-  initial: MototaxiFormValues,
-  current: MototaxiFormValues,
-): Pick<UpdateMototaxiPayload, 'sim_last_recharge_at' | 'sim_last_recharge_amount'> {
+  initial: VehicleFormValues,
+  current: VehicleFormValues,
+): Pick<UpdateVehiclePayload, 'sim_last_recharge_at' | 'sim_last_recharge_amount'> {
   const at = normalise(current.sim_last_recharge_at);
   const amount = parseCredit(current.sim_last_recharge_amount);
   const unchanged =
@@ -107,11 +125,11 @@ function simRechargeChange(
   return unchanged ? {} : { sim_last_recharge_at: at, sim_last_recharge_amount: amount };
 }
 
-export function mototaxiChanges(
-  initial: MototaxiFormValues,
-  current: MototaxiFormValues,
-): MototaxiChanges {
-  const payload: UpdateMototaxiPayload = {};
+export function vehicleChanges(
+  initial: VehicleFormValues,
+  current: VehicleFormValues,
+): VehicleChanges {
+  const payload: UpdateVehiclePayload = {};
 
   // The plate is required by the schema, so blanking it is not a clear —
   // the form rejects it before we get here and it is simply not sent.
@@ -128,8 +146,21 @@ export function mototaxiChanges(
   const model = normalise(current.model);
   if (model !== (normalise(initial.model) ?? null)) payload.model = model;
 
-  const imei = normalise(current.tracker_imei);
-  if (imei !== (normalise(initial.tracker_imei) ?? null)) payload.tracker_imei = imei;
+  const imei = normalise(current.device_id);
+  if (imei !== (normalise(initial.device_id) ?? null)) payload.device_id = imei;
+
+  // Never `null` on the wire; the form always holds a value, so only a change is sent.
+  if (current.tracker_type !== initial.tracker_type) payload.tracker_type = current.tracker_type;
+
+  const vehicleType = normalise(current.vehicle_type_uuid);
+  if (vehicleType !== (normalise(initial.vehicle_type_uuid) ?? null)) {
+    payload.vehicle_type_uuid = vehicleType;
+  }
+
+  // The object travels whole (the server replaces it), and `null` is refused.
+  if (!sameAttributes(initial.attributes, current.attributes)) {
+    payload.attributes = current.attributes;
+  }
 
   // The SIM belongs to the tracker: without one there is nothing to send (the
   // server drops the record itself when a tracker is detached).
@@ -145,8 +176,40 @@ export function mototaxiChanges(
 
   return {
     payload,
-    detachesTracker: payload.tracker_imei === null && initial.tracker_imei.trim() !== '',
+    detachesTracker: payload.device_id === null && initial.device_id.trim() !== '',
   };
+}
+
+/**
+ * Tenants and cities behave like drivers: the use cases forward a present field
+ * to a domain method that treats `None` as "leave unchanged", so an explicit
+ * `null` never clears. Blanked fields are reported, not sent.
+ */
+export type TenantFormValues = { name: string; contact_email: string; contact_phone: string };
+export type CityFormValues = { name: string; timezone: string; geofence_wkt: string };
+
+function textChanges<T extends Record<string, string>>(
+  initial: T,
+  current: T,
+): { payload: Partial<Record<keyof T, string>>; unclearable: (keyof T)[] } {
+  const payload: Partial<Record<keyof T, string>> = {};
+  const unclearable: (keyof T)[] = [];
+  for (const key of Object.keys(initial) as (keyof T)[]) {
+    const value = normalise(current[key] as string);
+    if (value !== null && value !== initial[key]) payload[key] = value;
+    else if (value === null && initial[key] !== '') unclearable.push(key);
+  }
+  return { payload, unclearable };
+}
+
+export function tenantChanges(initial: TenantFormValues, current: TenantFormValues) {
+  const { payload, unclearable } = textChanges(initial, current);
+  return { payload: payload as UpdateTenantPayload, unclearable };
+}
+
+export function cityChanges(initial: CityFormValues, current: CityFormValues) {
+  const { payload, unclearable } = textChanges(initial, current);
+  return { payload: payload as UpdateCityPayload, unclearable };
 }
 
 export function hasChanges(payload: object): boolean {
