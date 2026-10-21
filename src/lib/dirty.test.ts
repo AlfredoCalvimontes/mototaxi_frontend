@@ -2,9 +2,9 @@ import { describe, expect, test } from 'vitest';
 
 import {
   driverChanges,
-  mototaxiChanges,
+  vehicleChanges,
   type DriverFormValues,
-  type MototaxiFormValues,
+  type VehicleFormValues,
 } from '@/lib/dirty';
 
 const driver: DriverFormValues = {
@@ -14,7 +14,7 @@ const driver: DriverFormValues = {
   usage_credit_enabled: false,
 };
 
-const mototaxi: MototaxiFormValues = {
+const vehicle: VehicleFormValues = {
   plate_number: 'ABC123',
   alias: '',
   brand: 'Honda',
@@ -75,29 +75,29 @@ describe('conductor: null se ignora, nada se puede limpiar', () => {
 
 describe('mototaxi: null limpia el campo', () => {
   test('sin cambios no envía nada', () => {
-    expect(mototaxiChanges(mototaxi, mototaxi).payload).toEqual({});
+    expect(vehicleChanges(vehicle, vehicle).payload).toEqual({});
   });
 
   test('vaciar un campo opcional lo limpia explícitamente', () => {
-    const { payload } = mototaxiChanges(mototaxi, { ...mototaxi, brand: '' });
+    const { payload } = vehicleChanges(vehicle, { ...vehicle, brand: '' });
     expect(payload).toEqual({ brand: null });
   });
 
   test('un campo intacto nunca se emite como null', () => {
-    const { payload } = mototaxiChanges(mototaxi, { ...mototaxi, model: 'CG 150' });
+    const { payload } = vehicleChanges(vehicle, { ...vehicle, model: 'CG 150' });
     // Solo el modelo: emitir tracker_imei: null aquí desconectaría el GPS.
     expect(payload).toEqual({ model: 'CG 150' });
     expect('tracker_imei' in payload).toBe(false);
   });
 
   test('un campo ya vacío en ambos lados no se envía', () => {
-    const { payload } = mototaxiChanges(mototaxi, { ...mototaxi, notes: '   ' });
+    const { payload } = vehicleChanges(vehicle, { ...vehicle, notes: '   ' });
     expect(payload).toEqual({});
   });
 
   test('quitar el IMEI se marca como desconexión del GPS', () => {
-    const { payload, detachesTracker } = mototaxiChanges(mototaxi, {
-      ...mototaxi,
+    const { payload, detachesTracker } = vehicleChanges(vehicle, {
+      ...vehicle,
       tracker_imei: '',
     });
     expect(payload).toEqual({ tracker_imei: null });
@@ -105,8 +105,8 @@ describe('mototaxi: null limpia el campo', () => {
   });
 
   test('cambiar el IMEI por otro no es una desconexión', () => {
-    const { payload, detachesTracker } = mototaxiChanges(mototaxi, {
-      ...mototaxi,
+    const { payload, detachesTracker } = vehicleChanges(vehicle, {
+      ...vehicle,
       tracker_imei: '860999999999999',
     });
     expect(payload).toEqual({ tracker_imei: '860999999999999' });
@@ -114,37 +114,37 @@ describe('mototaxi: null limpia el campo', () => {
   });
 
   test('un vehículo que ya venía sin IMEI no cuenta como desconexión', () => {
-    const sinImei = { ...mototaxi, tracker_imei: '' };
-    const { detachesTracker } = mototaxiChanges(sinImei, sinImei);
+    const sinImei = { ...vehicle, tracker_imei: '' };
+    const { detachesTracker } = vehicleChanges(sinImei, sinImei);
     expect(detachesTracker).toBe(false);
   });
 });
 
 describe('mototaxi: alias', () => {
   it('un alias nuevo se envía y vaciarlo lo limpia', () => {
-    expect(mototaxiChanges(mototaxi, { ...mototaxi, alias: ' Rayo ' }).payload).toEqual({
+    expect(vehicleChanges(vehicle, { ...vehicle, alias: ' Rayo ' }).payload).toEqual({
       alias: 'Rayo',
     });
-    const named = { ...mototaxi, alias: 'Rayo' };
-    expect(mototaxiChanges(named, { ...named, alias: '' }).payload).toEqual({ alias: null });
+    const named = { ...vehicle, alias: 'Rayo' };
+    expect(vehicleChanges(named, { ...named, alias: '' }).payload).toEqual({ alias: null });
   });
 });
 
 describe('mototaxi: recarga de la SIM', () => {
   const recharged = {
-    ...mototaxi,
+    ...vehicle,
     sim_last_recharge_at: '2026-10-01',
     sim_last_recharge_amount: '10',
   };
 
   test('sin cambios no envía nada de la SIM', () => {
-    expect(mototaxiChanges(recharged, recharged).payload).toEqual({});
+    expect(vehicleChanges(recharged, recharged).payload).toEqual({});
   });
 
   test('registrar la primera recarga envía la fecha y el crédito juntos', () => {
     expect(
-      mototaxiChanges(mototaxi, {
-        ...mototaxi,
+      vehicleChanges(vehicle, {
+        ...vehicle,
         sim_last_recharge_at: '2026-10-01',
         sim_last_recharge_amount: '10',
       }).payload,
@@ -153,14 +153,14 @@ describe('mototaxi: recarga de la SIM', () => {
 
   test('cambiar solo el crédito reenvía también la fecha', () => {
     expect(
-      mototaxiChanges(recharged, { ...recharged, sim_last_recharge_amount: '20' }).payload,
+      vehicleChanges(recharged, { ...recharged, sim_last_recharge_amount: '20' }).payload,
     ).toEqual({ sim_last_recharge_at: '2026-10-01', sim_last_recharge_amount: 20 });
   });
 
   test('acepta la coma decimal', () => {
     expect(
-      mototaxiChanges(mototaxi, {
-        ...mototaxi,
+      vehicleChanges(vehicle, {
+        ...vehicle,
         sim_last_recharge_at: '2026-10-01',
         sim_last_recharge_amount: '10,5',
       }).payload,
@@ -169,7 +169,7 @@ describe('mototaxi: recarga de la SIM', () => {
 
   test('vaciar ambos los limpia explícitamente', () => {
     expect(
-      mototaxiChanges(recharged, {
+      vehicleChanges(recharged, {
         ...recharged,
         sim_last_recharge_at: '',
         sim_last_recharge_amount: '',
@@ -178,7 +178,7 @@ describe('mototaxi: recarga de la SIM', () => {
   });
 
   test('quitar el GPS no envía la SIM: el servidor la borra con el rastreador', () => {
-    const { payload, detachesTracker } = mototaxiChanges(recharged, {
+    const { payload, detachesTracker } = vehicleChanges(recharged, {
       ...recharged,
       tracker_imei: '',
     });

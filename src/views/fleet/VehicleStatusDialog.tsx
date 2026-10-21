@@ -1,37 +1,37 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 
-import { changeMototaxiStatus } from '@/api/admin';
-import type { MototaxiStatus, MototaxiSummary } from '@/api/types';
+import { changeVehicleStatus } from '@/api/admin';
+import type { VehicleStatus, VehicleSummary } from '@/api/types';
 import { FormDialog } from '@/components/Field';
 import { StatusBadge } from '@/components/StatusBadge';
 import { errorText } from '@/lib/errors';
 import { strings } from '@/lib/strings';
 
-const STATUSES: MototaxiStatus[] = ['AVAILABLE', 'OUT_OF_SERVICE', 'DISABLED'];
+const STATUSES: VehicleStatus[] = ['AVAILABLE', 'OUT_OF_SERVICE', 'DISABLED'];
 
 /**
  * The vehicle's own condition — mechanical or administrative. Dispatch
  * eligibility comes from the driver's status; these are joined, not mirrored
  * (spec §4.2).
  */
-export function MototaxiStatusDialog({
-  mototaxi,
+export function VehicleStatusDialog({
+  vehicle,
   driverName,
   onClose,
 }: {
-  mototaxi: MototaxiSummary;
+  vehicle: VehicleSummary;
   driverName: string | null;
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
-  const [status, setStatus] = useState<MototaxiStatus>(mototaxi.status as MototaxiStatus);
+  const [status, setStatus] = useState<VehicleStatus>(vehicle.status as VehicleStatus);
 
   const save = useMutation({
-    mutationFn: () => changeMototaxiStatus(mototaxi.mototaxi_uuid, { status }),
+    mutationFn: () => changeVehicleStatus(vehicle.vehicle_uuid, { status }),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['mototaxis'] });
-      void queryClient.invalidateQueries({ queryKey: ['mototaxi'] });
+      void queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      void queryClient.invalidateQueries({ queryKey: ['vehicle'] });
       onClose();
     },
   });
@@ -43,31 +43,31 @@ export function MototaxiStatusDialog({
 
   return (
     <FormDialog
-      title={`${strings.fleet.vehicleStatus}: ${mototaxi.alias ? `${mototaxi.alias} · ` : ''}${mototaxi.plate_number}`}
+      title={`${strings.fleet.vehicleStatus}: ${vehicle.alias ? `${vehicle.alias} · ` : ''}${vehicle.plate_number}`}
       onClose={onClose}
     >
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
         <dl className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-1 text-sm">
           <dt className="text-slate-600">{strings.fleet.currentStatus}</dt>
           <dd>
-            <StatusBadge kind="mototaxi" value={mototaxi.status} />
+            <StatusBadge kind="vehicle" value={vehicle.status} />
           </dd>
           <dt className="text-slate-600">{strings.fleet.currentDriver}</dt>
           <dd className="font-medium text-slate-900">{driverName ?? strings.fleet.noDriver}</dd>
         </dl>
 
         <fieldset className="space-y-2">
-          <legend className="text-sm font-medium text-slate-700">{strings.mototaxis.status}</legend>
+          <legend className="text-sm font-medium text-slate-700">{strings.vehicles.status}</legend>
           {STATUSES.map((option) => (
             <label key={option} className="flex items-center gap-2 text-sm">
               <input
                 type="radio"
-                name="mototaxi-status"
+                name="vehicle-status"
                 value={option}
                 checked={status === option}
                 onChange={() => setStatus(option)}
               />
-              {strings.status.mototaxi[option]}
+              {strings.status.vehicle[option]}
             </label>
           ))}
         </fieldset>

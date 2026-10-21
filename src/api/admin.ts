@@ -4,24 +4,24 @@ import { request } from '@/api/client';
 import type {
   AddUsageCreditPayload,
   Alerts,
-  AssignMototaxiPayload,
+  AssignVehiclePayload,
   ChangeDriverStatusPayload,
-  ChangeMototaxiStatusPayload,
+  ChangeVehicleStatusPayload,
   CreateDriverPayload,
-  CreateMototaxiPayload,
+  CreateVehiclePayload,
   CustomerSummary,
   Driver,
   DriverStatus,
   KPIs,
-  Mototaxi,
+  Vehicle,
   DriverPositionCheck,
   PhoneKey,
   RuntimeSetting,
-  MototaxiSummary,
+  VehicleSummary,
   TripSummary,
   UUID,
   UpdateDriverPayload,
-  UpdateMototaxiPayload,
+  UpdateVehiclePayload,
 } from '@/api/types';
 
 export type TripHistoryParams = {
@@ -33,8 +33,8 @@ export type TripHistoryParams = {
 
 // --- dispatch board -------------------------------------------------------
 
-export function listMototaxis(): Promise<MototaxiSummary[]> {
-  return request<MototaxiSummary[]>('/admin/mototaxis');
+export function listVehicles(): Promise<VehicleSummary[]> {
+  return request<VehicleSummary[]>('/admin/vehicles');
 }
 
 export function listActiveTrips(): Promise<TripSummary[]> {
@@ -127,8 +127,8 @@ export function changeDriverStatus(
   return request<Driver>(`/admin/drivers/${driverUuid}/status`, { method: 'PATCH', json: payload });
 }
 
-export function assignMototaxi(driverUuid: UUID, payload: AssignMototaxiPayload): Promise<Driver> {
-  return request<Driver>(`/admin/drivers/${driverUuid}/mototaxi`, {
+export function assignVehicle(driverUuid: UUID, payload: AssignVehiclePayload): Promise<Driver> {
+  return request<Driver>(`/admin/drivers/${driverUuid}/vehicle`, {
     method: 'PATCH',
     json: payload,
   });
@@ -139,29 +139,26 @@ export function deleteDriver(driverUuid: UUID, reason?: string): Promise<void> {
   return request<void>(`/admin/drivers/${driverUuid}`, { method: 'DELETE', query: { reason } });
 }
 
-// --- mototaxis ------------------------------------------------------------
+// --- vehicles ------------------------------------------------------------
 
-export function getMototaxi(mototaxiUuid: UUID): Promise<Mototaxi> {
-  return request<Mototaxi>(`/admin/mototaxis/${mototaxiUuid}`);
+export function getVehicle(vehicleUuid: UUID): Promise<Vehicle> {
+  return request<Vehicle>(`/admin/vehicles/${vehicleUuid}`);
 }
 
-export function createMototaxi(payload: CreateMototaxiPayload): Promise<Mototaxi> {
-  return request<Mototaxi>('/admin/mototaxis', { method: 'POST', json: payload });
+export function createVehicle(payload: CreateVehiclePayload): Promise<Vehicle> {
+  return request<Vehicle>('/admin/vehicles', { method: 'POST', json: payload });
 }
 
 /** Send dirty fields only — an explicit `null` **clears** the field here. */
-export function updateMototaxi(
-  mototaxiUuid: UUID,
-  payload: UpdateMototaxiPayload,
-): Promise<Mototaxi> {
-  return request<Mototaxi>(`/admin/mototaxis/${mototaxiUuid}`, { method: 'PATCH', json: payload });
+export function updateVehicle(vehicleUuid: UUID, payload: UpdateVehiclePayload): Promise<Vehicle> {
+  return request<Vehicle>(`/admin/vehicles/${vehicleUuid}`, { method: 'PATCH', json: payload });
 }
 
-export function changeMototaxiStatus(
-  mototaxiUuid: UUID,
-  payload: ChangeMototaxiStatusPayload,
-): Promise<Mototaxi> {
-  return request<Mototaxi>(`/admin/mototaxis/${mototaxiUuid}/status`, {
+export function changeVehicleStatus(
+  vehicleUuid: UUID,
+  payload: ChangeVehicleStatusPayload,
+): Promise<Vehicle> {
+  return request<Vehicle>(`/admin/vehicles/${vehicleUuid}/status`, {
     method: 'PATCH',
     json: payload,
   });

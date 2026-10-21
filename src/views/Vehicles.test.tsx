@@ -6,13 +6,13 @@ import { daysAgoInLaPaz } from '@/lib/format';
 import * as fx from '@/test/fixtures';
 import { renderApp } from '@/test/render';
 import { server } from '@/test/server';
-import Mototaxis from '@/views/Mototaxis';
+import Vehicles from '@/views/Vehicles';
 
 // Stubbed to keep these tests about the table and the filter, and to assert
 // which units the view hands the map. The real component renders fine under
 // jsdom and is covered directly in FleetMap.test.tsx.
 vi.mock('@/components/FleetMap', () => ({
-  FleetMap: ({ units }: { units: { mototaxi_uuid: string }[] }) => (
+  FleetMap: ({ units }: { units: { vehicle_uuid: string }[] }) => (
     <div data-testid="mapa">{units.length}</div>
   ),
 }));
@@ -25,12 +25,12 @@ async function table() {
 
 describe('listado de mototaxis', () => {
   test('resuelve el nombre del conductor a partir de su uuid', async () => {
-    renderApp(<Mototaxis />);
+    renderApp(<Vehicles />);
     expect(await (await table()).findByText('Marco Peña')).toBeInTheDocument();
   });
 
   test('marca las unidades con GPS sin señal', async () => {
-    renderApp(<Mototaxis />);
+    renderApp(<Vehicles />);
     const rows = await (await table()).findAllByRole('row');
     const stale = rows.find((row) => within(row).queryByText('XYZ789'));
     expect(within(stale!).getByText('GPS sin señal')).toBeInTheDocument();
@@ -38,20 +38,20 @@ describe('listado de mototaxis', () => {
 
   test('una unidad sin posición lo dice en lugar de mostrar un guion', async () => {
     server.use(
-      http.get(`${BASE}/admin/mototaxis`, () =>
+      http.get(`${BASE}/admin/vehicles`, () =>
         HttpResponse.json([
-          { ...fx.mototaxiSummary, lat: null, lon: null, location_updated_at: null },
+          { ...fx.vehicleSummary, lat: null, lon: null, location_updated_at: null },
         ]),
       ),
     );
-    renderApp(<Mototaxis />);
+    renderApp(<Vehicles />);
     expect(await screen.findByText('Sin posición registrada')).toBeInTheDocument();
   });
 });
 
 describe('filtro de GPS sin señal', () => {
   test('la URL del enlace del resumen deja el filtro ya aplicado', async () => {
-    renderApp(<Mototaxis />, { route: '/mototaxis?gps=sin-senal' });
+    renderApp(<Vehicles />, { route: '/mototaxis?gps=sin-senal' });
 
     const rows = await (await table()).findAllByRole('row');
     // Cabecera + la única unidad sin señal.
@@ -61,12 +61,12 @@ describe('filtro de GPS sin señal', () => {
   });
 
   test('el mapa refleja el filtro, no la lista completa', async () => {
-    renderApp(<Mototaxis />, { route: '/mototaxis?gps=sin-senal' });
+    renderApp(<Vehicles />, { route: '/mototaxis?gps=sin-senal' });
     expect(await screen.findByTestId('mapa')).toHaveTextContent('1');
   });
 
   test('se puede quitar el filtro desde la vista', async () => {
-    const { user } = renderApp(<Mototaxis />, { route: '/mototaxis?gps=sin-senal' });
+    const { user } = renderApp(<Vehicles />, { route: '/mototaxis?gps=sin-senal' });
 
     await user.click(await screen.findByRole('checkbox', { name: /GPS sin señal/ }));
 
@@ -80,10 +80,10 @@ describe('recarga de la SIM del GPS', () => {
 
   function withSim(nextInDays: number, extra: object = {}) {
     server.use(
-      http.get(`${BASE}/admin/mototaxis`, () =>
+      http.get(`${BASE}/admin/vehicles`, () =>
         HttpResponse.json([
           {
-            ...fx.mototaxiSummary,
+            ...fx.vehicleSummary,
             sim_last_recharge_at: '2026-10-01',
             sim_last_recharge_amount: 10,
             sim_next_recharge_at: inDays(nextInDays),
@@ -103,7 +103,7 @@ describe('recarga de la SIM del GPS', () => {
 
   test('muestra la última recarga, el crédito y la próxima fecha', async () => {
     withSim(20);
-    renderApp(<Mototaxis />);
+    renderApp(<Vehicles />);
 
     const row = await simCells();
     expect(row.getByText('01/10/2026')).toBeInTheDocument();
@@ -113,7 +113,7 @@ describe('recarga de la SIM del GPS', () => {
 
   test('con margen de sobra no avisa', async () => {
     withSim(20);
-    renderApp(<Mototaxis />);
+    renderApp(<Vehicles />);
 
     const badge = (await simCells()).getByText('En 20 días');
     expect(badge.className).toMatch(/emerald/);
@@ -121,7 +121,7 @@ describe('recarga de la SIM del GPS', () => {
 
   test('a una semana de la próxima recarga se ve amarillo', async () => {
     withSim(6);
-    renderApp(<Mototaxis />);
+    renderApp(<Vehicles />);
 
     const badge = (await simCells()).getByText('En 6 días');
     expect(badge.className).toMatch(/amber/);
@@ -129,7 +129,7 @@ describe('recarga de la SIM del GPS', () => {
 
   test('a tres días de la próxima recarga se ve rojo', async () => {
     withSim(3);
-    renderApp(<Mototaxis />);
+    renderApp(<Vehicles />);
 
     const badge = (await simCells()).getByText('En 3 días');
     expect(badge.className).toMatch(/red/);
@@ -137,7 +137,7 @@ describe('recarga de la SIM del GPS', () => {
 
   test('el mismo día dice «Hoy» y sigue en rojo', async () => {
     withSim(0);
-    renderApp(<Mototaxis />);
+    renderApp(<Vehicles />);
 
     const badge = (await simCells()).getByText('Hoy');
     expect(badge.className).toMatch(/red/);
@@ -145,7 +145,7 @@ describe('recarga de la SIM del GPS', () => {
 
   test('una recarga vencida sigue en rojo y dice hace cuánto', async () => {
     withSim(-2);
-    renderApp(<Mototaxis />);
+    renderApp(<Vehicles />);
 
     const badge = (await simCells()).getByText('Vencida hace 2 días');
     expect(badge.className).toMatch(/red/);
@@ -153,7 +153,7 @@ describe('recarga de la SIM del GPS', () => {
 
   test('sin GPS esas celdas quedan vacías, aunque haya datos viejos', async () => {
     withSim(2, { has_tracker: false });
-    renderApp(<Mototaxis />);
+    renderApp(<Vehicles />);
 
     const row = await simCells();
     expect(row.queryByText('01/10/2026')).not.toBeInTheDocument();
@@ -161,7 +161,7 @@ describe('recarga de la SIM del GPS', () => {
   });
 
   test('con GPS pero sin ninguna recarga registrada tampoco inventa una fecha', async () => {
-    renderApp(<Mototaxis />);
+    renderApp(<Vehicles />);
 
     const row = await simCells();
     expect(row.queryByText(/En \d+ días?|Hoy|Vencida/)).not.toBeInTheDocument();
@@ -174,7 +174,7 @@ describe('ocultar las columnas de la SIM', () => {
   beforeEach(() => window.localStorage.clear());
 
   test('por defecto las columnas de la SIM se ven', async () => {
-    renderApp(<Mototaxis />);
+    renderApp(<Vehicles />);
     const t = await table();
 
     for (const header of SIM_HEADERS) {
@@ -187,7 +187,7 @@ describe('ocultar las columnas de la SIM', () => {
   });
 
   test('el botón oculta las tres columnas y deja las demás', async () => {
-    const { user } = renderApp(<Mototaxis />);
+    const { user } = renderApp(<Vehicles />);
     await table();
 
     await user.click(screen.getByRole('button', { name: 'Ocultar SIM' }));
@@ -205,7 +205,7 @@ describe('ocultar las columnas de la SIM', () => {
   });
 
   test('volver a pulsar las muestra', async () => {
-    const { user } = renderApp(<Mototaxis />);
+    const { user } = renderApp(<Vehicles />);
     await table();
 
     await user.click(screen.getByRole('button', { name: 'Ocultar SIM' }));
@@ -217,12 +217,12 @@ describe('ocultar las columnas de la SIM', () => {
   });
 
   test('recuerda la elección la próxima vez que se abre la pantalla', async () => {
-    const first = renderApp(<Mototaxis />);
+    const first = renderApp(<Vehicles />);
     await table();
     await first.user.click(screen.getByRole('button', { name: 'Ocultar SIM' }));
     first.unmount();
 
-    renderApp(<Mototaxis />);
+    renderApp(<Vehicles />);
 
     const t = await table();
     expect(t.queryByRole('columnheader', { name: /Próxima recarga/ })).not.toBeInTheDocument();
@@ -236,7 +236,7 @@ describe('ocultar las columnas de la SIM', () => {
     const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new Error('blocked');
     });
-    const { user } = renderApp(<Mototaxis />);
+    const { user } = renderApp(<Vehicles />);
     await table();
 
     await user.click(screen.getByRole('button', { name: 'Ocultar SIM' }));

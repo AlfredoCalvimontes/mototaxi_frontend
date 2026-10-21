@@ -8,7 +8,7 @@ export const strings = {
   },
   nav: {
     dashboard: 'Resumen',
-    mototaxis: 'Mototaxis',
+    vehicles: 'Mototaxis',
     drivers: 'Conductores',
     liveTrips: 'Viajes en curso',
     history: 'Historial',
@@ -70,7 +70,7 @@ export const strings = {
     alertDriversNoCredit: 'conductores sin crédito de uso',
     alertNoCheckin: 'conductores sin check-in hoy',
   },
-  mototaxis: {
+  vehicles: {
     heading: 'Mototaxis',
     plate: 'Placa',
     alias: 'Alias',
@@ -110,7 +110,7 @@ export const strings = {
     phone: 'WhatsApp',
     license: 'Licencia',
     status: 'Estado',
-    mototaxi: 'Mototaxi',
+    vehicle: 'Mototaxi',
     trips: 'Viajes',
     acceptance: 'Aceptación',
     responseTime: 'Respuesta promedio',
@@ -128,12 +128,12 @@ export const strings = {
     noCheckinHint: 'Sin check-in hoy no recibe ofertas: la ventana de WhatsApp está cerrada.',
     onlyWithoutCheckin: 'Solo sin check-in',
     restingUntil: 'Descansa hasta',
-    noMototaxiBadge: 'Sin mototaxi',
-    noMototaxiHint:
+    noVehicleBadge: 'Sin mototaxi',
+    noVehicleHint:
       'No tiene mototaxi asignada: no puede recibir viajes hasta que se le asigne una.',
     tracking: 'Seguimiento',
-    trackingNoMototaxi: 'Sin seguimiento',
-    trackingNoMototaxiHint: 'No tiene mototaxi asignada, así que no hay nada que rastrear.',
+    trackingNoVehicle: 'Sin seguimiento',
+    trackingNoVehicleHint: 'No tiene mototaxi asignada, así que no hay nada que rastrear.',
     trackingTracker: 'GPS activo',
     trackingTrackerHint: 'Su mototaxi tiene GPS y reportó posición hace poco.',
     trackingTrackerStale: 'GPS sin señal',
@@ -151,7 +151,7 @@ export const strings = {
     phoneKeyBadge: 'Clave GPS emitida',
     phoneKeyActive: 'Activa',
     phoneKeyMissing: 'Sin clave',
-    phoneKeyNoMototaxiBadge: 'Clave sin mototaxi',
+    phoneKeyNoVehicleBadge: 'Clave sin mototaxi',
     positionCheck: 'Posición',
     positionCheckTitle: (name: string) => `Posición de ${name}`,
     positionCheckIntro:
@@ -174,7 +174,7 @@ export const strings = {
     positionCheckWhen: 'Cuándo',
     positionCheckFlagLabel: 'Observación',
     positionCheckNoFixes: 'El conductor no ha reportado posición en las últimas 24 horas.',
-    positionCheckNoMototaxi: 'No tiene mototaxi asignada: no hay unidad con la que comparar.',
+    positionCheckNoVehicle: 'No tiene mototaxi asignada: no hay unidad con la que comparar.',
     flags: {
       DIVERGES_FROM_TRACKER: 'Lejos del GPS de la unidad',
       FROZEN_WHILE_MOVING: 'Coordenadas repetidas en movimiento',
@@ -310,8 +310,8 @@ export const strings = {
       'Un monto negativo reduce el crédito del conductor. Si queda en cero o menos, dejará de recibir viajes.',
     addCreditSubmit: 'Agregar',
     addCreditSubmitNegative: 'Quitar crédito',
-    newMototaxi: 'Registrar mototaxi',
-    editMototaxi: 'Editar mototaxi',
+    newVehicle: 'Registrar mototaxi',
+    editVehicle: 'Editar mototaxi',
     requiredField: 'Este campo es obligatorio',
     phoneHint: 'Se normaliza automáticamente al formato internacional.',
     ciNotEditable: 'el CI no se edita; para corregirlo, registra al conductor de nuevo',
@@ -328,11 +328,11 @@ export const strings = {
     restingUntilLabel: 'Descansa hasta',
     restingUntilHint: 'Solo aplica al estado "En descanso"; el sistema lo reactiva al vencer.',
     statusReason: 'Motivo (opcional)',
-    assignMototaxi: 'Asignar mototaxi',
-    changeMototaxi: 'Cambiar mototaxi',
-    assignMototaxiTitle: (name: string) => `Mototaxi de ${name}`,
-    noMototaxi: 'Sin mototaxi asignada',
-    detachMototaxi: 'Quitar la asignación',
+    assignVehicle: 'Asignar mototaxi',
+    changeVehicle: 'Cambiar mototaxi',
+    assignVehicleTitle: (name: string) => `Mototaxi de ${name}`,
+    noVehicle: 'Sin mototaxi asignada',
+    detachVehicle: 'Quitar la asignación',
     retire: 'Dar de baja',
     retireTitle: 'Dar de baja al conductor',
     retireBody: (name: string) =>
@@ -356,7 +356,7 @@ export const strings = {
       'Con esta clave el teléfono del conductor (app Traccar Client) envía su posición. La clave es del conductor: si lo cambias de unidad, sigue funcionando y ubica la nueva.',
     phoneKeyNone: 'Este conductor no tiene clave.',
     phoneKeyIssued: 'Este conductor ya tiene una clave.',
-    phoneKeyNoMototaxi:
+    phoneKeyNoVehicle:
       'No tiene mototaxi asignada: su posición se guarda como suya, pero no mueve ninguna unidad.',
     phoneKeyGenerate: 'Generar clave',
     phoneKeyRotate: 'Generar una nueva',
@@ -370,7 +370,7 @@ export const strings = {
     phoneKeyCopied: 'Copiada',
     phoneKeyServerUrl: 'URL del servidor en la app',
     phoneKeyDone: 'Listo',
-    currentMototaxi: 'Mototaxi actual',
+    currentVehicle: 'Mototaxi actual',
   },
   status: {
     driver: {
@@ -380,7 +380,7 @@ export const strings = {
       OFFLINE: 'Fuera de turno',
       DISABLED: 'Deshabilitado',
     },
-    mototaxi: {
+    vehicle: {
       AVAILABLE: 'Disponible',
       DISABLED: 'Deshabilitada',
       OUT_OF_SERVICE: 'Fuera de servicio',

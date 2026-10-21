@@ -1,4 +1,4 @@
-import type { DriverStatus, MototaxiStatus, TripStatus } from '@/api/types';
+import type { DriverStatus, VehicleStatus, TripStatus } from '@/api/types';
 import { strings } from '@/lib/strings';
 
 type Tone = 'good' | 'busy' | 'idle' | 'warn' | 'bad' | 'neutral';
@@ -20,7 +20,7 @@ const driverTones: Record<DriverStatus, Tone> = {
   DISABLED: 'bad',
 };
 
-const mototaxiTones: Record<MototaxiStatus, Tone> = {
+const vehicleTones: Record<VehicleStatus, Tone> = {
   AVAILABLE: 'good',
   DISABLED: 'bad',
   OUT_OF_SERVICE: 'warn',
@@ -39,7 +39,7 @@ const tripTones: Record<TripStatus, Tone> = {
 };
 
 export type StatusBadgeProps = {
-  kind: 'driver' | 'mototaxi' | 'trip';
+  kind: 'driver' | 'vehicle' | 'trip';
   /** Widened to `string`: an unknown status must still render, not crash. */
   value: string;
   title?: string;
@@ -50,9 +50,9 @@ function resolve(kind: StatusBadgeProps['kind'], value: string): { label: string
     const label = strings.status.driver[value as DriverStatus];
     return { label: label ?? value, tone: driverTones[value as DriverStatus] ?? 'neutral' };
   }
-  if (kind === 'mototaxi') {
-    const label = strings.status.mototaxi[value as MototaxiStatus];
-    return { label: label ?? value, tone: mototaxiTones[value as MototaxiStatus] ?? 'neutral' };
+  if (kind === 'vehicle') {
+    const label = strings.status.vehicle[value as VehicleStatus];
+    return { label: label ?? value, tone: vehicleTones[value as VehicleStatus] ?? 'neutral' };
   }
   const label = strings.status.trip[value as TripStatus];
   return { label: label ?? value, tone: tripTones[value as TripStatus] ?? 'neutral' };

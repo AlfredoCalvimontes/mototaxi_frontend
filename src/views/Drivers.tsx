@@ -2,9 +2,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
-import { deleteDriver, listDrivers, listMototaxis } from '@/api/admin';
+import { deleteDriver, listDrivers, listVehicles } from '@/api/admin';
 import { POLL, queryKeys } from '@/api/queries';
-import type { Driver, MototaxiSummary } from '@/api/types';
+import type { Driver, VehicleSummary } from '@/api/types';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { DataTable, type Column } from '@/components/DataTable';
 import { ErrorState } from '@/components/ErrorState';
@@ -12,7 +12,7 @@ import { MaskedValue, RevealAllButton } from '@/components/MaskedValue';
 import { useRevealGroup } from '@/components/revealGroup';
 import { StatusBadge, ToneBadge, WarningBadge } from '@/components/StatusBadge';
 import { TableSkeleton } from '@/components/Skeleton';
-import { AssignMototaxiDialog } from '@/views/fleet/AssignMototaxiDialog';
+import { AssignVehicleDialog } from '@/views/fleet/AssignVehicleDialog';
 import { DriverForm } from '@/views/fleet/DriverForm';
 import { DriverStatusDialog } from '@/views/fleet/DriverStatusDialog';
 import { PhoneKeyDialog } from '@/views/fleet/PhoneKeyDialog';
@@ -59,10 +59,10 @@ const TRACKING_BADGES: Record<
   TrackingState,
   { tone: 'good' | 'warn' | 'idle'; label: string; hint: string }
 > = {
-  noMototaxi: {
+  noVehicle: {
     tone: 'idle',
-    label: strings.drivers.trackingNoMototaxi,
-    hint: strings.drivers.trackingNoMototaxiHint,
+    label: strings.drivers.trackingNoVehicle,
+    hint: strings.drivers.trackingNoVehicleHint,
   },
   tracker: {
     tone: 'good',
@@ -140,17 +140,17 @@ export default function Drivers() {
     refetchInterval: POLL.drivers,
   });
 
-  const mototaxis = useQuery({
-    queryKey: queryKeys.mototaxis,
-    queryFn: listMototaxis,
-    refetchInterval: POLL.mototaxis,
+  const vehicles = useQuery({
+    queryKey: queryKeys.vehicles,
+    queryFn: listVehicles,
+    refetchInterval: POLL.vehicles,
   });
 
   const units = useMemo(() => {
-    const map = new Map<string, MototaxiSummary>();
-    for (const unit of mototaxis.data ?? []) map.set(unit.mototaxi_uuid, unit);
+    const map = new Map<string, VehicleSummary>();
+    for (const unit of vehicles.data ?? []) map.set(unit.vehicle_uuid, unit);
     return map;
-  }, [mototaxis.data]);
+  }, [vehicles.data]);
 
   const plates = useMemo(() => {
     const map = new Map<string, string>();
@@ -160,7 +160,7 @@ export default function Drivers() {
 
   const unitOf = useCallback(
     (driver: Driver) =>
-      driver.current_mototaxi_uuid ? units.get(driver.current_mototaxi_uuid) : undefined,
+      driver.current_vehicle_uuid ? units.get(driver.current_vehicle_uuid) : undefined,
     [units],
   );
 
@@ -205,22 +205,22 @@ export default function Drivers() {
         ),
       },
       {
-        id: 'mototaxi',
-        header: strings.drivers.mototaxi,
+        id: 'vehicle',
+        header: strings.drivers.vehicle,
         sortValue: (driver) =>
-          driver.current_mototaxi_uuid ? (plates.get(driver.current_mototaxi_uuid) ?? '') : null,
+          driver.current_vehicle_uuid ? (plates.get(driver.current_vehicle_uuid) ?? '') : null,
         cell: (driver) => (
           <div className="flex items-center gap-2">
             <RowAction onClick={() => setDialog({ kind: 'assign', driver })}>
-              {driver.current_mototaxi_uuid
-                ? strings.fleet.changeMototaxi
-                : strings.fleet.assignMototaxi}
+              {driver.current_vehicle_uuid
+                ? strings.fleet.changeVehicle
+                : strings.fleet.assignVehicle}
             </RowAction>
-            {driver.current_mototaxi_uuid ? (
-              (plates.get(driver.current_mototaxi_uuid) ?? EMPTY)
+            {driver.current_vehicle_uuid ? (
+              (plates.get(driver.current_vehicle_uuid) ?? EMPTY)
             ) : (
-              <WarningBadge title={strings.drivers.noMototaxiHint}>
-                {strings.drivers.noMototaxiBadge}
+              <WarningBadge title={strings.drivers.noVehicleHint}>
+                {strings.drivers.noVehicleBadge}
               </WarningBadge>
             )}
           </div>
@@ -244,8 +244,8 @@ export default function Drivers() {
                 </span>
               )}
               {driver.has_phone_key && !unit && (
-                <ToneBadge tone="warn" title={strings.fleet.phoneKeyNoMototaxi}>
-                  {strings.drivers.phoneKeyNoMototaxiBadge}
+                <ToneBadge tone="warn" title={strings.fleet.phoneKeyNoVehicle}>
+                  {strings.drivers.phoneKeyNoVehicleBadge}
                 </ToneBadge>
               )}
             </div>
@@ -453,14 +453,14 @@ export default function Drivers() {
         <DriverStatusDialog driver={dialog.driver} onClose={() => setDialog(null)} />
       )}
       {dialog?.kind === 'assign' && (
-        <AssignMototaxiDialog driver={dialog.driver} onClose={() => setDialog(null)} />
+        <AssignVehicleDialog driver={dialog.driver} onClose={() => setDialog(null)} />
       )}
       {dialog?.kind === 'phoneKey' && (
         <PhoneKeyDialog
           driver={dialog.driver}
-          mototaxiLabel={
-            dialog.driver.current_mototaxi_uuid
-              ? (plates.get(dialog.driver.current_mototaxi_uuid) ?? null)
+          vehicleLabel={
+            dialog.driver.current_vehicle_uuid
+              ? (plates.get(dialog.driver.current_vehicle_uuid) ?? null)
               : null
           }
           onClose={() => setDialog(null)}

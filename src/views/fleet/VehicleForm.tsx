@@ -1,15 +1,15 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 
-import { createMototaxi, updateMototaxi } from '@/api/admin';
-import type { Mototaxi } from '@/api/types';
+import { createVehicle, updateVehicle } from '@/api/admin';
+import type { Vehicle } from '@/api/types';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Field, FormDialog } from '@/components/Field';
-import { hasChanges, mototaxiChanges, parseCredit, type MototaxiFormValues } from '@/lib/dirty';
+import { hasChanges, vehicleChanges, parseCredit, type VehicleFormValues } from '@/lib/dirty';
 import { errorText } from '@/lib/errors';
 import { strings } from '@/lib/strings';
 
-function toValues(unit: Mototaxi): MototaxiFormValues {
+function toValues(unit: Vehicle): VehicleFormValues {
   return {
     plate_number: unit.plate_number,
     alias: unit.alias ?? '',
@@ -24,7 +24,7 @@ function toValues(unit: Mototaxi): MototaxiFormValues {
   };
 }
 
-const emptyValues: MototaxiFormValues = {
+const emptyValues: VehicleFormValues = {
   plate_number: '',
   alias: '',
   brand: '',
@@ -37,7 +37,7 @@ const emptyValues: MototaxiFormValues = {
 };
 
 /** The date and the credit go together; one without the other cannot give a next date. */
-function simErrors(values: MototaxiFormValues): Record<string, string> {
+function simErrors(values: VehicleFormValues): Record<string, string> {
   const errors: Record<string, string> = {};
   const hasDate = values.sim_last_recharge_at.trim() !== '';
   const hasAmount = values.sim_last_recharge_amount.trim() !== '';
@@ -52,28 +52,28 @@ function simErrors(values: MototaxiFormValues): Record<string, string> {
   return errors;
 }
 
-export function MototaxiForm({
-  mototaxi,
+export function VehicleForm({
+  vehicle,
   onClose,
 }: {
-  mototaxi: Mototaxi | null;
+  vehicle: Vehicle | null;
   onClose: () => void;
 }) {
-  const editing = mototaxi !== null;
-  const initial = mototaxi ? toValues(mototaxi) : emptyValues;
+  const editing = vehicle !== null;
+  const initial = vehicle ? toValues(vehicle) : emptyValues;
   const queryClient = useQueryClient();
 
-  const [values, setValues] = useState<MototaxiFormValues>(initial);
+  const [values, setValues] = useState<VehicleFormValues>(initial);
   const [validation, setValidation] = useState<Partial<Record<string, string>>>({});
   const [confirmingDetach, setConfirmingDetach] = useState(false);
 
-  const { payload, detachesTracker } = mototaxiChanges(initial, values);
+  const { payload, detachesTracker } = vehicleChanges(initial, values);
   const hasTracker = values.tracker_imei.trim() !== '';
 
   const save = useMutation({
     mutationFn: async () => {
-      if (editing) return updateMototaxi(mototaxi.mototaxi_uuid, payload);
-      return createMototaxi({
+      if (editing) return updateVehicle(vehicle.vehicle_uuid, payload);
+      return createVehicle({
         plate_number: values.plate_number.trim(),
         alias: values.alias.trim() || null,
         brand: values.brand.trim() || null,
@@ -89,8 +89,8 @@ export function MototaxiForm({
       });
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['mototaxis'] });
-      void queryClient.invalidateQueries({ queryKey: ['mototaxi'] });
+      void queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      void queryClient.invalidateQueries({ queryKey: ['vehicle'] });
       setConfirmingDetach(false);
       onClose();
     },
@@ -119,12 +119,12 @@ export function MototaxiForm({
   return (
     <>
       <FormDialog
-        title={editing ? strings.fleet.editMototaxi : strings.fleet.newMototaxi}
+        title={editing ? strings.fleet.editVehicle : strings.fleet.newVehicle}
         onClose={onClose}
       >
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <Field
-            label={strings.mototaxis.plate}
+            label={strings.vehicles.plate}
             value={values.plate_number}
             onChange={(plate_number) => setValues((v) => ({ ...v, plate_number }))}
             required
@@ -132,7 +132,7 @@ export function MototaxiForm({
           />
 
           <Field
-            label={strings.mototaxis.alias}
+            label={strings.vehicles.alias}
             value={values.alias}
             onChange={(alias) => setValues((v) => ({ ...v, alias }))}
             hint={strings.fleet.aliasHint}
@@ -140,19 +140,19 @@ export function MototaxiForm({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Field
-              label={strings.mototaxis.brand}
+              label={strings.vehicles.brand}
               value={values.brand}
               onChange={(brand) => setValues((v) => ({ ...v, brand }))}
             />
             <Field
-              label={strings.mototaxis.model}
+              label={strings.vehicles.model}
               value={values.model}
               onChange={(model) => setValues((v) => ({ ...v, model }))}
             />
           </div>
 
           <Field
-            label={strings.mototaxis.imei}
+            label={strings.vehicles.imei}
             value={values.tracker_imei}
             onChange={(tracker_imei) => setValues((v) => ({ ...v, tracker_imei }))}
             hint={strings.fleet.imeiHint}
@@ -187,14 +187,14 @@ export function MototaxiForm({
           )}
 
           <Field
-            label={strings.mototaxis.lastMaintenance}
+            label={strings.vehicles.lastMaintenance}
             type="date"
             value={values.last_maintenance_at}
             onChange={(last_maintenance_at) => setValues((v) => ({ ...v, last_maintenance_at }))}
           />
 
           <Field
-            label={strings.mototaxis.notes}
+            label={strings.vehicles.notes}
             value={values.notes}
             onChange={(notes) => setValues((v) => ({ ...v, notes }))}
           />

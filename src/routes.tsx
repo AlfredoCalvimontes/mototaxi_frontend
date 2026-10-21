@@ -7,7 +7,7 @@ import Dashboard from '@/views/Dashboard';
 import Drivers from '@/views/Drivers';
 import LiveTrips from '@/views/LiveTrips';
 import Login from '@/views/Login';
-import Mototaxis from '@/views/Mototaxis';
+import Vehicles from '@/views/Vehicles';
 import Settings from '@/views/Settings';
 import TripHistory from '@/views/TripHistory';
 
@@ -20,7 +20,7 @@ export function AppRoutes() {
         <Route element={<Layout />}>
           <Route index element={<Dashboard />} />
           <Route path="/viajes" element={<LiveTrips />} />
-          <Route path="/mototaxis" element={<Mototaxis />} />
+          <Route path="/mototaxis" element={<Vehicles />} />
           <Route path="/conductores" element={<Drivers />} />
           <Route path="/historial" element={<TripHistory />} />
           <Route path="/clientes" element={<Customers />} />

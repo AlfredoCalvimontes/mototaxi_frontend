@@ -7,8 +7,8 @@ import type {
   Driver,
   KPIs,
   RuntimeSetting,
-  Mototaxi,
-  MototaxiSummary,
+  Vehicle,
+  VehicleSummary,
   TripSummary,
   UserProfile,
 } from '@/api/types';
@@ -69,7 +69,7 @@ export const sharedLocationSetting: RuntimeSetting = {
   minimum: 5,
   maximum: 480,
   unit: 'minutes',
-  description: 'How long a location shared by hand keeps a mototaxi dispatchable',
+  description: 'How long a location shared by hand keeps a vehicle dispatchable',
   updated_at: null,
 };
 
@@ -84,8 +84,8 @@ export const simDaysSetting: RuntimeSetting = {
   updated_at: null,
 };
 
-export const mototaxiSummary: MototaxiSummary = {
-  mototaxi_uuid: '55555555-5555-4555-8555-555555555555',
+export const vehicleSummary: VehicleSummary = {
+  vehicle_uuid: '55555555-5555-4555-8555-555555555555',
   plate_number: 'ABC123',
   alias: null,
   status: 'AVAILABLE',
@@ -101,17 +101,17 @@ export const mototaxiSummary: MototaxiSummary = {
   current_driver_uuid: '66666666-6666-4666-8666-666666666666',
 };
 
-export const staleMototaxiSummary: MototaxiSummary = {
-  ...mototaxiSummary,
-  mototaxi_uuid: '77777777-7777-4777-8777-777777777777',
+export const staleVehicleSummary: VehicleSummary = {
+  ...vehicleSummary,
+  vehicle_uuid: '77777777-7777-4777-8777-777777777777',
   plate_number: 'XYZ789',
   location_updated_at: '2026-07-20T13:00:00Z',
   is_tracker_stale: true,
   current_driver_uuid: null,
 };
 
-export const mototaxiDetail: Mototaxi = {
-  mototaxi_uuid: mototaxiSummary.mototaxi_uuid,
+export const vehicleDetail: Vehicle = {
+  vehicle_uuid: vehicleSummary.vehicle_uuid,
   plate_number: 'ABC123',
   alias: null,
   brand: 'Honda',
@@ -139,7 +139,7 @@ export const driver: Driver = {
   phone_whatsapp: '+59171234567',
   license_number: 'LIC-4421',
   status: 'AVAILABLE',
-  current_mototaxi_uuid: mototaxiSummary.mototaxi_uuid,
+  current_vehicle_uuid: vehicleSummary.vehicle_uuid,
   offer_accepted_count: 42,
   offer_declined_count: 3,
   offer_timeout_count: 1,
@@ -169,7 +169,7 @@ export const driverWithoutCheckin: Driver = {
   ci: '1234567 TJ',
   phone_whatsapp: '+59176543210',
   status: 'OFFLINE',
-  current_mototaxi_uuid: null,
+  current_vehicle_uuid: null,
   last_checkin_at: '2026-07-18T12:00:00Z',
   has_checked_in_today: false,
 };
@@ -259,7 +259,7 @@ export const noAlerts: Alerts = {
 
 export const positionCheck: DriverPositionCheck = {
   driver_uuid: driver.driver_uuid,
-  mototaxi_uuid: mototaxiSummary.mototaxi_uuid,
+  vehicle_uuid: vehicleSummary.vehicle_uuid,
   driver_fix: {
     lat: -21.2625,
     lon: -63.469,

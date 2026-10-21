@@ -10,7 +10,7 @@ import type { TripHistoryParams } from '@/api/admin';
 
 export const POLL = {
   activeTrips: 10_000,
-  mototaxis: 15_000,
+  vehicles: 15_000,
   drivers: 30_000,
   dashboard: 60_000,
 } as const;
@@ -19,8 +19,8 @@ export const queryKeys = {
   profile: ['profile'] as const,
   kpis: ['kpis'] as const,
   alerts: ['alerts'] as const,
-  mototaxis: ['mototaxis'] as const,
-  mototaxi: (uuid: UUID) => ['mototaxi', uuid] as const,
+  vehicles: ['vehicles'] as const,
+  vehicle: (uuid: UUID) => ['vehicle', uuid] as const,
   drivers: (status?: DriverStatus) => ['drivers', status ?? 'all'] as const,
   driver: (uuid: UUID) => ['driver', uuid] as const,
   positionCheck: (uuid: UUID) => ['position-check', uuid] as const,

@@ -33,13 +33,13 @@ export const handlers = [
   http.get(`${BASE}/admin/alerts`, () => HttpResponse.json(fx.alerts)),
 
   // fleet
-  http.get(`${BASE}/admin/mototaxis`, () =>
-    HttpResponse.json([fx.mototaxiSummary, fx.staleMototaxiSummary]),
+  http.get(`${BASE}/admin/vehicles`, () =>
+    HttpResponse.json([fx.vehicleSummary, fx.staleVehicleSummary]),
   ),
-  http.get(`${BASE}/admin/mototaxis/:uuid`, () => HttpResponse.json(fx.mototaxiDetail)),
-  http.post(`${BASE}/admin/mototaxis`, () => HttpResponse.json(fx.mototaxiDetail, { status: 201 })),
-  http.patch(`${BASE}/admin/mototaxis/:uuid`, () => HttpResponse.json(fx.mototaxiDetail)),
-  http.patch(`${BASE}/admin/mototaxis/:uuid/status`, () => HttpResponse.json(fx.mototaxiDetail)),
+  http.get(`${BASE}/admin/vehicles/:uuid`, () => HttpResponse.json(fx.vehicleDetail)),
+  http.post(`${BASE}/admin/vehicles`, () => HttpResponse.json(fx.vehicleDetail, { status: 201 })),
+  http.patch(`${BASE}/admin/vehicles/:uuid`, () => HttpResponse.json(fx.vehicleDetail)),
+  http.patch(`${BASE}/admin/vehicles/:uuid/status`, () => HttpResponse.json(fx.vehicleDetail)),
 
   http.get(`${BASE}/admin/drivers`, ({ request }) => {
     const status = new URL(request.url).searchParams.get('status');
@@ -61,7 +61,7 @@ export const handlers = [
   http.post(`${BASE}/admin/drivers`, () => HttpResponse.json(fx.driver, { status: 201 })),
   http.patch(`${BASE}/admin/drivers/:uuid`, () => HttpResponse.json(fx.driver)),
   http.patch(`${BASE}/admin/drivers/:uuid/status`, () => HttpResponse.json(fx.driver)),
-  http.patch(`${BASE}/admin/drivers/:uuid/mototaxi`, () => HttpResponse.json(fx.driver)),
+  http.patch(`${BASE}/admin/drivers/:uuid/vehicle`, () => HttpResponse.json(fx.driver)),
   http.delete(`${BASE}/admin/drivers/:uuid`, () => new HttpResponse(null, { status: 204 })),
 
   // settings

@@ -2,7 +2,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { MapContainer, Marker, Popup, TileLayer, Tooltip } from 'react-leaflet';
 
-import type { MototaxiSummary } from '@/api/types';
+import type { VehicleSummary } from '@/api/types';
 import { EMPTY, formatRelative, markerLabel } from '@/lib/format';
 import { strings } from '@/lib/strings';
 
@@ -24,19 +24,19 @@ function markerIcon(stale: boolean) {
   });
 }
 
-type Located = MototaxiSummary & { lat: number; lon: number };
+type Located = VehicleSummary & { lat: number; lon: number };
 
-function hasPosition(unit: MototaxiSummary): unit is Located {
+function hasPosition(unit: VehicleSummary): unit is Located {
   return unit.lat !== null && unit.lon !== null;
 }
 
-export function FleetMap({ units }: { units: MototaxiSummary[] }) {
+export function FleetMap({ units }: { units: VehicleSummary[] }) {
   const located = units.filter(hasPosition);
 
   if (located.length === 0) {
     return (
       <div className="grid h-72 place-items-center rounded-lg border border-dashed border-slate-300 bg-white text-sm text-slate-500">
-        {strings.mototaxis.mapUnavailable}
+        {strings.vehicles.mapUnavailable}
       </div>
     );
   }
@@ -58,7 +58,7 @@ export function FleetMap({ units }: { units: MototaxiSummary[] }) {
       />
       {located.map((unit) => (
         <Marker
-          key={unit.mototaxi_uuid}
+          key={unit.vehicle_uuid}
           position={[unit.lat, unit.lon]}
           icon={markerIcon(unit.is_tracker_stale)}
         >
@@ -71,10 +71,10 @@ export function FleetMap({ units }: { units: MototaxiSummary[] }) {
               {unit.alias ? `${unit.alias} · ${unit.plate_number}` : unit.plate_number}
             </p>
             <p className="text-xs text-slate-600">
-              {strings.mototaxis.lastUpdate}: {formatRelative(unit.location_updated_at) || EMPTY}
+              {strings.vehicles.lastUpdate}: {formatRelative(unit.location_updated_at) || EMPTY}
             </p>
             {unit.is_tracker_stale && (
-              <p className="text-xs font-medium text-amber-700">{strings.mototaxis.staleTracker}</p>
+              <p className="text-xs font-medium text-amber-700">{strings.vehicles.staleTracker}</p>
             )}
           </Popup>
         </Marker>

@@ -6,7 +6,7 @@ import { strings } from '@/lib/strings';
 const navItems = [
   { to: '/', label: strings.nav.dashboard, end: true },
   { to: '/viajes', label: strings.nav.liveTrips, end: false },
-  { to: '/mototaxis', label: strings.nav.mototaxis, end: false },
+  { to: '/mototaxis', label: strings.nav.vehicles, end: false },
   { to: '/conductores', label: strings.nav.drivers, end: false },
   { to: '/historial', label: strings.nav.history, end: false },
   { to: '/clientes', label: strings.nav.customers, end: false },

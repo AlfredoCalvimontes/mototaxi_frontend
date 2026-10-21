@@ -7,7 +7,7 @@
  *
  * - `PATCH /admin/drivers/{uuid}` — `null` is silently ignored. Nothing on a
  *   driver can be cleared through it.
- * - `PATCH /admin/mototaxis/{uuid}` — `null` **clears** the field.
+ * - `PATCH /admin/vehicles/{uuid}` — `null` **clears** the field.
  *   `{tracker_imei: null}` detaches the tracker and drops that IMEI from the
  *   GT06 allowlist (spec §7.2).
  *
@@ -15,7 +15,7 @@
  * so both functions emit dirty fields only — never a whole object.
  */
 
-import type { UpdateDriverPayload, UpdateMototaxiPayload } from '@/api/types';
+import type { UpdateDriverPayload, UpdateVehiclePayload } from '@/api/types';
 
 /** Trims and turns an empty input into `null`, which each caller then judges. */
 function normalise(value: string): string | null {
@@ -66,7 +66,7 @@ export function driverChanges(initial: DriverFormValues, current: DriverFormValu
   return { payload, unclearable };
 }
 
-export type MototaxiFormValues = {
+export type VehicleFormValues = {
   plate_number: string;
   alias: string;
   brand: string;
@@ -78,8 +78,8 @@ export type MototaxiFormValues = {
   last_maintenance_at: string;
 };
 
-export type MototaxiChanges = {
-  payload: UpdateMototaxiPayload;
+export type VehicleChanges = {
+  payload: UpdateVehiclePayload;
   /**
    * True when the payload detaches the tracker. The IMEI is not a field to tab
    * through: dropping it removes the vehicle from the GT06 allowlist, so the
@@ -96,9 +96,9 @@ export function parseCredit(value: string): number | null {
 
 /** The two halves of a SIM recharge travel together, so a change to either sends both. */
 function simRechargeChange(
-  initial: MototaxiFormValues,
-  current: MototaxiFormValues,
-): Pick<UpdateMototaxiPayload, 'sim_last_recharge_at' | 'sim_last_recharge_amount'> {
+  initial: VehicleFormValues,
+  current: VehicleFormValues,
+): Pick<UpdateVehiclePayload, 'sim_last_recharge_at' | 'sim_last_recharge_amount'> {
   const at = normalise(current.sim_last_recharge_at);
   const amount = parseCredit(current.sim_last_recharge_amount);
   const unchanged =
@@ -107,11 +107,11 @@ function simRechargeChange(
   return unchanged ? {} : { sim_last_recharge_at: at, sim_last_recharge_amount: amount };
 }
 
-export function mototaxiChanges(
-  initial: MototaxiFormValues,
-  current: MototaxiFormValues,
-): MototaxiChanges {
-  const payload: UpdateMototaxiPayload = {};
+export function vehicleChanges(
+  initial: VehicleFormValues,
+  current: VehicleFormValues,
+): VehicleChanges {
+  const payload: UpdateVehiclePayload = {};
 
   // The plate is required by the schema, so blanking it is not a clear —
   // the form rejects it before we get here and it is simply not sent.

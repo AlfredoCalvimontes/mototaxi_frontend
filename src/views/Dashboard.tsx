@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { getAlerts, getKpis, listDrivers, listMototaxis } from '@/api/admin';
+import { getAlerts, getKpis, listDrivers, listVehicles } from '@/api/admin';
 import { POLL, queryKeys } from '@/api/queries';
 import { AlertBanner, type PanelAlerts } from '@/components/AlertBanner';
 import { ErrorState } from '@/components/ErrorState';
@@ -23,10 +23,10 @@ export default function Dashboard() {
   });
 
   // Already polled by the fleet views; here they only feed the credit alerts.
-  const mototaxis = useQuery({
-    queryKey: queryKeys.mototaxis,
-    queryFn: listMototaxis,
-    refetchInterval: POLL.mototaxis,
+  const vehicles = useQuery({
+    queryKey: queryKeys.vehicles,
+    queryFn: listVehicles,
+    refetchInterval: POLL.vehicles,
   });
   const drivers = useQuery({
     queryKey: queryKeys.drivers(),
@@ -37,7 +37,7 @@ export default function Dashboard() {
   const panelAlerts: PanelAlerts | null = alerts.data
     ? {
         ...alerts.data,
-        trackers_without_credit: (mototaxis.data ?? []).filter(
+        trackers_without_credit: (vehicles.data ?? []).filter(
           (unit) =>
             unit.has_tracker && simRechargeState(unit.sim_next_recharge_at).state === 'overdue',
         ).length,

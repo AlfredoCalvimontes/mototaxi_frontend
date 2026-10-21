@@ -1,21 +1,21 @@
 import { describe, expect, test } from 'vitest';
 
-import { mototaxiSummary } from '@/test/fixtures';
+import { vehicleSummary } from '@/test/fixtures';
 import { trackingState } from '@/lib/tracking';
 
-const trackerless = { ...mototaxiSummary, has_tracker: false, location_source: 'WHATSAPP' };
+const trackerless = { ...vehicleSummary, has_tracker: false, location_source: 'WHATSAPP' };
 
 describe('trackingState', () => {
   test('sin mototaxi asignada no hay nada que rastrear', () => {
-    expect(trackingState(undefined)).toBe('noMototaxi');
+    expect(trackingState(undefined)).toBe('noVehicle');
   });
 
   test('con GPS y señal reciente el rastreador está activo', () => {
-    expect(trackingState(mototaxiSummary)).toBe('tracker');
+    expect(trackingState(vehicleSummary)).toBe('tracker');
   });
 
   test('con GPS pero sin señal se marca como perdido', () => {
-    expect(trackingState({ ...mototaxiSummary, is_tracker_stale: true })).toBe('trackerStale');
+    expect(trackingState({ ...vehicleSummary, is_tracker_stale: true })).toBe('trackerStale');
   });
 
   test('sin GPS, una ubicación compartida reciente cuenta como seguimiento', () => {
@@ -35,16 +35,16 @@ describe('trackingState', () => {
   });
 
   test('con GPS sin señal pero el celular cubriendo, se sigue por celular', () => {
-    expect(trackingState({ ...mototaxiSummary, location_source: 'PHONE' })).toBe('phone');
+    expect(trackingState({ ...vehicleSummary, location_source: 'PHONE' })).toBe('phone');
   });
 
   test('con GPS sin señal y solo una ubicación compartida vigente, cuenta como compartida', () => {
-    expect(trackingState({ ...mototaxiSummary, location_source: 'WHATSAPP' })).toBe('shared');
+    expect(trackingState({ ...vehicleSummary, location_source: 'WHATSAPP' })).toBe('shared');
   });
 
   test('con GPS, sin señal y sin nada que lo cubra, está perdido', () => {
     expect(
-      trackingState({ ...mototaxiSummary, is_tracker_stale: true, location_source: 'TRACKER' }),
+      trackingState({ ...vehicleSummary, is_tracker_stale: true, location_source: 'TRACKER' }),
     ).toBe('trackerStale');
   });
 });

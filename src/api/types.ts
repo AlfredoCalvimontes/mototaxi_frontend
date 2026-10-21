@@ -13,7 +13,7 @@ export type IsoDateTime = string;
 export type IsoDate = string;
 
 export type DriverStatus = 'AVAILABLE' | 'IN_TRIP' | 'RESTING' | 'OFFLINE' | 'DISABLED';
-export type MototaxiStatus = 'AVAILABLE' | 'DISABLED' | 'OUT_OF_SERVICE';
+export type VehicleStatus = 'AVAILABLE' | 'DISABLED' | 'OUT_OF_SERVICE';
 
 export type TripStatus =
   | 'REQUESTED'
@@ -60,11 +60,11 @@ export type TripSummary = {
   ended_at: IsoDateTime | null;
 };
 
-export type MototaxiSummary = {
-  mototaxi_uuid: UUID;
+export type VehicleSummary = {
+  vehicle_uuid: UUID;
   plate_number: string;
   alias: string | null;
-  status: MototaxiStatus | string;
+  status: VehicleStatus | string;
   lat: number | null;
   lon: number | null;
   location_updated_at: IsoDateTime | null;
@@ -137,7 +137,7 @@ export type Driver = {
   phone_whatsapp: string;
   license_number: string | null;
   status: DriverStatus;
-  current_mototaxi_uuid: UUID | null;
+  current_vehicle_uuid: UUID | null;
   offer_accepted_count: number;
   offer_declined_count: number;
   offer_timeout_count: number;
@@ -164,9 +164,9 @@ export type Driver = {
   created_at: IsoDateTime;
 };
 
-/** Detail shape. The list endpoint returns {@link MototaxiSummary} — do not unify. */
-export type Mototaxi = {
-  mototaxi_uuid: UUID;
+/** Detail shape. The list endpoint returns {@link VehicleSummary} — do not unify. */
+export type Vehicle = {
+  vehicle_uuid: UUID;
   plate_number: string;
   alias: string | null;
   brand: string | null;
@@ -175,7 +175,7 @@ export type Mototaxi = {
   sim_last_recharge_at: IsoDate | null;
   sim_last_recharge_amount: number | null;
   sim_next_recharge_at: IsoDate | null;
-  status: MototaxiStatus;
+  status: VehicleStatus;
   lat: number | null;
   lon: number | null;
   location_updated_at: IsoDateTime | null;
@@ -192,7 +192,7 @@ export type CreateDriverPayload = {
   ci: string;
   phone_whatsapp: string;
   license_number?: string | null;
-  mototaxi_uuid?: UUID | null;
+  vehicle_uuid?: UUID | null;
   /** Starts with an empty balance, so credit has to be added before the first trip. */
   usage_credit_enabled?: boolean;
 };
@@ -202,7 +202,7 @@ export type CreateDriverPayload = {
  *
  * Omitted keys are left untouched and an explicit `null` is **silently
  * ignored** — nothing on a driver can be cleared through this route. This is
- * the opposite of {@link UpdateMototaxiPayload}; see `lib/dirty.ts`.
+ * the opposite of {@link UpdateVehiclePayload}; see `lib/dirty.ts`.
  */
 export type UpdateDriverPayload = {
   name?: string;
@@ -222,10 +222,10 @@ export type ChangeDriverStatusPayload = {
   resting_until?: IsoDateTime | null;
 };
 
-/** `mototaxi_uuid` is required: `null` detaches, an empty body is a 422. */
-export type AssignMototaxiPayload = { mototaxi_uuid: UUID | null };
+/** `vehicle_uuid` is required: `null` detaches, an empty body is a 422. */
+export type AssignVehiclePayload = { vehicle_uuid: UUID | null };
 
-export type CreateMototaxiPayload = {
+export type CreateVehiclePayload = {
   plate_number: string;
   alias?: string | null;
   brand?: string | null;
@@ -242,7 +242,7 @@ export type CreateMototaxiPayload = {
  * `{tracker_imei: null}` detaches the tracker and drops the IMEI from the GT06
  * allowlist (spec §7.2) — never emit it for a merely untouched input.
  */
-export type UpdateMototaxiPayload = {
+export type UpdateVehiclePayload = {
   plate_number?: string;
   alias?: string | null;
   brand?: string | null;
@@ -254,7 +254,7 @@ export type UpdateMototaxiPayload = {
   last_maintenance_at?: IsoDate | null;
 };
 
-export type ChangeMototaxiStatusPayload = { status: MototaxiStatus };
+export type ChangeVehicleStatusPayload = { status: VehicleStatus };
 
 // --- auth -----------------------------------------------------------------
 
@@ -290,7 +290,7 @@ export type PositionFix = {
 /** `GET /admin/drivers/{uuid}/position-check`: the driver's trace beside their unit's. */
 export type DriverPositionCheck = {
   driver_uuid: UUID;
-  mototaxi_uuid: UUID | null;
+  vehicle_uuid: UUID | null;
   driver_fix: PositionFix | null;
   vehicle_fix: PositionFix | null;
   tracker_fix: PositionFix | null;

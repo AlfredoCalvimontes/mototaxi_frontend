@@ -23,12 +23,12 @@ const SERVER_URL = `${window.location.origin}/api/v1/tracking/phone`;
  */
 export function PhoneKeyDialog({
   driver,
-  mototaxiLabel,
+  vehicleLabel,
   onClose,
 }: {
   driver: Driver;
   /** The unit the driver is on, for display; `null` when none is assigned. */
-  mototaxiLabel: string | null;
+  vehicleLabel: string | null;
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -78,13 +78,13 @@ export function PhoneKeyDialog({
       <div className="space-y-4">
         <p className="text-sm text-slate-600">{strings.fleet.phoneKeyIntro}</p>
         <p className="text-sm text-slate-600">
-          {strings.fleet.currentMototaxi}:{' '}
+          {strings.fleet.currentVehicle}:{' '}
           <span className="font-medium text-slate-900">
-            {mototaxiLabel ?? strings.fleet.noMototaxi}
+            {vehicleLabel ?? strings.fleet.noVehicle}
           </span>
         </p>
-        {mototaxiLabel === null && (
-          <p className="text-xs text-slate-500">{strings.fleet.phoneKeyNoMototaxi}</p>
+        {vehicleLabel === null && (
+          <p className="text-xs text-slate-500">{strings.fleet.phoneKeyNoVehicle}</p>
         )}
 
         {key !== null ? (
