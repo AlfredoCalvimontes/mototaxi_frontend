@@ -387,7 +387,9 @@ describe('asignación de mototaxi', () => {
     const bodies = captureBody('patch', '/admin/drivers/:uuid/vehicle', fx.driver);
     const { user } = renderApp(<Drivers />);
 
-    await user.click((await rowFor('Marco Peña')).getByRole('button', { name: 'Cambiar mototaxi' }));
+    await user.click(
+      (await rowFor('Marco Peña')).getByRole('button', { name: 'Cambiar mototaxi' }),
+    );
     const dialog = within(screen.getByRole('dialog'));
     await user.selectOptions(dialog.getByLabelText('Mototaxi'), '');
     await user.click(dialog.getByRole('button', { name: 'Guardar' }));
@@ -417,7 +419,9 @@ describe('asignación de mototaxi', () => {
     );
     const { user } = renderApp(<Drivers />);
 
-    await user.click((await rowFor('Marco Peña')).getByRole('button', { name: 'Cambiar mototaxi' }));
+    await user.click(
+      (await rowFor('Marco Peña')).getByRole('button', { name: 'Cambiar mototaxi' }),
+    );
     const dialog = within(screen.getByRole('dialog'));
 
     expect(dialog.getByText(/está en viaje/)).toBeInTheDocument();
