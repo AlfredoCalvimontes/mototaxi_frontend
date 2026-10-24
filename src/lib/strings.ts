@@ -295,9 +295,12 @@ export const strings = {
     creditExpiredBadge: 'Crédito vencido',
     creditExpiredHint:
       'Se le acabó el crédito de uso: no recibe viajes y, si escribe al bot, se le pide recargar.',
-    creditSoonBadge: (days: number) =>
-      days <= 0 ? 'Vence hoy' : `Vence en ${days} día${days === 1 ? '' : 's'}`,
-    creditOkBadge: (days: number) => `En ${days} días`,
+    creditSoonBadge: (hours: number) => {
+      if (hours <= 1) return 'Vence en menos de 1 h';
+      if (hours <= 24) return `Vence en ${hours} h`;
+      const days = Math.ceil(hours / 24);
+      return `Vence en ${days} días`;
+    },
     addCredit: 'Agregar crédito',
     noCheckinBadge: 'Sin check-in hoy',
     noCheckinHint: 'Sin check-in hoy no recibe ofertas: la ventana de WhatsApp está cerrada.',
@@ -408,10 +411,11 @@ export const strings = {
       usage_credit_per_day: {
         label: 'Crédito de uso que consume un conductor por día',
         tooltip:
-          'Solo cuenta para los conductores que tienen activado el crédito de uso. Cada día se les ' +
-          'descuenta este monto; al llegar a cero dejan de recibir viajes y, si escriben al bot, se ' +
-          'les avisa que deben recargar. Con 60 por día, 180 de crédito duran tres días. Cambiarlo ' +
-          'recalcula de inmediato la fecha de vencimiento de todos.',
+          'Solo cuenta para los conductores que tienen activado el crédito de uso. Se les descuenta ' +
+          'hora a hora: un día de crédito pagado a las 14:00 se acaba a las 14:00 del día siguiente. ' +
+          'Al llegar a cero dejan de recibir viajes y, si escriben al bot, se les avisa que deben ' +
+          'recargar. Con 60 por día, 180 de crédito duran tres días. Cambiarlo recalcula de ' +
+          'inmediato la hora de vencimiento de todos.',
       },
     } as Record<string, { label: string; tooltip: string }>,
   },

@@ -168,10 +168,10 @@ export type Driver = {
   location_source: string | null;
   /** On the credit scheme: may be offered trips only while the credit lasts. */
   usage_credit_enabled: boolean;
-  /** Drained to today; may be zero or negative. `null` off the scheme. */
+  /** Drained to this moment; never below zero. `null` off the scheme. */
   usage_credit_balance: number | null;
-  /** The first day the balance is no longer positive. `null` off the scheme. */
-  usage_credit_expires_on: IsoDate | null;
+  /** The instant the balance runs out (UTC). `null` off the scheme. */
+  usage_credit_expires_at: IsoDateTime | null;
   usage_credit_expired: boolean;
   created_at: IsoDateTime;
   /** Owning city. `null` until an admin assigns one. */

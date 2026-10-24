@@ -35,7 +35,7 @@ const driver = (name: string) => ({
   location_source: null,
   usage_credit_enabled: false,
   usage_credit_balance: null,
-  usage_credit_expires_on: null,
+  usage_credit_expires_at: null,
   usage_credit_expired: false,
   created_at: '2026-10-01T10:00:00Z',
   city_uuid: null,

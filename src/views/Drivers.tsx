@@ -21,7 +21,6 @@ import { PositionCheckDialog } from '@/views/fleet/PositionCheckDialog';
 import { UsageCreditDialog } from '@/views/fleet/UsageCreditDialog';
 import {
   EMPTY,
-  formatDate,
   formatDateTime,
   formatDuration,
   formatPercent,
@@ -95,10 +94,10 @@ const TRACKING_BADGES: Record<
   },
 };
 
-/** The expiry date, red once the credit has run out and amber in its last days. */
+/** The expiry moment, red once the credit has run out and amber in its last days. */
 function CreditExpiry({ driver }: { driver: Driver }) {
-  const { state, daysLeft } = usageCreditState(driver);
-  if (state === 'off' || !driver.usage_credit_expires_on) return null;
+  const { state, hoursLeft } = usageCreditState(driver);
+  if (state === 'off' || !driver.usage_credit_expires_at) return null;
   const text = {
     ok: '',
     soon: 'font-medium text-amber-700',
@@ -106,14 +105,16 @@ function CreditExpiry({ driver }: { driver: Driver }) {
   }[state];
   return (
     <div className="flex flex-col items-start gap-0.5">
-      <span className={`tabular-nums ${text}`}>{formatDate(driver.usage_credit_expires_on)}</span>
+      <span className={`tabular-nums ${text}`}>
+        {formatDateTime(driver.usage_credit_expires_at)}
+      </span>
       {state === 'expired' && (
         <ToneBadge tone="bad" title={strings.drivers.creditExpiredHint}>
           {strings.drivers.creditExpiredBadge}
         </ToneBadge>
       )}
-      {state === 'soon' && daysLeft !== null && (
-        <ToneBadge tone="warn">{strings.drivers.creditSoonBadge(daysLeft)}</ToneBadge>
+      {state === 'soon' && hoursLeft !== null && (
+        <ToneBadge tone="warn">{strings.drivers.creditSoonBadge(hoursLeft)}</ToneBadge>
       )}
     </div>
   );
@@ -341,7 +342,7 @@ export default function Drivers() {
       {
         id: 'creditExpires',
         header: strings.drivers.creditExpires,
-        sortValue: (driver) => driver.usage_credit_expires_on ?? null,
+        sortValue: (driver) => driver.usage_credit_expires_at ?? null,
         cell: (driver) => <CreditExpiry driver={driver} />,
       },
       {

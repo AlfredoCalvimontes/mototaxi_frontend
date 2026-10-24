@@ -6,7 +6,7 @@ import type { Driver } from '@/api/types';
 import { Field, FormDialog } from '@/components/Field';
 import { parseCredit } from '@/lib/dirty';
 import { errorText } from '@/lib/errors';
-import { formatDate } from '@/lib/format';
+import { formatDateTime } from '@/lib/format';
 import { strings } from '@/lib/strings';
 import { formatCredit } from '@/lib/usageCredit';
 
@@ -44,7 +44,7 @@ export function UsageCreditDialog({ driver, onClose }: { driver: Driver; onClose
         <p className={`text-sm ${driver.usage_credit_expired ? 'text-red-700' : 'text-slate-600'}`}>
           {driver.usage_credit_expired
             ? strings.fleet.addCreditExpiredIntro(balance)
-            : strings.fleet.addCreditIntro(balance, formatDate(driver.usage_credit_expires_on))}
+            : strings.fleet.addCreditIntro(balance, formatDateTime(driver.usage_credit_expires_at))}
         </p>
 
         <Field

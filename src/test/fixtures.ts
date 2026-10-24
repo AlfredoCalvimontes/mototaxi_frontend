@@ -191,7 +191,7 @@ export const driver: Driver = {
   location_source: null,
   usage_credit_enabled: false,
   usage_credit_balance: null,
-  usage_credit_expires_on: null,
+  usage_credit_expires_at: null,
   usage_credit_expired: false,
   created_at: '2026-05-02T09:00:00Z',
   city_uuid: null,
@@ -219,7 +219,7 @@ export const driverWithCredit: Driver = {
   phone_whatsapp: '+59170001234',
   usage_credit_enabled: true,
   usage_credit_balance: 180,
-  usage_credit_expires_on: '2099-01-01',
+  usage_credit_expires_at: '2099-01-01T14:00:00Z',
   usage_credit_expired: false,
 };
 
@@ -230,8 +230,8 @@ export const driverCreditExpired: Driver = {
   name: 'Elena Cruz',
   ci: '4441234 TJ',
   phone_whatsapp: '+59170005678',
-  usage_credit_balance: -20,
-  usage_credit_expires_on: '2026-10-01',
+  usage_credit_balance: 0,
+  usage_credit_expires_at: '2026-10-01T14:00:00Z',
   usage_credit_expired: true,
 };
 

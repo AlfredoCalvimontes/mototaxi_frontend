@@ -40,7 +40,7 @@ describe('crédito de uso en la tabla', () => {
     const row = await rowFor('Rafael Soria');
 
     expect(row.getByText('180')).toBeInTheDocument();
-    expect(row.getByText('01/01/2099')).toBeInTheDocument();
+    expect(row.getByText('01/01/2099, 10:00')).toBeInTheDocument();
     expect(row.queryByText('Crédito vencido')).not.toBeInTheDocument();
   });
 
@@ -51,8 +51,8 @@ describe('crédito de uso en la tabla', () => {
     const row = await rowFor('Elena Cruz');
 
     expect(row.getByText('Crédito vencido')).toBeInTheDocument();
-    expect(row.getByText('-20')).toHaveClass('text-red-700');
-    expect(row.getByText('01/10/2026')).toHaveClass('text-red-700');
+    expect(row.getByText('0')).toHaveClass('text-red-700');
+    expect(row.getByText('01/10/2026, 10:00')).toHaveClass('text-red-700');
     expect(row.getByText('Crédito vencido').closest('tr')).toHaveClass('bg-red-50/70');
   });
 
