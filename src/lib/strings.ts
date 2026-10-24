@@ -111,8 +111,8 @@ export const strings = {
     addAttribute: 'Agregar dato',
     removeAttribute: 'Quitar',
     types: { string: 'Texto', int: 'Número entero', float: 'Número decimal', bool: 'Sí / No' },
-    schemaWarning:
-      'Si ya hay vehículos de este tipo, solo se pueden agregar datos opcionales, cambiar etiquetas o volver opcional un dato. Quitar un dato o cambiar su tipo se rechaza.',
+    schemaWarning: (count: number) =>
+      `${count === 1 ? 'Hay 1 vehículo' : `Hay ${count} vehículos`} de este tipo: solo se pueden agregar datos opcionales, cambiar etiquetas o volver opcional un dato. Quitar un dato o cambiar su tipo se rechaza.`,
     empty: 'Todavía no hay tipos de vehículo',
   },
   tenancy: {

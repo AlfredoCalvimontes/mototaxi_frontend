@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 
-import { createVehicleType, listVehicleTypes, updateVehicleType } from '@/api/admin';
+import { createVehicleType, listVehicleTypes, listVehicles, updateVehicleType } from '@/api/admin';
 import { queryKeys } from '@/api/queries';
 import type { AttributeSchemaField, AttributeType, VehicleType } from '@/api/types';
 import { useAuth } from '@/auth/context';
@@ -98,6 +98,16 @@ function TypeForm({ type, onClose }: { type: VehicleType | null; onClose: () => 
   const [rows, setRows] = useState<AttributeSchemaField[]>(type?.attribute_schema ?? []);
   const [problem, setProblem] = useState<string | null>(null);
 
+  // The schema is additive-only once vehicles use the type, so warn only then.
+  const vehicles = useQuery({
+    queryKey: queryKeys.vehiclesIn(null),
+    queryFn: () => listVehicles(),
+    enabled: editing,
+  });
+  const inUse = editing
+    ? (vehicles.data ?? []).filter((v) => v.vehicle_type_uuid === type.vehicle_type_uuid).length
+    : 0;
+
   const save = useMutation({
     mutationFn: () => {
       const schema = rows.map((r) => ({
@@ -157,7 +167,7 @@ function TypeForm({ type, onClose }: { type: VehicleType | null; onClose: () => 
           </label>
         )}
         <SchemaEditor rows={rows} onChange={setRows} />
-        {editing && <p className="text-xs text-amber-700">{t.schemaWarning}</p>}
+        {inUse > 0 && <p className="text-xs text-amber-700">{t.schemaWarning(inUse)}</p>}
         {(problem || save.error != null) && (
           <p
             role="alert"
