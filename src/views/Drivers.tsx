@@ -323,6 +323,12 @@ export default function Drivers() {
         cell: (driver) => formatDuration(driver.average_response_seconds),
       },
       {
+        id: 'plan',
+        header: strings.drivers.plan,
+        sortValue: (driver) => driver.usage_plan_name,
+        cell: (driver) => driver.usage_plan_name ?? '',
+      },
+      {
         id: 'credit',
         header: strings.drivers.credit,
         align: 'right',

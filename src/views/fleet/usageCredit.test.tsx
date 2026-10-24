@@ -6,7 +6,6 @@ import * as fx from '@/test/fixtures';
 import { renderApp } from '@/test/render';
 import { server } from '@/test/server';
 import Drivers from '@/views/Drivers';
-import Settings from '@/views/Settings';
 
 vi.mock('@/components/FleetMap', () => ({ FleetMap: () => <div /> }));
 
@@ -152,8 +151,8 @@ describe('agregar crédito', () => {
   });
 });
 
-describe('activar el crédito en el formulario', () => {
-  test('el alta lo envía solo cuando se activa', async () => {
+describe('plan de uso en el formulario', () => {
+  test('el alta envía el plan elegido', async () => {
     const bodies = captureBody('post', '/admin/drivers', fx.driver);
     const { user } = renderApp(<Drivers />);
     await screen.findByRole('table');
@@ -163,63 +162,53 @@ describe('activar el crédito en el formulario', () => {
     await user.type(dialog.getByLabelText(/Nombre/), 'Ana Choque');
     await user.type(dialog.getByLabelText(/^CI/), '9988776 TJ');
     await user.type(dialog.getByLabelText(/WhatsApp/), '+59170001111');
-    await user.click(dialog.getByRole('checkbox', { name: 'Usa crédito de uso' }));
+    await user.selectOptions(await dialog.findByLabelText(/Plan de uso/), 'Alquiler de moto');
     await user.click(dialog.getByRole('button', { name: 'Guardar' }));
 
     await waitFor(() => expect(bodies).toHaveLength(1));
-    expect(bodies[0]).toMatchObject({ usage_credit_enabled: true });
+    expect(bodies[0]).toMatchObject({ usage_plan_uuid: fx.rentalPlan.usage_plan_uuid });
   });
 
-  test('editar y activarlo envía solo ese campo', async () => {
-    const bodies = captureBody('patch', '/admin/drivers/:uuid', fx.driver);
+  test('el alta exige elegir un plan', async () => {
+    const bodies = captureBody('post', '/admin/drivers', fx.driver);
     const { user } = renderApp(<Drivers />);
+    await screen.findByRole('table');
 
-    await user.click((await rowFor('Marco Peña')).getByRole('button', { name: 'Editar' }));
+    await user.click(screen.getByRole('button', { name: 'Registrar conductor' }));
     const dialog = within(screen.getByRole('dialog'));
-    await user.click(dialog.getByRole('checkbox', { name: 'Usa crédito de uso' }));
+    await user.type(dialog.getByLabelText(/Nombre/), 'Ana Choque');
+    await user.type(dialog.getByLabelText(/^CI/), '9988776 TJ');
+    await user.type(dialog.getByLabelText(/WhatsApp/), '+59170001111');
     await user.click(dialog.getByRole('button', { name: 'Guardar' }));
 
-    await waitFor(() => expect(bodies).toEqual([{ usage_credit_enabled: true }]));
+    expect(await dialog.findByText('Este campo es obligatorio')).toBeInTheDocument();
+    expect(bodies).toHaveLength(0);
   });
 
-  test('desactivarlo avisa que se pierde el crédito y envía false', async () => {
+  test('sin planes el formulario manda a crearlos', async () => {
+    server.use(http.get(`${BASE}/admin/usage-plans`, () => HttpResponse.json([])));
+    const { user } = renderApp(<Drivers />);
+    await screen.findByRole('table');
+
+    await user.click(screen.getByRole('button', { name: 'Registrar conductor' }));
+
+    expect(
+      await within(screen.getByRole('dialog')).findByRole('link', { name: 'Crear planes' }),
+    ).toBeInTheDocument();
+  });
+
+  test('cambiar de plan avisa que se salda al precio anterior y envía solo el plan', async () => {
     withDrivers(fx.driverWithCredit);
-    const bodies = captureBody('patch', '/admin/drivers/:uuid', fx.driver);
+    const bodies = captureBody('patch', '/admin/drivers/:uuid', fx.driverWithCredit);
     const { user } = renderApp(<Drivers />);
 
     await user.click((await rowFor('Rafael Soria')).getByRole('button', { name: 'Editar' }));
     const dialog = within(screen.getByRole('dialog'));
-    expect(dialog.getByRole('checkbox', { name: 'Usa crédito de uso' })).toBeChecked();
     expect(dialog.queryByRole('alert')).not.toBeInTheDocument();
-    await user.click(dialog.getByRole('checkbox', { name: 'Usa crédito de uso' }));
+    await user.selectOptions(await dialog.findByLabelText(/Plan de uso/), 'Acuerdo personalizado');
 
-    expect(await dialog.findByRole('alert')).toHaveTextContent(/se borra el crédito/);
+    expect(await dialog.findByRole('alert')).toHaveTextContent(/precio del plan anterior/);
     await user.click(dialog.getByRole('button', { name: 'Guardar' }));
-    await waitFor(() => expect(bodies).toEqual([{ usage_credit_enabled: false }]));
-  });
-});
-
-describe('ajuste del consumo diario', () => {
-  test('aparece en Configuración con su unidad y se guarda', async () => {
-    server.use(
-      http.get(`${BASE}/admin/settings`, () =>
-        HttpResponse.json([fx.sharedLocationSetting, fx.usageCreditSetting]),
-      ),
-      http.put(`${BASE}/admin/settings/:key`, async ({ request, params }) => {
-        const { value } = (await request.json()) as { value: number };
-        return HttpResponse.json({ ...fx.usageCreditSetting, key: params.key, value });
-      }),
-    );
-    const { user } = renderApp(<Settings />);
-
-    const input = await screen.findByLabelText('Crédito de uso que consume un conductor por día');
-    expect(input).toHaveValue('60');
-    expect(screen.getByText('de crédito por día')).toBeInTheDocument();
-    await user.clear(input);
-    await user.type(input, '45');
-    const form = input.closest('form')!;
-    await user.click(within(form).getByRole('button', { name: 'Guardar cambio' }));
-
-    expect(await screen.findByText('Cambio guardado.')).toBeInTheDocument();
+    await waitFor(() => expect(bodies).toEqual([{ usage_plan_uuid: fx.freePlan.usage_plan_uuid }]));
   });
 });

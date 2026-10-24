@@ -173,6 +173,12 @@ export type Driver = {
   /** The instant the balance runs out (UTC). `null` off the scheme. */
   usage_credit_expires_at: IsoDateTime | null;
   usage_credit_expired: boolean;
+  /** The plan that sets the daily rate the credit drains at. `null` only for old rows. */
+  usage_plan_uuid: UUID | null;
+  usage_plan_name: string | null;
+  /** The plan's price per day; `0` is a plan without credit tracking. */
+  usage_daily_credit: number | null;
+  includes_vehicle_rental: boolean | null;
   created_at: IsoDateTime;
   /** Owning city. `null` until an admin assigns one. */
   city_uuid: UUID | null;
@@ -213,8 +219,8 @@ export type CreateDriverPayload = {
   phone_whatsapp: string;
   license_number?: string | null;
   vehicle_uuid?: UUID | null;
-  /** Starts with an empty balance, so credit has to be added before the first trip. */
-  usage_credit_enabled?: boolean;
+  /** Required once the tenant has plans. A paid plan starts with an empty balance. */
+  usage_plan_uuid: UUID;
   city_uuid?: UUID | null;
 };
 
@@ -229,8 +235,11 @@ export type UpdateDriverPayload = {
   name?: string;
   phone_whatsapp?: string;
   license_number?: string | null;
-  /** `false` takes the driver off the scheme and discards their balance. */
-  usage_credit_enabled?: boolean;
+  /**
+   * Moves the driver to another plan: the balance is settled at the old rate
+   * first; a free plan discards it; paid after free starts empty.
+   */
+  usage_plan_uuid?: UUID;
 };
 
 /** Negative takes credit back; zero is refused (422). */
@@ -326,6 +335,45 @@ export type UpdateVehicleTypePayload = {
   display_name?: string;
   attribute_schema?: AttributeSchemaField[];
   is_active?: boolean;
+};
+
+/** A tenant's own pricing: what a driver pays per day and what that covers. */
+export type UsagePlan = {
+  usage_plan_uuid: UUID;
+  name: string;
+  /** The price and the drain rate. `0` means no credit tracking. */
+  daily_credit: number;
+  /** A label for managers only; it changes nothing in the billing. */
+  includes_vehicle_rental: boolean;
+  description: string | null;
+  is_active: boolean;
+  created_at: IsoDateTime;
+  /** Absent on the list; set on `GET /{uuid}` and after an update. */
+  driver_count: number | null;
+  /** Set only on an update that changed the price. */
+  affected_drivers: number | null;
+};
+
+export type CreateUsagePlanPayload = {
+  name: string;
+  daily_credit: number;
+  includes_vehicle_rental?: boolean;
+  description?: string | null;
+};
+
+/**
+ * A field left out is unchanged. A new `daily_credit` re-prices every driver on
+ * the plan; when it crosses zero (free to paid expires them all, paid to free
+ * clears them) `confirm_affected_drivers` must equal their number, or the
+ * server answers 409.
+ */
+export type UpdateUsagePlanPayload = {
+  name?: string;
+  daily_credit?: number;
+  includes_vehicle_rental?: boolean;
+  description?: string | null;
+  is_active?: boolean;
+  confirm_affected_drivers?: number;
 };
 
 // --- auth -----------------------------------------------------------------

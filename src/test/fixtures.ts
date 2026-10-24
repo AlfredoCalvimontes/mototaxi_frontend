@@ -7,6 +7,7 @@ import type {
   Driver,
   KPIs,
   RuntimeSetting,
+  UsagePlan,
   Vehicle,
   VehicleSummary,
   TripSummary,
@@ -167,6 +168,26 @@ export const vehicleDetail: Vehicle = {
   created_at: '2026-05-01T10:00:00Z',
 };
 
+export const freePlan: UsagePlan = {
+  usage_plan_uuid: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+  name: 'Acuerdo personalizado',
+  daily_credit: 0,
+  includes_vehicle_rental: false,
+  description: null,
+  is_active: true,
+  created_at: '2026-05-01T09:00:00Z',
+  driver_count: null,
+  affected_drivers: null,
+};
+
+export const rentalPlan: UsagePlan = {
+  ...freePlan,
+  usage_plan_uuid: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+  name: 'Alquiler de moto',
+  daily_credit: 60,
+  includes_vehicle_rental: true,
+};
+
 export const driver: Driver = {
   driver_uuid: '66666666-6666-4666-8666-666666666666',
   name: 'Marco Peña',
@@ -193,6 +214,10 @@ export const driver: Driver = {
   usage_credit_balance: null,
   usage_credit_expires_at: null,
   usage_credit_expired: false,
+  usage_plan_uuid: freePlan.usage_plan_uuid,
+  usage_plan_name: freePlan.name,
+  usage_daily_credit: 0,
+  includes_vehicle_rental: false,
   created_at: '2026-05-02T09:00:00Z',
   city_uuid: null,
 };
@@ -217,6 +242,10 @@ export const driverWithCredit: Driver = {
   name: 'Rafael Soria',
   ci: '5551234 TJ',
   phone_whatsapp: '+59170001234',
+  usage_plan_uuid: rentalPlan.usage_plan_uuid,
+  usage_plan_name: rentalPlan.name,
+  usage_daily_credit: 60,
+  includes_vehicle_rental: true,
   usage_credit_enabled: true,
   usage_credit_balance: 180,
   usage_credit_expires_at: '2099-01-01T14:00:00Z',
@@ -233,18 +262,6 @@ export const driverCreditExpired: Driver = {
   usage_credit_balance: 0,
   usage_credit_expires_at: '2026-10-01T14:00:00Z',
   usage_credit_expired: true,
-};
-
-export const usageCreditSetting: RuntimeSetting = {
-  key: 'usage_credit_per_day',
-  value: 60,
-  default: 60,
-  minimum: 1,
-  maximum: 10000,
-  unit: 'credit/day',
-  description: 'How much usage credit a driver consumes each day',
-  updated_at: null,
-  source: 'default',
 };
 
 export const customer: CustomerSummary = {

@@ -11,7 +11,7 @@ const driver: DriverFormValues = {
   name: 'Marco Peña',
   phone_whatsapp: '+59171234567',
   license_number: 'LIC-4421',
-  usage_credit_enabled: false,
+  usage_plan_uuid: 'plan-free',
 };
 
 const vehicle: VehicleFormValues = {
@@ -29,18 +29,15 @@ const vehicle: VehicleFormValues = {
   last_maintenance_at: '2026-06-01',
 };
 
-describe('conductor: crédito de uso', () => {
-  test('activarlo se envía', () => {
-    expect(driverChanges(driver, { ...driver, usage_credit_enabled: true }).payload).toEqual({
-      usage_credit_enabled: true,
+describe('conductor: plan de uso', () => {
+  test('cambiar de plan se envía', () => {
+    expect(driverChanges(driver, { ...driver, usage_plan_uuid: 'plan-rental' }).payload).toEqual({
+      usage_plan_uuid: 'plan-rental',
     });
   });
 
-  test('desactivarlo se envía como false, no como null', () => {
-    const on = { ...driver, usage_credit_enabled: true };
-    expect(driverChanges(on, { ...on, usage_credit_enabled: false }).payload).toEqual({
-      usage_credit_enabled: false,
-    });
+  test('un plan sin elegir no se envía, ni como null', () => {
+    expect(driverChanges(driver, { ...driver, usage_plan_uuid: '' }).payload).toEqual({});
   });
 
   test('sin tocarlo no viaja', () => {

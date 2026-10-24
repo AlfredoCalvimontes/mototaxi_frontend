@@ -69,6 +69,8 @@ export const handlers = [
     HttpResponse.json([fx.globalMotoType, fx.ownVanType]),
   ),
 
+  http.get(`${BASE}/admin/usage-plans`, () => HttpResponse.json([fx.freePlan, fx.rentalPlan])),
+
   http.get(`${BASE}/admin/drivers`, ({ request }) => {
     const status = new URL(request.url).searchParams.get('status');
     const all = [fx.driver, fx.driverWithoutCheckin];

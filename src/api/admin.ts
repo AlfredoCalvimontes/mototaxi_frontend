@@ -26,6 +26,7 @@ import type {
   ChangeVehicleStatusPayload,
   CreateDriverPayload,
   CreateVehiclePayload,
+  CreateUsagePlanPayload,
   CreateVehicleTypePayload,
   CustomerSummary,
   Driver,
@@ -40,7 +41,9 @@ import type {
   UUID,
   UpdateDriverPayload,
   UpdateVehiclePayload,
+  UpdateUsagePlanPayload,
   UpdateVehicleTypePayload,
+  UsagePlan,
   VehicleType,
 } from '@/api/types';
 
@@ -267,6 +270,39 @@ export function updateVehicleType(
     method: 'PATCH',
     json: payload,
   });
+}
+
+// --- usage plans (each tenant prices its own) --------------------------------
+
+/** By name. The list leaves `driver_count` empty; `getUsagePlan` has it. */
+export function listUsagePlans(activeOnly = false): Promise<UsagePlan[]> {
+  return request<UsagePlan[]>('/admin/usage-plans', {
+    query: { active_only: activeOnly || undefined },
+  });
+}
+
+export function getUsagePlan(planUuid: UUID): Promise<UsagePlan> {
+  return request<UsagePlan>(`/admin/usage-plans/${seg(planUuid)}`);
+}
+
+export function createUsagePlan(payload: CreateUsagePlanPayload): Promise<UsagePlan> {
+  return request<UsagePlan>('/admin/usage-plans', { method: 'POST', json: payload });
+}
+
+/** A new price re-prices every driver on the plan; see {@link UpdateUsagePlanPayload}. */
+export function updateUsagePlan(
+  planUuid: UUID,
+  payload: UpdateUsagePlanPayload,
+): Promise<UsagePlan> {
+  return request<UsagePlan>(`/admin/usage-plans/${seg(planUuid)}`, {
+    method: 'PATCH',
+    json: payload,
+  });
+}
+
+/** Only a plan nobody is on; archive it (`is_active: false`) otherwise. */
+export function deleteUsagePlan(planUuid: UUID): Promise<void> {
+  return request<void>(`/admin/usage-plans/${seg(planUuid)}`, { method: 'DELETE' });
 }
 
 // --- tenants (superadmin lists and provisions; a tenant admin reaches their own) ---

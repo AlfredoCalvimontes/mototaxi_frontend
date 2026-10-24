@@ -15,6 +15,7 @@ export const strings = {
     customers: 'Clientes',
     settings: 'Configuración',
     vehicleTypes: 'Tipos de vehículo',
+    usagePlans: 'Planes',
     tenants: 'Empresas',
     myTenant: 'Mi empresa',
     cities: 'Ciudades',
@@ -114,6 +115,53 @@ export const strings = {
     schemaWarning:
       'Si ya hay vehículos de este tipo, solo se pueden agregar datos opcionales, cambiar etiquetas o volver opcional un dato. Quitar un dato o cambiar su tipo se rechaza.',
     empty: 'Todavía no hay tipos de vehículo',
+  },
+  usagePlans: {
+    heading: 'Planes de uso',
+    intro:
+      'Cada plan fija cuánto crédito consume un conductor por día. Los conductores se asignan a un plan; ' +
+      'si cambias el precio, el vencimiento de todos los conductores del plan se recalcula.',
+    newPlan: 'Nuevo plan',
+    editPlan: 'Editar plan',
+    name: 'Nombre',
+    dailyCredit: 'Crédito por día',
+    dailyCreditHint:
+      'Es el precio del plan y lo que se descuenta cada día. 0 = sin control de crédito.',
+    dailyCreditInvalid: 'Escribe un número, 0 o mayor.',
+    rental: 'Incluye alquiler del vehículo',
+    rentalHint: 'Solo una etiqueta para el equipo: no cambia el cobro.',
+    includesRental: 'Con alquiler',
+    serviceOnly: 'Solo servicio',
+    description: 'Descripción',
+    drivers: 'Conductores',
+    status: 'Estado',
+    active: 'Activo',
+    archived: 'Archivado',
+    archive: 'Archivar',
+    restore: 'Reactivar',
+    delete: 'Eliminar',
+    free: 'Sin cobro',
+    perDay: (value: string) => `${value} por día`,
+    empty: 'Todavía no hay planes. Sin un plan no se pueden registrar conductores.',
+    emptyPresetsIntro: 'Empieza con uno de estos modelos y ajusta el precio:',
+    presetRental: 'Alquiler de moto + sistema',
+    presetService: 'Solo sistema',
+    presetCustom: 'Acuerdo personalizado',
+    repriceWarning: (count: number) =>
+      `Cambiar el precio recalcula el vencimiento de ${count} conductor${count === 1 ? '' : 'es'} de este plan, ` +
+      'descontando antes lo consumido al precio anterior.',
+    toPaidWarning: (count: number) =>
+      `El plan pasa de sin cobro a pagado: ${count} conductor${count === 1 ? '' : 'es'} quedará${count === 1 ? '' : 'n'} ` +
+      'con crédito vencido hasta que les agregues crédito.',
+    toFreeWarning: (count: number) =>
+      `El plan pasa a sin cobro: se borra el crédito de ${count} conductor${count === 1 ? '' : 'es'} y vuelven a recibir viajes sin límite.`,
+    confirmAffected: (count: number) =>
+      `Entiendo que esto afecta a ${count} conductor${count === 1 ? '' : 'es'}`,
+    archiveHint:
+      'Un plan archivado no se ofrece a conductores nuevos; los que ya lo tienen siguen igual.',
+    deleteTitle: (name: string) => `Eliminar el plan ${name}`,
+    deleteBody: (name: string) =>
+      `Se elimina el plan ${name}. Solo es posible porque ningún conductor lo usa.`,
   },
   tenancy: {
     actingAs: (tenant: string) => `Actuando como ${tenant}`,
@@ -290,6 +338,7 @@ export const strings = {
     acceptance: 'Aceptación',
     responseTime: 'Respuesta promedio',
     checkin: 'Check-in',
+    plan: 'Plan',
     credit: 'Crédito de uso',
     creditExpires: 'Vence',
     creditExpiredBadge: 'Crédito vencido',
@@ -385,10 +434,7 @@ export const strings = {
     invalid: (min: number, max: number) => `Escribe un número entero entre ${min} y ${max}.`,
     changedAt: 'Último cambio',
     neverChanged: 'Nunca se ha cambiado: usa el valor original.',
-    units: { minutes: 'minutos', days: 'días', 'credit/day': 'de crédito por día' } as Record<
-      string,
-      string
-    >,
+    units: { minutes: 'minutos', days: 'días' } as Record<string, string>,
     parameters: {
       shared_location_freshness_minutes: {
         label: 'Vigencia de la ubicación compartida',
@@ -407,15 +453,6 @@ export const strings = {
           'próxima recarga de cada vehículo: la fecha de la última recarga más los días que ' +
           'correspondan al monto (con 20 de crédito, el doble). Cambiarlo recalcula todas las ' +
           'fechas de inmediato. El amarillo (una semana antes) y el rojo (tres días antes) no cambian.',
-      },
-      usage_credit_per_day: {
-        label: 'Crédito de uso que consume un conductor por día',
-        tooltip:
-          'Solo cuenta para los conductores que tienen activado el crédito de uso. Se les descuenta ' +
-          'hora a hora: un día de crédito pagado a las 14:00 se acaba a las 14:00 del día siguiente. ' +
-          'Al llegar a cero dejan de recibir viajes y, si escriben al bot, se les avisa que deben ' +
-          'recargar. Con 60 por día, 180 de crédito duran tres días. Cambiarlo recalcula de ' +
-          'inmediato la hora de vencimiento de todos.',
       },
     } as Record<string, { label: string; tooltip: string }>,
   },
@@ -481,12 +518,16 @@ export const strings = {
   fleet: {
     newDriver: 'Registrar conductor',
     editDriver: 'Editar conductor',
-    creditEnabled: 'Usa crédito de uso',
-    creditEnabledHint:
-      'Si se activa, el conductor recibe viajes solo mientras tenga crédito, que baja cada día. ' +
-      'Empieza en cero: agrega crédito después de guardar.',
-    creditDisableWarning:
-      'Al desactivarlo se borra el crédito que le quede y vuelve a recibir viajes sin límite.',
+    plan: 'Plan de uso',
+    planHint:
+      'Fija cuánto crédito consume por día. Con un plan de pago empieza en cero: agrega crédito después de guardar.',
+    planPlaceholder: 'Elige un plan',
+    planArchivedSuffix: ' (archivado)',
+    noPlans: 'Antes de registrar conductores crea al menos un plan.',
+    createPlans: 'Crear planes',
+    planChangeWarning:
+      'Al cambiar de plan se descuenta lo consumido hasta ahora al precio del plan anterior. ' +
+      'Si el nuevo plan es sin cobro se borra el crédito; si pasa de sin cobro a pagado, empieza en cero.',
     addCreditTitle: (name: string) => `Agregar crédito a ${name}`,
     addCreditIntro: (balance: string, expires: string) =>
       `Crédito actual: ${balance}. Vence el ${expires}.`,

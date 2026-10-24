@@ -105,6 +105,7 @@ describe('ciudad en conductores', () => {
     await user.type(dialog.getByLabelText(/CI/), '123 LP');
     await user.type(dialog.getByLabelText(/WhatsApp/), '+59170000000');
     await user.selectOptions(await dialog.findByLabelText('Ciudad'), fx.secondCity.city_id);
+    await user.selectOptions(await dialog.findByLabelText(/Plan de uso/), 'Alquiler de moto');
     await user.click(dialog.getByRole('button', { name: 'Guardar' }));
 
     await waitFor(() => expect(bodies).toHaveLength(1));
