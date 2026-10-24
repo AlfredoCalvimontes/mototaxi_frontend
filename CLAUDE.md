@@ -3,11 +3,13 @@
 React + Vite SPA (Spanish, es-BO) for the multi-tenant mototaxi dispatch panel. Backend: `~/Documentos/Projects/mototaxi` (FastAPI). Plan: `ai-docs/plans/saas_multitenant_frontend_plan.md`. See `README.md` for roles, cities and testing.
 
 ## Commands
+
 `npm test` (Vitest + MSW, no backend) · `npm run test:e2e` (Playwright, API mocked, port 5199) · `npm run typecheck` · `npm run lint` · `npm run build`
 
 Gate commits on the test exit status; do not chain `test; git commit`.
 
 ## Conventions that are easy to break
+
 - **URL segments:** every dynamic path segment in `src/api/admin.ts` goes through `seg()` (`encodeURIComponent`); router params arrive decoded.
 - **Tenant switch:** `setActingAsTenant` calls `queryClient.resetQueries()`, never `clear()` (mounted views must refetch). `X-Tenant-Id` is set in `api/client.ts`.
 - **City scope:** the header selector writes `?city=`; views read `useCityScope()` and send `city_uuid` to the API. Query keys include the city. `queryFn` must be wrapped (`() => listVehicles(city)`), never passed bare, or the query context lands in the city argument.
@@ -19,4 +21,5 @@ Gate commits on the test exit status; do not chain `test; git commit`.
 - **Ports:** `~/.dev-ports.yaml` notes 5173 is shared with `taxi_management_front`; Playwright uses 5199.
 
 ## Deploy
+
 Merging to `main` dispatches a deploy to the dev VM through the backend repo's `deploy.yml`. Deploy the backend first when a frontend change needs new API fields. Push to dev only unless told otherwise.
