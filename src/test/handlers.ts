@@ -69,6 +69,8 @@ export const handlers = [
     HttpResponse.json([fx.globalMotoType, fx.ownVanType]),
   ),
 
+  http.get(`${BASE}/admin/usage-plans`, () => HttpResponse.json([fx.freePlan, fx.rentalPlan])),
+
   http.get(`${BASE}/admin/drivers`, ({ request }) => {
     const status = new URL(request.url).searchParams.get('status');
     const all = [fx.driver, fx.driverWithoutCheckin];
@@ -83,6 +85,12 @@ export const handlers = [
   ),
   http.post(`${BASE}/admin/drivers/:uuid/usage-credit`, () =>
     HttpResponse.json(fx.driverWithCredit),
+  ),
+  http.get(`${BASE}/admin/drivers/:uuid/usage-credit/transactions`, () =>
+    HttpResponse.json(fx.driverCreditLedger),
+  ),
+  http.get(`${BASE}/admin/drivers/usage-credit/transactions`, () =>
+    HttpResponse.json(page(fx.creditLedgerRows)),
   ),
   http.get(`${BASE}/admin/drivers/:uuid/position-check`, () => HttpResponse.json(fx.positionCheck)),
   http.get(`${BASE}/admin/drivers/:uuid`, () => HttpResponse.json(fx.driver)),

@@ -6,6 +6,7 @@ import { ADMIN, CITY_SCOPED, STAFF, SUPERADMIN } from '@/auth/roles';
 import { Layout } from '@/components/Layout';
 import Customers from '@/views/Customers';
 import Dashboard from '@/views/Dashboard';
+import CreditHistory from '@/views/CreditHistory';
 import Drivers from '@/views/Drivers';
 import LiveTrips from '@/views/LiveTrips';
 import Login from '@/views/Login';
@@ -17,6 +18,7 @@ import TenantDetail from '@/views/tenancy/TenantDetail';
 import Platform from '@/views/tenancy/Platform';
 import WhatsAppConfig from '@/views/tenancy/WhatsAppConfig';
 import Tenants from '@/views/tenancy/Tenants';
+import UsagePlans from '@/views/tenancy/UsagePlans';
 import VehicleTypes from '@/views/tenancy/VehicleTypes';
 import Settings from '@/views/Settings';
 import TripHistory from '@/views/TripHistory';
@@ -47,6 +49,8 @@ export function AppRoutes() {
           <Route element={<RequireRole roles={ADMIN} />}>
             <Route path="/configuracion" element={<Settings />} />
             <Route path="/vehiculos/tipos" element={<VehicleTypes />} />
+            <Route path="/planes" element={<UsagePlans />} />
+            <Route path="/historial-credito" element={<CreditHistory />} />
             <Route path="/tenants/:tenantId" element={<TenantDetail />} />
             <Route
               path="/tenants/:tenantId/cities/:cityId/access"
