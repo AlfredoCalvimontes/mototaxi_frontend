@@ -3,6 +3,9 @@
 import { request } from '@/api/client';
 import type {
   AddUsageCreditPayload,
+  CreditKind,
+  CreditTransactionPage,
+  DriverCreditLedger,
   Alerts,
   AuditEntry,
   AuditLogParams,
@@ -26,6 +29,7 @@ import type {
   ChangeVehicleStatusPayload,
   CreateDriverPayload,
   CreateVehiclePayload,
+  CreateUsagePlanPayload,
   CreateVehicleTypePayload,
   CustomerSummary,
   Driver,
@@ -40,7 +44,9 @@ import type {
   UUID,
   UpdateDriverPayload,
   UpdateVehiclePayload,
+  UpdateUsagePlanPayload,
   UpdateVehicleTypePayload,
+  UsagePlan,
   VehicleType,
 } from '@/api/types';
 
@@ -156,6 +162,38 @@ export function addUsageCredit(driverUuid: UUID, payload: AddUsageCreditPayload)
   });
 }
 
+export type CreditLedgerFilters = {
+  kind?: CreditKind;
+  /** Inclusive lower bound, as an instant. */
+  created_from?: string;
+  /** Inclusive upper bound, as an instant. */
+  created_to?: string;
+  page?: number;
+  page_size?: number;
+};
+
+/** One driver's summary and a page of their ledger, newest first. */
+export function getDriverCreditLedger(
+  driverUuid: UUID,
+  filters: CreditLedgerFilters = {},
+): Promise<DriverCreditLedger> {
+  return request<DriverCreditLedger>(
+    `/admin/drivers/${seg(driverUuid)}/usage-credit/transactions`,
+    { query: { ...filters } },
+  );
+}
+
+/** The tenant's ledger across drivers, newest first. */
+export type TenantCreditFilters = CreditLedgerFilters & { driver_uuid?: UUID };
+
+export function listCreditTransactions(
+  filters: TenantCreditFilters = {},
+): Promise<CreditTransactionPage> {
+  return request<CreditTransactionPage>('/admin/drivers/usage-credit/transactions', {
+    query: { ...filters },
+  });
+}
+
 /** The only route out of `DISABLED`. */
 export function changeDriverStatus(
   driverUuid: UUID,
@@ -267,6 +305,39 @@ export function updateVehicleType(
     method: 'PATCH',
     json: payload,
   });
+}
+
+// --- usage plans (each tenant prices its own) --------------------------------
+
+/** By name. The list leaves `driver_count` empty; `getUsagePlan` has it. */
+export function listUsagePlans(activeOnly = false): Promise<UsagePlan[]> {
+  return request<UsagePlan[]>('/admin/usage-plans', {
+    query: { active_only: activeOnly || undefined },
+  });
+}
+
+export function getUsagePlan(planUuid: UUID): Promise<UsagePlan> {
+  return request<UsagePlan>(`/admin/usage-plans/${seg(planUuid)}`);
+}
+
+export function createUsagePlan(payload: CreateUsagePlanPayload): Promise<UsagePlan> {
+  return request<UsagePlan>('/admin/usage-plans', { method: 'POST', json: payload });
+}
+
+/** A new price re-prices every driver on the plan; see {@link UpdateUsagePlanPayload}. */
+export function updateUsagePlan(
+  planUuid: UUID,
+  payload: UpdateUsagePlanPayload,
+): Promise<UsagePlan> {
+  return request<UsagePlan>(`/admin/usage-plans/${seg(planUuid)}`, {
+    method: 'PATCH',
+    json: payload,
+  });
+}
+
+/** Only a plan nobody is on; archive it (`is_active: false`) otherwise. */
+export function deleteUsagePlan(planUuid: UUID): Promise<void> {
+  return request<void>(`/admin/usage-plans/${seg(planUuid)}`, { method: 'DELETE' });
 }
 
 // --- tenants (superadmin lists and provisions; a tenant admin reaches their own) ---

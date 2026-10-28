@@ -84,6 +84,7 @@ describe('registro', () => {
     await user.type(dialog.getByLabelText(/Nombre/), 'Ana Choque');
     await user.type(dialog.getByLabelText(/^CI/), '9988776 TJ');
     await user.type(dialog.getByLabelText(/WhatsApp/), '+59170001111');
+    await user.selectOptions(await dialog.findByLabelText(/Plan de uso/), 'Acuerdo personalizado');
     await user.click(dialog.getByRole('button', { name: 'Guardar' }));
 
     await waitFor(() => expect(bodies).toHaveLength(1));
@@ -92,6 +93,7 @@ describe('registro', () => {
       ci: '9988776 TJ',
       phone_whatsapp: '+59170001111',
       license_number: null,
+      usage_plan_uuid: fx.freePlan.usage_plan_uuid,
     });
   });
 
