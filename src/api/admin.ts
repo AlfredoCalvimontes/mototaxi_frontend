@@ -3,6 +3,9 @@
 import { request } from '@/api/client';
 import type {
   AddUsageCreditPayload,
+  CreditKind,
+  CreditTransactionPage,
+  DriverCreditLedger,
   Alerts,
   AuditEntry,
   AuditLogParams,
@@ -156,6 +159,38 @@ export function addUsageCredit(driverUuid: UUID, payload: AddUsageCreditPayload)
   return request<Driver>(`/admin/drivers/${seg(driverUuid)}/usage-credit`, {
     method: 'POST',
     json: payload,
+  });
+}
+
+export type CreditLedgerFilters = {
+  kind?: CreditKind;
+  /** Inclusive lower bound, as an instant. */
+  created_from?: string;
+  /** Inclusive upper bound, as an instant. */
+  created_to?: string;
+  page?: number;
+  page_size?: number;
+};
+
+/** One driver's summary and a page of their ledger, newest first. */
+export function getDriverCreditLedger(
+  driverUuid: UUID,
+  filters: CreditLedgerFilters = {},
+): Promise<DriverCreditLedger> {
+  return request<DriverCreditLedger>(
+    `/admin/drivers/${seg(driverUuid)}/usage-credit/transactions`,
+    { query: { ...filters } },
+  );
+}
+
+/** The tenant's ledger across drivers, newest first. */
+export type TenantCreditFilters = CreditLedgerFilters & { driver_uuid?: UUID };
+
+export function listCreditTransactions(
+  filters: TenantCreditFilters = {},
+): Promise<CreditTransactionPage> {
+  return request<CreditTransactionPage>('/admin/drivers/usage-credit/transactions', {
+    query: { ...filters },
   });
 }
 

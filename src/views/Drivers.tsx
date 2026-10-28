@@ -19,6 +19,7 @@ import { DriverStatusDialog } from '@/views/fleet/DriverStatusDialog';
 import { PhoneKeyDialog } from '@/views/fleet/PhoneKeyDialog';
 import { PositionCheckDialog } from '@/views/fleet/PositionCheckDialog';
 import { UsageCreditDialog } from '@/views/fleet/UsageCreditDialog';
+import { DriverCreditHistoryDialog } from '@/views/fleet/DriverCreditHistoryDialog';
 import {
   EMPTY,
   formatDateTime,
@@ -56,6 +57,7 @@ type DriverDialog =
   | { kind: 'phoneKey'; driver: Driver }
   | { kind: 'position'; driver: Driver }
   | { kind: 'credit'; driver: Driver }
+  | { kind: 'creditHistory'; driver: Driver }
   | { kind: 'retire'; driver: Driver };
 
 const TRACKING_BADGES: Record<
@@ -401,6 +403,11 @@ export default function Drivers() {
                 {strings.drivers.addCredit}
               </RowAction>
             )}
+            {driver.usage_credit_enabled && (
+              <RowAction onClick={() => setDialog({ kind: 'creditHistory', driver })}>
+                {strings.creditLedger.openDriver}
+              </RowAction>
+            )}
             {driver.status !== 'DISABLED' && (
               <RowAction danger onClick={() => setDialog({ kind: 'retire', driver })}>
                 {strings.fleet.retire}
@@ -528,6 +535,9 @@ export default function Drivers() {
       )}
       {dialog?.kind === 'credit' && (
         <UsageCreditDialog driver={dialog.driver} onClose={() => setDialog(null)} />
+      )}
+      {dialog?.kind === 'creditHistory' && (
+        <DriverCreditHistoryDialog driver={dialog.driver} onClose={() => setDialog(null)} />
       )}
       {dialog?.kind === 'position' && (
         <PositionCheckDialog driver={dialog.driver} onClose={() => setDialog(null)} />

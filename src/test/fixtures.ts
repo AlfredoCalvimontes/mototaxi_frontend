@@ -20,6 +20,8 @@ import type {
   TenantUsage,
   AuditEntry,
   TripKpiGroup,
+  CreditTransaction,
+  DriverCreditLedger,
 } from '@/api/types';
 
 export const adminProfile: UserProfile = {
@@ -491,4 +493,80 @@ export const auditEntry: AuditEntry = {
   before: { name: 'Marco' },
   after: { name: 'Marco Peña' },
   created_at: '2026-10-15T15:00:00Z',
+};
+
+/** A driver's ledger: the note-bearing top-up, a drain, and the opening balance. */
+export const creditLedgerRows: CreditTransaction[] = [
+  {
+    transaction_uuid: '11111111-aaaa-4aaa-8aaa-000000000001',
+    driver_uuid: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    kind: 'TOPUP',
+    amount: 120,
+    balance_after: 180,
+    requested_amount: null,
+    usage_plan_uuid: null,
+    usage_plan_name: 'Alquiler',
+    rate_applied: null,
+    period_from: null,
+    period_to: null,
+    note: 'Pago en efectivo, recibo 0042',
+    detail: null,
+    actor_user_uuid: '99999999-9999-4999-8999-999999999999',
+    created_at: '2026-10-20T14:00:00Z',
+  },
+  {
+    transaction_uuid: '11111111-aaaa-4aaa-8aaa-000000000002',
+    driver_uuid: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    kind: 'DRAIN',
+    amount: -60,
+    balance_after: 60,
+    requested_amount: null,
+    usage_plan_uuid: null,
+    usage_plan_name: 'Alquiler',
+    rate_applied: 60,
+    period_from: '2026-10-19T14:00:00Z',
+    period_to: '2026-10-20T14:00:00Z',
+    note: null,
+    detail: null,
+    actor_user_uuid: null,
+    created_at: '2026-10-20T14:00:00Z',
+  },
+  {
+    transaction_uuid: '11111111-aaaa-4aaa-8aaa-000000000003',
+    driver_uuid: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    kind: 'OPENING',
+    amount: 60,
+    balance_after: 60,
+    requested_amount: null,
+    usage_plan_uuid: null,
+    usage_plan_name: 'Alquiler',
+    rate_applied: null,
+    period_from: null,
+    period_to: null,
+    note: null,
+    detail: { reason: 'ledger_started' },
+    actor_user_uuid: null,
+    created_at: '2026-10-01T00:00:00Z',
+  },
+];
+
+/** Balance now is 30 (half a day of drain since the last settle at 60). */
+export const driverCreditLedger: DriverCreditLedger = {
+  driver_uuid: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  driver_name: 'Rafael Soria',
+  summary: {
+    settled_balance: 60,
+    total_topped_up: 120,
+    total_drained: 60,
+    total_deducted: 0,
+    balance_now: 30,
+    usage_credit_enabled: true,
+    usage_credit_expires_at: '2026-10-21T14:00:00Z',
+    usage_credit_expired: false,
+  },
+  items: creditLedgerRows,
+  total: creditLedgerRows.length,
+  page: 1,
+  page_size: 20,
+  pages: 1,
 };

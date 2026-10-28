@@ -33,6 +33,11 @@ export const queryKeys = {
   activeTrips: ['trips', 'active'] as const,
   activeTripsIn: (city: UUID | null) => ['trips', 'active', city ?? 'all'] as const,
   tripHistory: (params: TripHistoryParams) => ['trips', 'history', params] as const,
+  /** Prefix of every credit ledger query: invalidate with this after a change. */
+  creditLedger: ['credit-ledger'] as const,
+  creditLedgerDriver: (driver: UUID, filters: object) =>
+    ['credit-ledger', 'driver', driver, filters] as const,
+  creditLedgerTenant: (filters: object) => ['credit-ledger', 'tenant', filters] as const,
   settings: ['settings'] as const,
   customers: (includeBlocked: boolean, city: UUID | null = null) =>
     ['customers', includeBlocked, city ?? 'all'] as const,

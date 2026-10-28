@@ -19,6 +19,7 @@ const navItems: NavItem[] = [
   { to: '/clientes', label: strings.nav.customers, end: false },
   { to: '/vehiculos/tipos', label: strings.nav.vehicleTypes, end: false, roles: ADMIN },
   { to: '/planes', label: strings.nav.usagePlans, end: false, roles: ADMIN },
+  { to: '/historial-credito', label: strings.nav.creditHistory, end: false, roles: ADMIN },
   { to: '/configuracion', label: strings.nav.settings, end: false, roles: ADMIN },
 ];
 

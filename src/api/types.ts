@@ -243,7 +243,70 @@ export type UpdateDriverPayload = {
 };
 
 /** Negative takes credit back; zero is refused (422). */
-export type AddUsageCreditPayload = { amount: number };
+/**
+ * A top-up or deduction. `note` is required: the ledger is what an administrator
+ * shows a driver who disputes a balance. `client_request_id` makes a retry safe:
+ * the same id with the same change writes nothing new.
+ */
+export type AddUsageCreditPayload = {
+  amount: number;
+  note: string;
+  client_request_id?: string | null;
+};
+
+/** What a ledger row was for; mirrors the backend's `CreditTransactionKind`. */
+export type CreditKind =
+  'TOPUP' | 'MANUAL_DEDUCTION' | 'DRAIN' | 'PLAN_CHANGE' | 'REPRICE' | 'CLEARED' | 'OPENING';
+
+/** One row of a driver's credit ledger. Amounts are in credit units. */
+export type CreditTransaction = {
+  transaction_uuid: UUID;
+  driver_uuid: UUID;
+  kind: CreditKind;
+  /** Signed effect on the balance. */
+  amount: number;
+  balance_after: number;
+  /** What was asked for, when the balance could not go that far (no debt). */
+  requested_amount: number | null;
+  usage_plan_uuid: UUID | null;
+  usage_plan_name: string | null;
+  rate_applied: number | null;
+  period_from: IsoDateTime | null;
+  period_to: IsoDateTime | null;
+  /** The administrator's note on a manual row; `null` on system rows. */
+  note: string | null;
+  detail: Record<string, unknown> | null;
+  /** The administrator behind a manual row; `null` for the system. */
+  actor_user_uuid: UUID | null;
+  created_at: IsoDateTime;
+};
+
+export type CreditLedgerSummary = {
+  settled_balance: number;
+  total_topped_up: number;
+  total_drained: number;
+  total_deducted: number;
+  /** Balance at the moment of the read, after the drain since the last settle. */
+  balance_now: number | null;
+  usage_credit_enabled: boolean;
+  usage_credit_expires_at: IsoDateTime | null;
+  usage_credit_expired: boolean;
+};
+
+/** A page of ledger rows; `pages` is what the pager needs. */
+export type CreditTransactionPage = {
+  items: CreditTransaction[];
+  total: number;
+  page: number;
+  page_size: number;
+  pages: number;
+};
+
+export type DriverCreditLedger = CreditTransactionPage & {
+  driver_uuid: UUID;
+  driver_name: string;
+  summary: CreditLedgerSummary;
+};
 
 export type ChangeDriverStatusPayload = {
   status: DriverStatus;
