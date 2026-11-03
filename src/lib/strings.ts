@@ -52,6 +52,7 @@ export const strings = {
   },
   platform: {
     heading: 'Plataforma',
+    actingNotice: 'La plataforma no se muestra mientras actúas como una empresa. Sal para verla.',
     kpiHeading: 'Viajes por empresa',
     window: 'Ventana',
     windowOptions: { '24': 'Últimas 24 horas', '168': 'Última semana', '720': 'Últimos 30 días' },

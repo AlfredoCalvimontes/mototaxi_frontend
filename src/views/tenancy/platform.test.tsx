@@ -175,6 +175,41 @@ describe('plataforma', () => {
     expect(audit.getByText('UPDATE')).toBeInTheDocument();
   });
 
+  test('actuando como empresa no pide datos de todas las empresas y permite salir', async () => {
+    superadmin();
+    const asked: string[] = [];
+    server.use(
+      http.get(`${BASE}/admin/kpis/by-tenant`, () => {
+        asked.push('kpis');
+        return HttpResponse.json(fx.kpiGroups);
+      }),
+      http.get(`${BASE}/admin/usage`, () => {
+        asked.push('usage');
+        return HttpResponse.json([]);
+      }),
+      http.get(`${BASE}/admin/audit-logs`, () => {
+        asked.push('audit');
+        return HttpResponse.json({ items: [], total: 0, page: 1, page_size: 20 });
+      }),
+    );
+    const { user } = renderApp(
+      <>
+        <ActAs />
+        <Platform />
+      </>,
+    );
+    await user.click(await screen.findByRole('button', { name: 'actuar' }));
+    asked.length = 0;
+
+    expect(await screen.findByText(/no se muestra mientras actúas/)).toBeInTheDocument();
+    expect(screen.queryByRole('table', { name: 'Viajes por empresa' })).not.toBeInTheDocument();
+    expect(asked).toEqual([]);
+
+    await user.click(screen.getByRole('button', { name: 'Salir' }));
+
+    expect(await screen.findByRole('table', { name: 'Viajes por empresa' })).toBeInTheDocument();
+  });
+
   test('cambiar la ventana de KPI vuelve a pedir con las horas elegidas', async () => {
     superadmin();
     const hours: (string | null)[] = [];

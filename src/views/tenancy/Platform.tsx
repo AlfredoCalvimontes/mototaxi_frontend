@@ -8,6 +8,7 @@ import { ErrorState } from '@/components/ErrorState';
 import { Field, SelectField } from '@/components/Field';
 import { Pager } from '@/components/Pager';
 import { TableSkeleton } from '@/components/Skeleton';
+import { useAuth } from '@/auth/context';
 import { EMPTY, formatDateTime, formatDuration, formatRating } from '@/lib/format';
 import { strings } from '@/lib/strings';
 import { useTenantList } from '@/lib/useTenantList';
@@ -308,14 +309,41 @@ function AuditLog() {
   );
 }
 
+/**
+ * The platform sections read every tenant, which the backend refuses to a
+ * superadmin acting as one tenant. Show why, and let the operator leave.
+ */
+function ActingNotice() {
+  const { setActingAsTenant } = useAuth();
+  return (
+    <div className="flex items-center justify-between gap-4 rounded-md border border-amber-200 bg-amber-50 p-4">
+      <p className="text-sm text-amber-900">{t.actingNotice}</p>
+      <button
+        type="button"
+        onClick={() => setActingAsTenant(null)}
+        className="shrink-0 rounded-md border border-amber-300 bg-white px-3 py-1.5 text-sm font-medium text-amber-900 hover:bg-amber-100"
+      >
+        {strings.tenancy.stopActingAs}
+      </button>
+    </div>
+  );
+}
+
 /** Superadmin operations: cross-tenant numbers, usage and the audit trail. Tables, no charts. */
 export default function Platform() {
+  const { actingAsTenant } = useAuth();
   return (
     <div className="space-y-8">
       <h1 className="text-xl font-semibold text-slate-900">{t.heading}</h1>
-      <KpiByTenant />
-      <Usage />
-      <AuditLog />
+      {actingAsTenant ? (
+        <ActingNotice />
+      ) : (
+        <>
+          <KpiByTenant />
+          <Usage />
+          <AuditLog />
+        </>
+      )}
     </div>
   );
 }
