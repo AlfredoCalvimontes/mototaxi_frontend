@@ -299,6 +299,17 @@ export function setTenantActive(tenantId: UUID, active: boolean): Promise<Tenant
 
 // --- cities ---------------------------------------------------------------
 
+/** The platform city catalog across tenants (superadmin). */
+export function listAllCities(
+  params: PaginationParams & {
+    tenant_id?: UUID;
+    active?: boolean;
+    q?: string;
+  } = {},
+): Promise<Paginated<City>> {
+  return request<Paginated<City>>('/admin/cities', { query: { ...params } });
+}
+
 export function listCities(
   tenantId: UUID,
   params: PaginationParams = {},

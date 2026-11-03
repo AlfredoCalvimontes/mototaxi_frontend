@@ -76,7 +76,10 @@ describe('matriz ruta × rol', () => {
 
 describe('navegación por rol', () => {
   test.each([
-    ['SUPERADMIN', ['Empresas', 'WhatsApp', 'Plataforma', 'Tipos de vehículo', 'Configuración']],
+    [
+      'SUPERADMIN',
+      ['Empresas', 'Ciudades', 'WhatsApp', 'Plataforma', 'Tipos de vehículo', 'Configuración'],
+    ],
     ['TENANT_ADMIN', ['Mi empresa', 'Ciudades', 'Tipos de vehículo', 'Configuración']],
     ['CITY_ADMIN', ['Ciudades']],
     ['OPERATOR', []],
