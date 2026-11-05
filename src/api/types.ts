@@ -168,11 +168,17 @@ export type Driver = {
   location_source: string | null;
   /** On the credit scheme: may be offered trips only while the credit lasts. */
   usage_credit_enabled: boolean;
-  /** Drained to today; may be zero or negative. `null` off the scheme. */
+  /** Drained to this moment; never below zero. `null` off the scheme. */
   usage_credit_balance: number | null;
-  /** The first day the balance is no longer positive. `null` off the scheme. */
-  usage_credit_expires_on: IsoDate | null;
+  /** The instant the balance runs out (UTC). `null` off the scheme. */
+  usage_credit_expires_at: IsoDateTime | null;
   usage_credit_expired: boolean;
+  /** The plan that sets the daily rate the credit drains at. `null` only for old rows. */
+  usage_plan_uuid: UUID | null;
+  usage_plan_name: string | null;
+  /** The plan's price per day; `0` is a plan without credit tracking. */
+  usage_daily_credit: number | null;
+  includes_vehicle_rental: boolean | null;
   created_at: IsoDateTime;
   /** Owning city. `null` until an admin assigns one. */
   city_uuid: UUID | null;
@@ -213,8 +219,8 @@ export type CreateDriverPayload = {
   phone_whatsapp: string;
   license_number?: string | null;
   vehicle_uuid?: UUID | null;
-  /** Starts with an empty balance, so credit has to be added before the first trip. */
-  usage_credit_enabled?: boolean;
+  /** Required once the tenant has plans. A paid plan starts with an empty balance. */
+  usage_plan_uuid: UUID;
   city_uuid?: UUID | null;
 };
 
@@ -229,12 +235,78 @@ export type UpdateDriverPayload = {
   name?: string;
   phone_whatsapp?: string;
   license_number?: string | null;
-  /** `false` takes the driver off the scheme and discards their balance. */
-  usage_credit_enabled?: boolean;
+  /**
+   * Moves the driver to another plan: the balance is settled at the old rate
+   * first; a free plan discards it; paid after free starts empty.
+   */
+  usage_plan_uuid?: UUID;
 };
 
 /** Negative takes credit back; zero is refused (422). */
-export type AddUsageCreditPayload = { amount: number };
+/**
+ * A top-up or deduction. `note` is required: the ledger is what an administrator
+ * shows a driver who disputes a balance. `client_request_id` makes a retry safe:
+ * the same id with the same change writes nothing new.
+ */
+export type AddUsageCreditPayload = {
+  amount: number;
+  note: string;
+  client_request_id?: string | null;
+};
+
+/** What a ledger row was for; mirrors the backend's `CreditTransactionKind`. */
+export type CreditKind =
+  'TOPUP' | 'MANUAL_DEDUCTION' | 'DRAIN' | 'PLAN_CHANGE' | 'REPRICE' | 'CLEARED' | 'OPENING';
+
+/** One row of a driver's credit ledger. Amounts are in credit units. */
+export type CreditTransaction = {
+  transaction_uuid: UUID;
+  driver_uuid: UUID;
+  kind: CreditKind;
+  /** Signed effect on the balance. */
+  amount: number;
+  balance_after: number;
+  /** What was asked for, when the balance could not go that far (no debt). */
+  requested_amount: number | null;
+  usage_plan_uuid: UUID | null;
+  usage_plan_name: string | null;
+  rate_applied: number | null;
+  period_from: IsoDateTime | null;
+  period_to: IsoDateTime | null;
+  /** The administrator's note on a manual row; `null` on system rows. */
+  note: string | null;
+  detail: Record<string, unknown> | null;
+  /** The administrator behind a manual row; `null` for the system. */
+  actor_user_uuid: UUID | null;
+  created_at: IsoDateTime;
+};
+
+export type CreditLedgerSummary = {
+  settled_balance: number;
+  total_topped_up: number;
+  total_drained: number;
+  total_deducted: number;
+  /** Balance at the moment of the read, after the drain since the last settle. */
+  balance_now: number | null;
+  usage_credit_enabled: boolean;
+  usage_credit_expires_at: IsoDateTime | null;
+  usage_credit_expired: boolean;
+};
+
+/** A page of ledger rows; `pages` is what the pager needs. */
+export type CreditTransactionPage = {
+  items: CreditTransaction[];
+  total: number;
+  page: number;
+  page_size: number;
+  pages: number;
+};
+
+export type DriverCreditLedger = CreditTransactionPage & {
+  driver_uuid: UUID;
+  driver_name: string;
+  summary: CreditLedgerSummary;
+};
 
 export type ChangeDriverStatusPayload = {
   status: DriverStatus;
@@ -326,6 +398,45 @@ export type UpdateVehicleTypePayload = {
   display_name?: string;
   attribute_schema?: AttributeSchemaField[];
   is_active?: boolean;
+};
+
+/** A tenant's own pricing: what a driver pays per day and what that covers. */
+export type UsagePlan = {
+  usage_plan_uuid: UUID;
+  name: string;
+  /** The price and the drain rate. `0` means no credit tracking. */
+  daily_credit: number;
+  /** A label for managers only; it changes nothing in the billing. */
+  includes_vehicle_rental: boolean;
+  description: string | null;
+  is_active: boolean;
+  created_at: IsoDateTime;
+  /** Absent on the list; set on `GET /{uuid}` and after an update. */
+  driver_count: number | null;
+  /** Set only on an update that changed the price. */
+  affected_drivers: number | null;
+};
+
+export type CreateUsagePlanPayload = {
+  name: string;
+  daily_credit: number;
+  includes_vehicle_rental?: boolean;
+  description?: string | null;
+};
+
+/**
+ * A field left out is unchanged. A new `daily_credit` re-prices every driver on
+ * the plan; when it crosses zero (free to paid expires them all, paid to free
+ * clears them) `confirm_affected_drivers` must equal their number, or the
+ * server answers 409.
+ */
+export type UpdateUsagePlanPayload = {
+  name?: string;
+  daily_credit?: number;
+  includes_vehicle_rental?: boolean;
+  description?: string | null;
+  is_active?: boolean;
+  confirm_affected_drivers?: number;
 };
 
 // --- auth -----------------------------------------------------------------

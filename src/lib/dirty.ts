@@ -33,11 +33,12 @@ export type DriverFormValues = {
   name: string;
   phone_whatsapp: string;
   license_number: string;
-  usage_credit_enabled: boolean;
+  /** The chosen plan; empty until one is picked. */
+  usage_plan_uuid: string;
 };
 
-/** The text fields only: the credit switch is a boolean and can always be turned off. */
-type DriverTextField = Exclude<keyof DriverFormValues, 'usage_credit_enabled'>;
+/** The text fields only: a plan is always chosen, never blanked. */
+type DriverTextField = Exclude<keyof DriverFormValues, 'usage_plan_uuid'>;
 
 export type DriverChanges = {
   payload: UpdateDriverPayload;
@@ -65,8 +66,9 @@ export function driverChanges(initial: DriverFormValues, current: DriverFormValu
   if (license !== null && license !== initial.license_number) payload.license_number = license;
   else if (license === null && initial.license_number !== '') unclearable.push('license_number');
 
-  if (current.usage_credit_enabled !== initial.usage_credit_enabled) {
-    payload.usage_credit_enabled = current.usage_credit_enabled;
+  // A driver always has a plan, so only a different, chosen one is sent.
+  if (current.usage_plan_uuid !== '' && current.usage_plan_uuid !== initial.usage_plan_uuid) {
+    payload.usage_plan_uuid = current.usage_plan_uuid;
   }
 
   return { payload, unclearable };

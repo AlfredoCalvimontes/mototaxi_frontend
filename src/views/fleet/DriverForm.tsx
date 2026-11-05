@@ -1,20 +1,22 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 
 import { createDriver, updateDriver } from '@/api/admin';
 import type { Driver } from '@/api/types';
 import { CityField } from '@/components/CityField';
-import { Field, FormDialog } from '@/components/Field';
+import { Field, FormDialog, SelectField } from '@/components/Field';
 import { driverChanges, hasChanges, type DriverFormValues } from '@/lib/dirty';
 import { errorText } from '@/lib/errors';
 import { strings } from '@/lib/strings';
+import { useUsagePlans } from '@/lib/useUsagePlans';
 
 function toValues(driver: Driver): DriverFormValues {
   return {
     name: driver.name,
     phone_whatsapp: driver.phone_whatsapp,
     license_number: driver.license_number ?? '',
-    usage_credit_enabled: driver.usage_credit_enabled,
+    usage_plan_uuid: driver.usage_plan_uuid ?? '',
   };
 }
 
@@ -22,7 +24,7 @@ const emptyValues: DriverFormValues = {
   name: '',
   phone_whatsapp: '',
   license_number: '',
-  usage_credit_enabled: false,
+  usage_plan_uuid: '',
 };
 
 export function DriverForm({ driver, onClose }: { driver: Driver | null; onClose: () => void }) {
@@ -37,7 +39,18 @@ export function DriverForm({ driver, onClose }: { driver: Driver | null; onClose
   const [cityUuid, setCityUuid] = useState('');
   const [validation, setValidation] = useState<Partial<Record<string, string>>>({});
 
+  const plans = useUsagePlans();
   const { payload, unclearable } = driverChanges(initial, values);
+  // Archived plans are not offered, except the one the driver is already on.
+  const planOptions = (plans.data ?? [])
+    .filter((plan) => plan.is_active || plan.usage_plan_uuid === initial.usage_plan_uuid)
+    .map((plan) => ({
+      value: plan.usage_plan_uuid,
+      label: plan.name + (plan.is_active ? '' : strings.fleet.planArchivedSuffix),
+    }));
+  const noPlans = plans.isSuccess && planOptions.length === 0;
+  const changingPlan =
+    editing && values.usage_plan_uuid !== '' && values.usage_plan_uuid !== initial.usage_plan_uuid;
 
   const save = useMutation({
     mutationFn: async () => {
@@ -48,8 +61,7 @@ export function DriverForm({ driver, onClose }: { driver: Driver | null; onClose
         phone_whatsapp: values.phone_whatsapp.trim(),
         license_number: values.license_number.trim() || null,
         ...(cityUuid && { city_uuid: cityUuid }),
-        // Only sent when on: off is the default, and it keeps the request minimal.
-        ...(values.usage_credit_enabled && { usage_credit_enabled: true }),
+        usage_plan_uuid: values.usage_plan_uuid,
       });
     },
     onSuccess: () => {
@@ -65,6 +77,7 @@ export function DriverForm({ driver, onClose }: { driver: Driver | null; onClose
     if (!values.name.trim()) errors.name = strings.fleet.requiredField;
     if (!values.phone_whatsapp.trim()) errors.phone = strings.fleet.requiredField;
     if (!editing && !ci.trim()) errors.ci = strings.fleet.requiredField;
+    if (!editing && !values.usage_plan_uuid) errors.plan = strings.fleet.requiredField;
     setValidation(errors);
     if (Object.keys(errors).length > 0) return;
     if (editing && !hasChanges(payload)) {
@@ -121,26 +134,36 @@ export function DriverForm({ driver, onClose }: { driver: Driver | null; onClose
 
         {!editing && <CityField value={cityUuid} onChange={setCityUuid} />}
 
-        <div className="space-y-1">
-          <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-            <input
-              type="checkbox"
-              checked={values.usage_credit_enabled}
-              onChange={(e) => setValues((v) => ({ ...v, usage_credit_enabled: e.target.checked }))}
-              className="rounded border-slate-300"
+        {noPlans ? (
+          <p
+            role="alert"
+            className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+          >
+            {strings.fleet.noPlans}{' '}
+            <Link to="/planes" className="underline">
+              {strings.fleet.createPlans}
+            </Link>
+          </p>
+        ) : (
+          <div className="space-y-2">
+            <SelectField
+              label={strings.fleet.plan}
+              value={values.usage_plan_uuid}
+              onChange={(usage_plan_uuid) => setValues((v) => ({ ...v, usage_plan_uuid }))}
+              options={[{ value: '', label: strings.fleet.planPlaceholder }, ...planOptions]}
+              hint={validation.plan ?? strings.fleet.planHint}
+              required={!editing}
             />
-            {strings.fleet.creditEnabled}
-          </label>
-          <p className="text-xs text-slate-500">{strings.fleet.creditEnabledHint}</p>
-          {editing && driver.usage_credit_enabled && !values.usage_credit_enabled && (
-            <p
-              role="alert"
-              className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900"
-            >
-              {strings.fleet.creditDisableWarning}
-            </p>
-          )}
-        </div>
+            {changingPlan && (
+              <p
+                role="alert"
+                className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+              >
+                {strings.fleet.planChangeWarning}
+              </p>
+            )}
+          </div>
+        )}
 
         {editing && unclearable.length > 0 && (
           <p

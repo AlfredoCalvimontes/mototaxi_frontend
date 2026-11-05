@@ -18,6 +18,8 @@ const navItems: NavItem[] = [
   { to: '/historial', label: strings.nav.history, end: false },
   { to: '/clientes', label: strings.nav.customers, end: false },
   { to: '/vehiculos/tipos', label: strings.nav.vehicleTypes, end: false, roles: ADMIN },
+  { to: '/planes', label: strings.nav.usagePlans, end: false, roles: ADMIN },
+  { to: '/historial-credito', label: strings.nav.creditHistory, end: false, roles: ADMIN },
   { to: '/configuracion', label: strings.nav.settings, end: false, roles: ADMIN },
 ];
 
@@ -28,6 +30,9 @@ function roleNavItems(user: UserProfile | null, actingAsTenant: string | null): 
   const items: NavItem[] = [];
   if (user.role === 'SUPERADMIN') {
     items.push({ to: '/tenants', label: strings.nav.tenants, end: true });
+    if (!actingAsTenant) {
+      items.push({ to: '/cities', label: strings.nav.cities, end: true });
+    }
     items.push({ to: '/whatsapp', label: strings.nav.whatsapp, end: true });
     items.push({ to: '/plataforma', label: strings.nav.platform, end: true });
   }

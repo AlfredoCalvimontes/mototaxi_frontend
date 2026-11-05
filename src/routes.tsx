@@ -6,6 +6,7 @@ import { ADMIN, CITY_SCOPED, STAFF, SUPERADMIN } from '@/auth/roles';
 import { Layout } from '@/components/Layout';
 import Customers from '@/views/Customers';
 import Dashboard from '@/views/Dashboard';
+import CreditHistory from '@/views/CreditHistory';
 import Drivers from '@/views/Drivers';
 import LiveTrips from '@/views/LiveTrips';
 import Login from '@/views/Login';
@@ -16,7 +17,9 @@ import CityDetail from '@/views/tenancy/CityDetail';
 import TenantDetail from '@/views/tenancy/TenantDetail';
 import Platform from '@/views/tenancy/Platform';
 import WhatsAppConfig from '@/views/tenancy/WhatsAppConfig';
+import AllCities from '@/views/tenancy/AllCities';
 import Tenants from '@/views/tenancy/Tenants';
+import UsagePlans from '@/views/tenancy/UsagePlans';
 import VehicleTypes from '@/views/tenancy/VehicleTypes';
 import Settings from '@/views/Settings';
 import TripHistory from '@/views/TripHistory';
@@ -47,6 +50,8 @@ export function AppRoutes() {
           <Route element={<RequireRole roles={ADMIN} />}>
             <Route path="/configuracion" element={<Settings />} />
             <Route path="/vehiculos/tipos" element={<VehicleTypes />} />
+            <Route path="/planes" element={<UsagePlans />} />
+            <Route path="/historial-credito" element={<CreditHistory />} />
             <Route path="/tenants/:tenantId" element={<TenantDetail />} />
             <Route
               path="/tenants/:tenantId/cities/:cityId/access"
@@ -55,6 +60,7 @@ export function AppRoutes() {
           </Route>
           <Route element={<RequireRole roles={SUPERADMIN} />}>
             <Route path="/tenants" element={<Tenants />} />
+            <Route path="/cities" element={<AllCities />} />
             <Route path="/whatsapp" element={<WhatsAppConfig />} />
             <Route path="/plataforma" element={<Platform />} />
           </Route>

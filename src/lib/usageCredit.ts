@@ -1,14 +1,15 @@
-import { daysUntil } from '@/lib/sim';
 import type { Driver } from '@/api/types';
 
-/** Amber from this many days before the credit runs out. */
-export const USAGE_CREDIT_WARN_DAYS = 3;
+/** Amber from this many hours before the credit runs out (three days). */
+export const USAGE_CREDIT_WARN_HOURS = 72;
 
 export type UsageCreditState = 'off' | 'ok' | 'soon' | 'expired';
 
+const HOUR_MS = 3_600_000;
+
 type CreditFields = Pick<
   Driver,
-  'usage_credit_enabled' | 'usage_credit_expired' | 'usage_credit_expires_on'
+  'usage_credit_enabled' | 'usage_credit_expired' | 'usage_credit_expires_at'
 >;
 
 /**
@@ -16,19 +17,23 @@ type CreditFields = Pick<
  *
  * `expired` comes from the server, which drains the balance by its own clock
  * and rate, so the panel never second-guesses it. Only the amber warning is
- * worked out here, on calendar dates in La Paz.
+ * worked out here, from the expiry instant. `hoursLeft` rounds up, so a credit
+ * with ten minutes left still reads «1 h»; it is negative once past.
  */
 export function usageCreditState(
   driver: CreditFields,
-  today?: string,
-): { state: UsageCreditState; daysLeft: number | null } {
-  if (!driver.usage_credit_enabled) return { state: 'off', daysLeft: null };
-  const daysLeft = driver.usage_credit_expires_on
-    ? daysUntil(driver.usage_credit_expires_on, today)
-    : null;
-  if (driver.usage_credit_expired) return { state: 'expired', daysLeft };
-  if (daysLeft !== null && daysLeft <= USAGE_CREDIT_WARN_DAYS) return { state: 'soon', daysLeft };
-  return { state: 'ok', daysLeft };
+  now: Date = new Date(),
+): { state: UsageCreditState; hoursLeft: number | null } {
+  if (!driver.usage_credit_enabled) return { state: 'off', hoursLeft: null };
+  const expiry = driver.usage_credit_expires_at
+    ? new Date(driver.usage_credit_expires_at).getTime()
+    : Number.NaN;
+  const hoursLeft = Number.isNaN(expiry) ? null : Math.ceil((expiry - now.getTime()) / HOUR_MS);
+  if (driver.usage_credit_expired) return { state: 'expired', hoursLeft };
+  if (hoursLeft !== null && hoursLeft <= USAGE_CREDIT_WARN_HOURS) {
+    return { state: 'soon', hoursLeft };
+  }
+  return { state: 'ok', hoursLeft };
 }
 
 /** «180», «-20», «12,5»: at most two decimals, comma as the separator. */

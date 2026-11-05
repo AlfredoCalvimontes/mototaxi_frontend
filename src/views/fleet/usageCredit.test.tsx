@@ -6,7 +6,6 @@ import * as fx from '@/test/fixtures';
 import { renderApp } from '@/test/render';
 import { server } from '@/test/server';
 import Drivers from '@/views/Drivers';
-import Settings from '@/views/Settings';
 
 vi.mock('@/components/FleetMap', () => ({ FleetMap: () => <div /> }));
 
@@ -40,7 +39,7 @@ describe('crédito de uso en la tabla', () => {
     const row = await rowFor('Rafael Soria');
 
     expect(row.getByText('180')).toBeInTheDocument();
-    expect(row.getByText('01/01/2099')).toBeInTheDocument();
+    expect(row.getByText('01/01/2099, 10:00')).toBeInTheDocument();
     expect(row.queryByText('Crédito vencido')).not.toBeInTheDocument();
   });
 
@@ -51,8 +50,8 @@ describe('crédito de uso en la tabla', () => {
     const row = await rowFor('Elena Cruz');
 
     expect(row.getByText('Crédito vencido')).toBeInTheDocument();
-    expect(row.getByText('-20')).toHaveClass('text-red-700');
-    expect(row.getByText('01/10/2026')).toHaveClass('text-red-700');
+    expect(row.getByText('0')).toHaveClass('text-red-700');
+    expect(row.getByText('01/10/2026, 10:00')).toHaveClass('text-red-700');
     expect(row.getByText('Crédito vencido').closest('tr')).toHaveClass('bg-red-50/70');
   });
 
@@ -79,9 +78,14 @@ describe('agregar crédito', () => {
     const dialog = within(screen.getByRole('dialog'));
     expect(dialog.getByText(/Crédito actual: 180/)).toBeInTheDocument();
     await user.type(dialog.getByLabelText(/Monto/), '120,5');
+    await user.type(dialog.getByLabelText(/Motivo/), 'Pago en efectivo');
     await user.click(dialog.getByRole('button', { name: 'Agregar' }));
 
-    await waitFor(() => expect(bodies).toEqual([{ amount: 120.5 }]));
+    await waitFor(() =>
+      expect(bodies).toEqual([
+        { amount: 120.5, note: 'Pago en efectivo', client_request_id: expect.any(String) },
+      ]),
+    );
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   });
 
@@ -96,10 +100,15 @@ describe('agregar crédito', () => {
     const dialog = within(screen.getByRole('dialog'));
     expect(dialog.queryByRole('alert')).not.toBeInTheDocument();
     await user.type(dialog.getByLabelText(/Monto/), '-50');
+    await user.type(dialog.getByLabelText(/Motivo/), 'Multa de tránsito');
 
     expect(await dialog.findByRole('alert')).toHaveTextContent(/reduce el crédito/);
     await user.click(dialog.getByRole('button', { name: 'Quitar crédito' }));
-    await waitFor(() => expect(bodies).toEqual([{ amount: -50 }]));
+    await waitFor(() =>
+      expect(bodies).toEqual([
+        { amount: -50, note: 'Multa de tránsito', client_request_id: expect.any(String) },
+      ]),
+    );
   });
 
   test('cero o texto no se envían', async () => {
@@ -145,6 +154,7 @@ describe('agregar crédito', () => {
     );
     const dialog = within(screen.getByRole('dialog'));
     await user.type(dialog.getByLabelText(/Monto/), '10');
+    await user.type(dialog.getByLabelText(/Motivo/), 'Pago de prueba');
     await user.click(dialog.getByRole('button', { name: 'Agregar' }));
 
     expect(await dialog.findByRole('alert')).toBeInTheDocument();
@@ -152,8 +162,89 @@ describe('agregar crédito', () => {
   });
 });
 
-describe('activar el crédito en el formulario', () => {
-  test('el alta lo envía solo cuando se activa', async () => {
+describe('motivo del crédito', () => {
+  test('sin motivo no se envía y lo pide', async () => {
+    withDrivers(fx.driverWithCredit);
+    const bodies = captureBody('post', '/admin/drivers/:uuid/usage-credit', fx.driverWithCredit);
+    const { user } = renderApp(<Drivers />);
+
+    await user.click(
+      (await rowFor('Rafael Soria')).getByRole('button', { name: 'Agregar crédito' }),
+    );
+    const dialog = within(screen.getByRole('dialog'));
+    await user.type(dialog.getByLabelText(/Monto/), '50');
+    await user.type(dialog.getByLabelText(/Motivo/), 'ab');
+    await user.click(dialog.getByRole('button', { name: 'Agregar' }));
+
+    expect(dialog.getByText('Escribe el motivo (al menos 3 caracteres).')).toBeInTheDocument();
+    expect(bodies).toHaveLength(0);
+  });
+
+  test('reintentar el mismo cambio reutiliza el identificador de la petición', async () => {
+    withDrivers(fx.driverWithCredit);
+    let calls = 0;
+    const bodies: { client_request_id: string }[] = [];
+    server.use(
+      http.post(`${BASE}/admin/drivers/:uuid/usage-credit`, async ({ request }) => {
+        bodies.push((await request.json()) as { client_request_id: string });
+        calls += 1;
+        return calls === 1
+          ? HttpResponse.json({ detail: 'sin respuesta' }, { status: 500 })
+          : HttpResponse.json(fx.driverWithCredit);
+      }),
+    );
+    const { user } = renderApp(<Drivers />);
+
+    await user.click(
+      (await rowFor('Rafael Soria')).getByRole('button', { name: 'Agregar crédito' }),
+    );
+    const dialog = within(screen.getByRole('dialog'));
+    await user.type(dialog.getByLabelText(/Monto/), '50');
+    await user.type(dialog.getByLabelText(/Motivo/), 'Pago en efectivo');
+    await user.click(dialog.getByRole('button', { name: 'Agregar' }));
+    await dialog.findByRole('alert');
+    await user.click(dialog.getByRole('button', { name: 'Agregar' }));
+
+    await waitFor(() => expect(bodies).toHaveLength(2));
+    const [first, second] = bodies;
+    expect(second?.client_request_id).toBe(first?.client_request_id);
+  });
+
+  test('cambiar el monto da un identificador nuevo', async () => {
+    withDrivers(fx.driverWithCredit);
+    let calls = 0;
+    const bodies: { client_request_id: string }[] = [];
+    server.use(
+      http.post(`${BASE}/admin/drivers/:uuid/usage-credit`, async ({ request }) => {
+        bodies.push((await request.json()) as { client_request_id: string });
+        calls += 1;
+        return calls === 1
+          ? HttpResponse.json({ detail: 'sin respuesta' }, { status: 500 })
+          : HttpResponse.json(fx.driverWithCredit);
+      }),
+    );
+    const { user } = renderApp(<Drivers />);
+
+    await user.click(
+      (await rowFor('Rafael Soria')).getByRole('button', { name: 'Agregar crédito' }),
+    );
+    const dialog = within(screen.getByRole('dialog'));
+    await user.type(dialog.getByLabelText(/Monto/), '50');
+    await user.type(dialog.getByLabelText(/Motivo/), 'Pago en efectivo');
+    await user.click(dialog.getByRole('button', { name: 'Agregar' }));
+    await dialog.findByRole('alert');
+    await user.clear(dialog.getByLabelText(/Monto/));
+    await user.type(dialog.getByLabelText(/Monto/), '60');
+    await user.click(dialog.getByRole('button', { name: 'Agregar' }));
+
+    await waitFor(() => expect(bodies).toHaveLength(2));
+    const [first, second] = bodies;
+    expect(second?.client_request_id).not.toBe(first?.client_request_id);
+  });
+});
+
+describe('plan de uso en el formulario', () => {
+  test('el alta envía el plan elegido', async () => {
     const bodies = captureBody('post', '/admin/drivers', fx.driver);
     const { user } = renderApp(<Drivers />);
     await screen.findByRole('table');
@@ -163,63 +254,53 @@ describe('activar el crédito en el formulario', () => {
     await user.type(dialog.getByLabelText(/Nombre/), 'Ana Choque');
     await user.type(dialog.getByLabelText(/^CI/), '9988776 TJ');
     await user.type(dialog.getByLabelText(/WhatsApp/), '+59170001111');
-    await user.click(dialog.getByRole('checkbox', { name: 'Usa crédito de uso' }));
+    await user.selectOptions(await dialog.findByLabelText(/Plan de uso/), 'Alquiler de moto');
     await user.click(dialog.getByRole('button', { name: 'Guardar' }));
 
     await waitFor(() => expect(bodies).toHaveLength(1));
-    expect(bodies[0]).toMatchObject({ usage_credit_enabled: true });
+    expect(bodies[0]).toMatchObject({ usage_plan_uuid: fx.rentalPlan.usage_plan_uuid });
   });
 
-  test('editar y activarlo envía solo ese campo', async () => {
-    const bodies = captureBody('patch', '/admin/drivers/:uuid', fx.driver);
+  test('el alta exige elegir un plan', async () => {
+    const bodies = captureBody('post', '/admin/drivers', fx.driver);
     const { user } = renderApp(<Drivers />);
+    await screen.findByRole('table');
 
-    await user.click((await rowFor('Marco Peña')).getByRole('button', { name: 'Editar' }));
+    await user.click(screen.getByRole('button', { name: 'Registrar conductor' }));
     const dialog = within(screen.getByRole('dialog'));
-    await user.click(dialog.getByRole('checkbox', { name: 'Usa crédito de uso' }));
+    await user.type(dialog.getByLabelText(/Nombre/), 'Ana Choque');
+    await user.type(dialog.getByLabelText(/^CI/), '9988776 TJ');
+    await user.type(dialog.getByLabelText(/WhatsApp/), '+59170001111');
     await user.click(dialog.getByRole('button', { name: 'Guardar' }));
 
-    await waitFor(() => expect(bodies).toEqual([{ usage_credit_enabled: true }]));
+    expect(await dialog.findByText('Este campo es obligatorio')).toBeInTheDocument();
+    expect(bodies).toHaveLength(0);
   });
 
-  test('desactivarlo avisa que se pierde el crédito y envía false', async () => {
+  test('sin planes el formulario manda a crearlos', async () => {
+    server.use(http.get(`${BASE}/admin/usage-plans`, () => HttpResponse.json([])));
+    const { user } = renderApp(<Drivers />);
+    await screen.findByRole('table');
+
+    await user.click(screen.getByRole('button', { name: 'Registrar conductor' }));
+
+    expect(
+      await within(screen.getByRole('dialog')).findByRole('link', { name: 'Crear planes' }),
+    ).toBeInTheDocument();
+  });
+
+  test('cambiar de plan avisa que se salda al precio anterior y envía solo el plan', async () => {
     withDrivers(fx.driverWithCredit);
-    const bodies = captureBody('patch', '/admin/drivers/:uuid', fx.driver);
+    const bodies = captureBody('patch', '/admin/drivers/:uuid', fx.driverWithCredit);
     const { user } = renderApp(<Drivers />);
 
     await user.click((await rowFor('Rafael Soria')).getByRole('button', { name: 'Editar' }));
     const dialog = within(screen.getByRole('dialog'));
-    expect(dialog.getByRole('checkbox', { name: 'Usa crédito de uso' })).toBeChecked();
     expect(dialog.queryByRole('alert')).not.toBeInTheDocument();
-    await user.click(dialog.getByRole('checkbox', { name: 'Usa crédito de uso' }));
+    await user.selectOptions(await dialog.findByLabelText(/Plan de uso/), 'Acuerdo personalizado');
 
-    expect(await dialog.findByRole('alert')).toHaveTextContent(/se borra el crédito/);
+    expect(await dialog.findByRole('alert')).toHaveTextContent(/precio del plan anterior/);
     await user.click(dialog.getByRole('button', { name: 'Guardar' }));
-    await waitFor(() => expect(bodies).toEqual([{ usage_credit_enabled: false }]));
-  });
-});
-
-describe('ajuste del consumo diario', () => {
-  test('aparece en Configuración con su unidad y se guarda', async () => {
-    server.use(
-      http.get(`${BASE}/admin/settings`, () =>
-        HttpResponse.json([fx.sharedLocationSetting, fx.usageCreditSetting]),
-      ),
-      http.put(`${BASE}/admin/settings/:key`, async ({ request, params }) => {
-        const { value } = (await request.json()) as { value: number };
-        return HttpResponse.json({ ...fx.usageCreditSetting, key: params.key, value });
-      }),
-    );
-    const { user } = renderApp(<Settings />);
-
-    const input = await screen.findByLabelText('Crédito de uso que consume un conductor por día');
-    expect(input).toHaveValue('60');
-    expect(screen.getByText('de crédito por día')).toBeInTheDocument();
-    await user.clear(input);
-    await user.type(input, '45');
-    const form = input.closest('form')!;
-    await user.click(within(form).getByRole('button', { name: 'Guardar cambio' }));
-
-    expect(await screen.findByText('Cambio guardado.')).toBeInTheDocument();
+    await waitFor(() => expect(bodies).toEqual([{ usage_plan_uuid: fx.freePlan.usage_plan_uuid }]));
   });
 });
