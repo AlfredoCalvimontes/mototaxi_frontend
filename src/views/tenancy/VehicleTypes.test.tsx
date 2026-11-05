@@ -70,6 +70,31 @@ describe('tipos de vehículo', () => {
     });
   });
 
+  test('el aviso del esquema solo sale si hay vehículos de ese tipo', async () => {
+    asUser(fx.adminProfile);
+    server.use(
+      http.get(`${BASE}/admin/vehicles`, () =>
+        HttpResponse.json([
+          { ...fx.vehicleSummary, vehicle_type_uuid: fx.ownVanType.vehicle_type_uuid },
+          { ...fx.staleVehicleSummary, vehicle_type_uuid: fx.ownVanType.vehicle_type_uuid },
+        ]),
+      ),
+    );
+    const { user } = renderApp(<VehicleTypes />);
+
+    await user.click((await rowFor('Minivan')).getByRole('button', { name: 'Editar' }));
+    expect(await screen.findByText(/Hay 2 vehículos de este tipo/)).toBeInTheDocument();
+  });
+
+  test('sin vehículos de ese tipo no hay aviso', async () => {
+    asUser(fx.adminProfile);
+    const { user } = renderApp(<VehicleTypes />);
+
+    await user.click((await rowFor('Minivan')).getByRole('button', { name: 'Editar' }));
+    await screen.findByRole('dialog');
+    expect(screen.queryByText(/de este tipo: solo se pueden/)).not.toBeInTheDocument();
+  });
+
   test('el rechazo del servidor por un esquema no aditivo se muestra', async () => {
     asUser(fx.adminProfile);
     server.use(
