@@ -157,8 +157,11 @@ function ConfigForm({
   );
 }
 
-/** Superadmin: every tenant's WhatsApp number, and the form for the one being acted as. */
-export default function WhatsAppConfig() {
+/**
+ * Superadmin only: each tenant's main (MAIN) WhatsApp number, and the form for
+ * the one being acted as. City routes live in the routing section of the page.
+ */
+export function MainNumberSection() {
   const { actingAsTenant } = useAuth();
   const tenants = useTenantList(true);
 
@@ -209,8 +212,10 @@ export default function WhatsAppConfig() {
     : null;
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-xl font-semibold text-slate-900">{t.heading}</h1>
+    <section aria-labelledby="main-number-heading" className="space-y-4">
+      <h2 id="main-number-heading" className="text-sm font-semibold text-slate-900">
+        {t.mainHeading}
+      </h2>
       <p className="text-sm text-slate-600">{t.intro}</p>
 
       {configs.data.length === 0 ? (
@@ -220,7 +225,7 @@ export default function WhatsAppConfig() {
           rows={configs.data}
           columns={columns}
           rowKey={(c) => c.tenant_uuid}
-          caption={t.heading}
+          caption={t.mainHeading}
           initialSort={{ columnId: 'tenant', direction: 'asc' }}
         />
       )}
@@ -236,6 +241,6 @@ export default function WhatsAppConfig() {
       ) : (
         <p className="text-sm text-slate-500">{t.pickTenant}</p>
       )}
-    </div>
+    </section>
   );
 }
