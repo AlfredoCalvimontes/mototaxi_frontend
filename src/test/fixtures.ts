@@ -22,6 +22,8 @@ import type {
   TripKpiGroup,
   CreditTransaction,
   DriverCreditLedger,
+  CityRouting,
+  RoutingNumber,
 } from '@/api/types';
 
 export const adminProfile: UserProfile = {
@@ -570,3 +572,53 @@ export const driverCreditLedger: DriverCreditLedger = {
   page_size: 20,
   pages: 1,
 };
+
+// --- WhatsApp routing -------------------------------------------------------
+
+/** The acted-as tenant's own number for Villa Montes. */
+export const ownCityNumber: RoutingNumber = {
+  number_uuid: '61111111-1111-4111-8111-111111111111',
+  scope: 'TENANT',
+  owner_tenant: tenant.tenant_id,
+  role: 'CITY',
+  city_uuid: city.city_id,
+  phone_number_id: '1000000000001',
+  waba_id: 'waba-tenant',
+  display_phone_number: '+591 7000 0001',
+  is_active: true,
+  updated_at: '2026-11-01T12:00:00Z',
+};
+
+/** The Super Admin's MAIN number, which serves delegated cities. */
+export const platformMainNumber: RoutingNumber = {
+  number_uuid: '62222222-2222-4222-8222-222222222222',
+  scope: 'PLATFORM',
+  owner_tenant: null,
+  role: 'MAIN',
+  city_uuid: null,
+  phone_number_id: '2000000000002',
+  waba_id: null,
+  display_phone_number: '+591 7000 9999',
+  is_active: true,
+  updated_at: '2026-11-01T12:00:00Z',
+};
+
+export const cityRoutingRows: CityRouting[] = [
+  {
+    city_uuid: city.city_id,
+    city_name: city.name,
+    delegated: false,
+    own_city_number: ownCityNumber,
+    serving: { number: ownCityNumber, deny_reason: null },
+  },
+  {
+    city_uuid: secondCity.city_id,
+    city_name: secondCity.name,
+    delegated: true,
+    own_city_number: null,
+    serving: { number: platformMainNumber, deny_reason: null },
+  },
+];
+
+export const tenantRoutingNumbers: RoutingNumber[] = [ownCityNumber];
+export const platformRoutingNumbers: RoutingNumber[] = [platformMainNumber];

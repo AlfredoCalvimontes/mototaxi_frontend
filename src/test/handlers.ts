@@ -130,4 +130,33 @@ export const handlers = [
   }),
   http.post(`${BASE}/admin/customers/:uuid/block`, () => new HttpResponse(null, { status: 204 })),
   http.post(`${BASE}/admin/customers/:uuid/unblock`, () => new HttpResponse(null, { status: 204 })),
+  // whatsapp routing (per city)
+  http.get(`${BASE}/admin/whatsapp-routing/cities`, () => HttpResponse.json(fx.cityRoutingRows)),
+  http.get(`${BASE}/admin/whatsapp-routing/numbers`, () =>
+    HttpResponse.json(fx.tenantRoutingNumbers),
+  ),
+  http.get(`${BASE}/admin/whatsapp-routing/platform-numbers`, () =>
+    HttpResponse.json(fx.platformRoutingNumbers),
+  ),
+  http.get(`${BASE}/admin/whatsapp-routing/cities/:uuid/serving`, () =>
+    HttpResponse.json({ number: fx.platformMainNumber, deny_reason: null }),
+  ),
+  http.put(`${BASE}/admin/whatsapp-routing/cities/:uuid/number`, () =>
+    HttpResponse.json(fx.ownCityNumber),
+  ),
+  http.put(`${BASE}/admin/whatsapp-routing/platform-numbers`, () =>
+    HttpResponse.json(fx.platformMainNumber),
+  ),
+  http.delete(
+    `${BASE}/admin/whatsapp-routing/numbers/:uuid`,
+    () => new HttpResponse(null, { status: 204 }),
+  ),
+  http.put(
+    `${BASE}/admin/whatsapp-routing/cities/:uuid/delegation`,
+    () => new HttpResponse(null, { status: 204 }),
+  ),
+  http.delete(
+    `${BASE}/admin/whatsapp-routing/cities/:uuid/delegation`,
+    () => new HttpResponse(null, { status: 204 }),
+  ),
 ];
