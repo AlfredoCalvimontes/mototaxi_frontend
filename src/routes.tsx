@@ -16,7 +16,6 @@ import Cities from '@/views/tenancy/Cities';
 import CityDetail from '@/views/tenancy/CityDetail';
 import TenantDetail from '@/views/tenancy/TenantDetail';
 import Platform from '@/views/tenancy/Platform';
-import WhatsAppConfig from '@/views/tenancy/WhatsAppConfig';
 import WhatsAppRouting from '@/views/tenancy/WhatsAppRouting';
 import AllCities from '@/views/tenancy/AllCities';
 import Tenants from '@/views/tenancy/Tenants';
@@ -63,7 +62,7 @@ export function AppRoutes() {
           <Route element={<RequireRole roles={SUPERADMIN} />}>
             <Route path="/tenants" element={<Tenants />} />
             <Route path="/cities" element={<AllCities />} />
-            <Route path="/whatsapp" element={<WhatsAppConfig />} />
+            <Route path="/whatsapp" element={<Navigate to="/rutas-whatsapp" replace />} />
             <Route path="/plataforma" element={<Platform />} />
           </Route>
           <Route element={<RequireRole roles={CITY_SCOPED} />}>

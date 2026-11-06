@@ -20,15 +20,15 @@ export const strings = {
     tenants: 'Empresas',
     myTenant: 'Mi empresa',
     cities: 'Ciudades',
-    whatsapp: 'WhatsApp',
-    whatsappRouting: 'Rutas WhatsApp',
+    whatsappRouting: 'WhatsApp',
     platform: 'Plataforma',
     logout: 'Cerrar sesión',
   },
   whatsapp: {
     heading: 'WhatsApp',
+    mainHeading: 'Número principal',
     intro:
-      'Número principal de WhatsApp de cada empresa. Lo administra la plataforma. Las rutas por ciudad están en Rutas WhatsApp.',
+      'Número principal de WhatsApp de cada empresa. Lo administra la plataforma. Las rutas por ciudad están abajo.',
     tenant: 'Empresa',
     phoneNumberId: 'ID del número (Meta)',
     waba: 'WABA',

@@ -34,7 +34,8 @@ const matrix: [path: string, allowed: Record<keyof typeof profiles, boolean>][] 
     { SUPERADMIN: true, TENANT_ADMIN: true, CITY_ADMIN: false, OPERATOR: false },
   ],
   ['/tenants', { SUPERADMIN: true, TENANT_ADMIN: false, CITY_ADMIN: false, OPERATOR: false }],
-  ['/whatsapp', { SUPERADMIN: true, TENANT_ADMIN: false, CITY_ADMIN: false, OPERATOR: false }],
+  // Legacy path: redirects to the routing page, so it follows that page's roles.
+  ['/whatsapp', { SUPERADMIN: true, TENANT_ADMIN: true, CITY_ADMIN: false, OPERATOR: false }],
   ['/rutas-whatsapp', { SUPERADMIN: true, TENANT_ADMIN: true, CITY_ADMIN: false, OPERATOR: false }],
   ['/plataforma', { SUPERADMIN: true, TENANT_ADMIN: false, CITY_ADMIN: false, OPERATOR: false }],
   [`/tenants/${T}`, { SUPERADMIN: true, TENANT_ADMIN: true, CITY_ADMIN: false, OPERATOR: false }],
@@ -81,7 +82,7 @@ describe('navegación por rol', () => {
       'SUPERADMIN',
       ['Empresas', 'Ciudades', 'WhatsApp', 'Plataforma', 'Tipos de vehículo', 'Configuración'],
     ],
-    ['TENANT_ADMIN', ['Mi empresa', 'Ciudades', 'Tipos de vehículo', 'Configuración']],
+    ['TENANT_ADMIN', ['WhatsApp', 'Mi empresa', 'Ciudades', 'Tipos de vehículo', 'Configuración']],
     ['CITY_ADMIN', ['Ciudades']],
     ['OPERATOR', []],
   ] as const)('%s ve sus enlaces', async (role, links) => {
