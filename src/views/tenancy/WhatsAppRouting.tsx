@@ -153,7 +153,13 @@ function NumberForm({
 }
 
 /** Platform numbers the Super Admin can set. The city list is the superadmin catalog. */
-function PlatformNumberForm({ onDone }: { onDone: () => void }) {
+function PlatformNumberForm({
+  onDone,
+  onSaved,
+}: {
+  onDone: () => void;
+  onSaved: (message: string) => void;
+}) {
   const queryClient = useQueryClient();
   const [role, setRole] = useState<RoutingRole>('MAIN');
   const [cityUuid, setCityUuid] = useState('');
@@ -172,6 +178,7 @@ function PlatformNumberForm({ onDone }: { onDone: () => void }) {
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.whatsappRouting });
+      onSaved(t.saved);
       onDone();
     },
   });
@@ -374,6 +381,50 @@ function NumbersTable({
 type Target = { cityUuid: string; cityName: string; existing: RoutingNumber | null };
 type Removal = { number: RoutingNumber; label: string };
 
+/** Platform numbers. Shown with or without an acted-as tenant: they are not tenant-scoped. */
+function PlatformSection({
+  rows,
+  isSuper,
+  formOpen,
+  onOpenForm,
+  onCloseForm,
+  onRemove,
+  onSaved,
+}: {
+  rows: RoutingNumber[];
+  isSuper: boolean;
+  formOpen: boolean;
+  onOpenForm: () => void;
+  onCloseForm: () => void;
+  onRemove: (n: RoutingNumber) => void;
+  onSaved: (message: string) => void;
+}) {
+  return (
+    <section aria-labelledby="platform-numbers-heading" className="space-y-2">
+      <h2 id="platform-numbers-heading" className="text-sm font-semibold text-slate-900">
+        {t.platformNumbers}
+      </h2>
+      <NumbersTable
+        rows={rows}
+        caption={t.platformNumbers}
+        empty={t.noPlatformNumbers}
+        canDelete={(n) => isSuper && n.scope === 'PLATFORM'}
+        onDelete={onRemove}
+      />
+      {isSuper && !formOpen && (
+        <button
+          type="button"
+          onClick={onOpenForm}
+          className="rounded border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+        >
+          {t.addPlatform}
+        </button>
+      )}
+      {isSuper && formOpen && <PlatformNumberForm onDone={onCloseForm} onSaved={onSaved} />}
+    </section>
+  );
+}
+
 /**
  * WhatsApp routing per city. Tenant admins read their routes and the platform's
  * numbers; the Super Admin changes them (city actions act as the tenant that is
@@ -391,6 +442,7 @@ export default function WhatsAppRouting() {
   const [target, setTarget] = useState<Target | null>(null);
   const [platformFormOpen, setPlatformFormOpen] = useState(false);
   const [removal, setRemoval] = useState<Removal | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const cities = useQuery({
     queryKey: queryKeys.cityRouting(actingAsTenant),
@@ -414,6 +466,7 @@ export default function WhatsAppRouting() {
     mutationFn: (base: SaveNumberPayload) => saveCityNumber(target!.cityUuid, base),
     onSuccess: () => {
       setTarget(null);
+      setNotice(t.saved);
       refresh();
     },
   });
@@ -421,23 +474,66 @@ export default function WhatsAppRouting() {
   const delegation = useMutation({
     mutationFn: (vars: { cityUuid: string; delegate: boolean }) =>
       vars.delegate ? delegateCity(vars.cityUuid) : undelegateCity(vars.cityUuid),
-    onSuccess: refresh,
+    onSuccess: (_data, vars) => {
+      setNotice(vars.delegate ? t.delegatedDone : t.undelegatedDone);
+      refresh();
+    },
   });
 
   const remove = useMutation({
     mutationFn: (n: RoutingNumber) => deleteRoutingNumber(n.number_uuid),
     onSuccess: () => {
       setRemoval(null);
+      setNotice(t.removed);
       refresh();
     },
   });
 
+  const noticeLine = notice ? (
+    <p role="status" className="text-sm text-emerald-700">
+      {notice}
+    </p>
+  ) : null;
+
+  const removalDialog = (
+    <ConfirmDialog
+      open={removal !== null}
+      title={t.removeTitle}
+      body={removal ? t.removeBody(removal.label) : ''}
+      confirmLabel={t.remove}
+      destructive
+      pending={remove.isPending}
+      error={remove.error}
+      onConfirm={() => removal && remove.mutate(removal.number)}
+      onClose={() => setRemoval(null)}
+    />
+  );
+
+  const platformSection = platform.error ? (
+    <ErrorState error={platform.error} onRetry={() => void platform.refetch()} />
+  ) : platform.data ? (
+    <PlatformSection
+      rows={platform.data}
+      isSuper={isSuper}
+      formOpen={platformFormOpen}
+      onOpenForm={() => setPlatformFormOpen(true)}
+      onCloseForm={() => setPlatformFormOpen(false)}
+      onRemove={(n) => setRemoval({ number: n, label: numberLabel(n) })}
+      onSaved={setNotice}
+    />
+  ) : (
+    <TableSkeleton rows={2} />
+  );
+
   if (needsTenant) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-6">
         <h1 className="text-xl font-semibold text-slate-900">{t.heading}</h1>
         <p className="text-sm text-slate-600">{t.intro}</p>
         <p className="text-sm text-slate-500">{t.pickTenant}</p>
+        {noticeLine}
+        {platformSection}
+        {removalDialog}
       </div>
     );
   }
@@ -461,7 +557,6 @@ export default function WhatsAppRouting() {
 
   const cityRows = cities.data;
   const tenantNumbers = numbers.data;
-  const platformNumbers = platform.data;
 
   const cityColumns: Column<CityRouting>[] = [
     {
@@ -516,7 +611,6 @@ export default function WhatsAppRouting() {
   ];
 
   const canDeleteTenant = (n: RoutingNumber) => cityWrite && n.scope === 'TENANT';
-  const canDeletePlatform = (n: RoutingNumber) => isSuper && n.scope === 'PLATFORM';
 
   return (
     <div className="space-y-6">
@@ -575,42 +669,11 @@ export default function WhatsAppRouting() {
         />
       </section>
 
-      <section aria-labelledby="platform-numbers-heading" className="space-y-2">
-        <h2 id="platform-numbers-heading" className="text-sm font-semibold text-slate-900">
-          {t.platformNumbers}
-        </h2>
-        <NumbersTable
-          rows={platformNumbers ?? []}
-          caption={t.platformNumbers}
-          empty={t.noPlatformNumbers}
-          canDelete={canDeletePlatform}
-          onDelete={(n) => setRemoval({ number: n, label: numberLabel(n) })}
-        />
-        {isSuper && !platformFormOpen && (
-          <button
-            type="button"
-            onClick={() => setPlatformFormOpen(true)}
-            className="rounded border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
-          >
-            {t.addPlatform}
-          </button>
-        )}
-        {isSuper && platformFormOpen && (
-          <PlatformNumberForm onDone={() => setPlatformFormOpen(false)} />
-        )}
-      </section>
+      {noticeLine}
 
-      <ConfirmDialog
-        open={removal !== null}
-        title={t.removeTitle}
-        body={removal ? t.removeBody(removal.label) : ''}
-        confirmLabel={t.remove}
-        destructive
-        pending={remove.isPending}
-        error={remove.error}
-        onConfirm={() => removal && remove.mutate(removal.number)}
-        onClose={() => setRemoval(null)}
-      />
+      {platformSection}
+
+      {removalDialog}
     </div>
   );
 }
