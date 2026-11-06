@@ -43,7 +43,8 @@ export const queryKeys = {
   whatsappRouting: ['whatsapp-routing'] as const,
   /** City-scoped routing reads follow the acted-as tenant. */
   cityRouting: (tenant: string | null) => ['whatsapp-routing', 'cities', tenant ?? 'none'] as const,
-  routingNumbers: (tenant: string | null) => ['whatsapp-routing', 'numbers', tenant ?? 'none'] as const,
+  routingNumbers: (tenant: string | null) =>
+    ['whatsapp-routing', 'numbers', tenant ?? 'none'] as const,
   platformRoutingNumbers: ['whatsapp-routing', 'platform'] as const,
   customers: (includeBlocked: boolean, city: UUID | null = null) =>
     ['customers', includeBlocked, city ?? 'all'] as const,
