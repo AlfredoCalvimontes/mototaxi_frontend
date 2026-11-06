@@ -34,7 +34,6 @@ function roleNavItems(user: UserProfile | null, actingAsTenant: string | null): 
     if (!actingAsTenant) {
       items.push({ to: '/cities', label: strings.nav.cities, end: true });
     }
-    items.push({ to: '/whatsapp', label: strings.nav.whatsapp, end: true });
     items.push({ to: '/plataforma', label: strings.nav.platform, end: true });
   }
   if (tenantId && (user.role === 'TENANT_ADMIN' || user.role === 'SUPERADMIN')) {

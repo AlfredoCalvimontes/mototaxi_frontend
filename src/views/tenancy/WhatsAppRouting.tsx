@@ -31,6 +31,8 @@ import { TableSkeleton } from '@/components/Skeleton';
 import { errorText } from '@/lib/errors';
 import { strings } from '@/lib/strings';
 
+import { MainNumberSection } from './WhatsAppMainNumber';
+
 const t = strings.routing;
 
 /** The reason a city is refused, in the owner's words. */
@@ -528,8 +530,8 @@ export default function WhatsAppRouting() {
   if (needsTenant) {
     return (
       <div className="space-y-6">
-        <h1 className="text-xl font-semibold text-slate-900">{t.heading}</h1>
-        <p className="text-sm text-slate-600">{t.intro}</p>
+        <h1 className="text-xl font-semibold text-slate-900">{strings.whatsapp.heading}</h1>
+        {isSuper && <MainNumberSection />}
         <p className="text-sm text-slate-500">{t.pickTenant}</p>
         {noticeLine}
         {platformSection}
@@ -614,13 +616,15 @@ export default function WhatsAppRouting() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold text-slate-900">{t.heading}</h1>
-      <p className="text-sm text-slate-600">{t.intro}</p>
+      <h1 className="text-xl font-semibold text-slate-900">{strings.whatsapp.heading}</h1>
+
+      {isSuper && <MainNumberSection />}
 
       <section aria-labelledby="cities-heading" className="space-y-2">
         <h2 id="cities-heading" className="text-sm font-semibold text-slate-900">
           {t.cities}
         </h2>
+        <p className="text-sm text-slate-600">{t.intro}</p>
         {cityRows && cityRows.length === 0 ? (
           <p className="text-sm text-slate-500">{t.noCities}</p>
         ) : (

@@ -8,7 +8,7 @@ import * as fx from '@/test/fixtures';
 import { renderApp } from '@/test/render';
 import { server } from '@/test/server';
 import Platform from '@/views/tenancy/Platform';
-import WhatsAppConfig from '@/views/tenancy/WhatsAppConfig';
+import { MainNumberSection } from '@/views/tenancy/WhatsAppMainNumber';
 
 const BASE = '/api/v1';
 
@@ -31,10 +31,10 @@ async function rowFor(text: string) {
   return within(rows.find((row) => within(row).queryByText(text))!);
 }
 
-describe('WhatsApp', () => {
+describe('WhatsApp: número principal', () => {
   test('lista el número de cada empresa con su nombre', async () => {
     superadmin();
-    renderApp(<WhatsAppConfig />);
+    renderApp(<MainNumberSection />);
 
     const row = await rowFor('Mototaxi Seguro');
     expect(row.getByText('+591 7000 0001')).toBeInTheDocument();
@@ -53,7 +53,7 @@ describe('WhatsApp', () => {
     const { user } = renderApp(
       <>
         <ActAs />
-        <WhatsAppConfig />
+        <MainNumberSection />
       </>,
     );
     await user.click(await screen.findByRole('button', { name: 'actuar' }));
@@ -90,7 +90,7 @@ describe('WhatsApp', () => {
     const { user } = renderApp(
       <>
         <ActAs />
-        <WhatsAppConfig />
+        <MainNumberSection />
       </>,
     );
     await user.click(await screen.findByRole('button', { name: 'actuar' }));
@@ -119,7 +119,7 @@ describe('WhatsApp', () => {
     const { user } = renderApp(
       <>
         <ActAs />
-        <WhatsAppConfig />
+        <MainNumberSection />
       </>,
     );
     await user.click(await screen.findByRole('button', { name: 'actuar' }));
@@ -141,7 +141,7 @@ describe('WhatsApp', () => {
     const { user } = renderApp(
       <>
         <ActAs />
-        <WhatsAppConfig />
+        <MainNumberSection />
       </>,
     );
     await user.click(await screen.findByRole('button', { name: 'actuar' }));
