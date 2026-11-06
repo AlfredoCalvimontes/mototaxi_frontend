@@ -31,6 +31,7 @@ import type {
   CreateVehiclePayload,
   CreateUsagePlanPayload,
   CreateVehicleTypePayload,
+  CityRouting,
   CustomerSummary,
   Driver,
   DriverStatus,
@@ -38,7 +39,11 @@ import type {
   Vehicle,
   DriverPositionCheck,
   PhoneKey,
+  RoutingNumber,
   RuntimeSetting,
+  SaveNumberPayload,
+  SavePlatformNumberPayload,
+  Serving,
   VehicleSummary,
   TripSummary,
   UUID,
@@ -480,4 +485,58 @@ export function getKpisByVehicleType(hours?: number): Promise<TripKpiGroup[]> {
   return request<TripKpiGroup[]>('/admin/kpis/by-vehicle-type', {
     query: { hours },
   });
+}
+
+// --- WhatsApp routing (per city) ------------------------------------------
+// Reads: tenant admins (their own numbers, the platform's, and each city's route).
+// Writes: Super Admin. City-scoped writes act as the tenant in `X-Tenant-Id`.
+
+const ROUTING = '/admin/whatsapp-routing';
+
+/** The acted-as tenant's numbers, without tokens. */
+export function listRoutingNumbers(): Promise<RoutingNumber[]> {
+  return request<RoutingNumber[]>(`${ROUTING}/numbers`);
+}
+
+/** The platform's numbers. A tenant may read them and never change them. */
+export function listPlatformRoutingNumbers(): Promise<RoutingNumber[]> {
+  return request<RoutingNumber[]>(`${ROUTING}/platform-numbers`);
+}
+
+/** Create or replace the acted-as tenant's number for one city. */
+export function saveCityNumber(cityUuid: UUID, payload: SaveNumberPayload): Promise<RoutingNumber> {
+  return request<RoutingNumber>(`${ROUTING}/cities/${seg(cityUuid)}/number`, {
+    method: 'PUT',
+    json: payload,
+  });
+}
+
+/** Create or replace a platform MAIN or CITY number. */
+export function savePlatformNumber(payload: SavePlatformNumberPayload): Promise<RoutingNumber> {
+  return request<RoutingNumber>(`${ROUTING}/platform-numbers`, { method: 'PUT', json: payload });
+}
+
+/** Remove a number. Its city falls back to the MAIN number or the platform. */
+export function deleteRoutingNumber(numberUuid: UUID): Promise<void> {
+  return request<void>(`${ROUTING}/numbers/${seg(numberUuid)}`, { method: 'DELETE' });
+}
+
+/** Each city the acted-as tenant operates, with its number, delegation and serving route. */
+export function listCityRouting(): Promise<CityRouting[]> {
+  return request<CityRouting[]>(`${ROUTING}/cities`);
+}
+
+/** Who serves one city, with the reason when nothing does. */
+export function previewCityServing(cityUuid: UUID): Promise<Serving> {
+  return request<Serving>(`${ROUTING}/cities/${seg(cityUuid)}/serving`);
+}
+
+/** Send the city to the platform's number. Refused (422) when the tenant has its own. */
+export function delegateCity(cityUuid: UUID): Promise<void> {
+  return request<void>(`${ROUTING}/cities/${seg(cityUuid)}/delegation`, { method: 'PUT' });
+}
+
+/** Take the city back from the platform. */
+export function undelegateCity(cityUuid: UUID): Promise<void> {
+  return request<void>(`${ROUTING}/cities/${seg(cityUuid)}/delegation`, { method: 'DELETE' });
 }

@@ -17,6 +17,7 @@ import CityDetail from '@/views/tenancy/CityDetail';
 import TenantDetail from '@/views/tenancy/TenantDetail';
 import Platform from '@/views/tenancy/Platform';
 import WhatsAppConfig from '@/views/tenancy/WhatsAppConfig';
+import WhatsAppRouting from '@/views/tenancy/WhatsAppRouting';
 import AllCities from '@/views/tenancy/AllCities';
 import Tenants from '@/views/tenancy/Tenants';
 import UsagePlans from '@/views/tenancy/UsagePlans';
@@ -51,6 +52,7 @@ export function AppRoutes() {
             <Route path="/configuracion" element={<Settings />} />
             <Route path="/vehiculos/tipos" element={<VehicleTypes />} />
             <Route path="/planes" element={<UsagePlans />} />
+            <Route path="/rutas-whatsapp" element={<WhatsAppRouting />} />
             <Route path="/historial-credito" element={<CreditHistory />} />
             <Route path="/tenants/:tenantId" element={<TenantDetail />} />
             <Route
