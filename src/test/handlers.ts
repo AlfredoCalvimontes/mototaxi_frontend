@@ -130,6 +130,16 @@ export const handlers = [
   }),
   http.post(`${BASE}/admin/customers/:uuid/block`, () => new HttpResponse(null, { status: 204 })),
   http.post(`${BASE}/admin/customers/:uuid/unblock`, () => new HttpResponse(null, { status: 204 })),
+  // city catalog for the platform CITY-number picker
+  http.get(`${BASE}/admin/cities`, () =>
+    HttpResponse.json({
+      items: [fx.city, fx.secondCity],
+      total: 2,
+      page: 1,
+      page_size: 100,
+      pages: 1,
+    }),
+  ),
   // whatsapp routing (per city)
   http.get(`${BASE}/admin/whatsapp-routing/cities`, () => HttpResponse.json(fx.cityRoutingRows)),
   http.get(`${BASE}/admin/whatsapp-routing/numbers`, () =>
