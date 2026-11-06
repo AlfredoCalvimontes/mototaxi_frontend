@@ -644,3 +644,61 @@ export type TripKpiGroup = {
   average_reach_time_seconds: number | null;
   average_rating: number | null;
 };
+
+// --- WhatsApp routing (per city) -------------------------------------------
+
+/** Who owns a number: one tenant, or the platform (Super Admin). */
+export type RoutingScope = 'TENANT' | 'PLATFORM';
+/** What a number serves: the tenant's (or platform's) default, or one city. */
+export type RoutingRole = 'MAIN' | 'CITY';
+
+/** A WhatsApp number as the routing screens see it. The token is never returned. */
+export type RoutingNumber = {
+  number_uuid: UUID;
+  scope: RoutingScope;
+  /** `null` for a platform number. */
+  owner_tenant: UUID | null;
+  role: RoutingRole;
+  /** `null` for a MAIN number. */
+  city_uuid: UUID | null;
+  phone_number_id: string;
+  waba_id: string | null;
+  display_phone_number: string | null;
+  is_active: boolean;
+  updated_at: IsoDateTime;
+};
+
+/** Why a message to a city is refused. Mirrors the backend `DenyReason`. */
+export type DenyReason = 'not_operating' | 'no_coverage' | 'number_unavailable';
+
+/** Who serves a city: a number, or the reason none does. */
+export type Serving = {
+  number: RoutingNumber | null;
+  deny_reason: DenyReason | null;
+};
+
+/** One city the acted-as tenant operates, and how it is reached. */
+export type CityRouting = {
+  city_uuid: UUID;
+  city_name: string;
+  /** The tenant sent this city to the platform's number. */
+  delegated: boolean;
+  /** The tenant's own number for this city, if it has one. */
+  own_city_number: RoutingNumber | null;
+  serving: Serving;
+};
+
+/** Body shared by the city and platform save routes. The token is always required. */
+export type SaveNumberPayload = {
+  phone_number_id: string;
+  access_token: string;
+  waba_id?: string | null;
+  display_phone_number?: string | null;
+  is_active?: boolean;
+};
+
+/** A platform MAIN number, or a platform CITY number when `city_uuid` is set. */
+export type SavePlatformNumberPayload = SaveNumberPayload & {
+  role: RoutingRole;
+  city_uuid?: UUID | null;
+};
