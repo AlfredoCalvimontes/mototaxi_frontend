@@ -62,7 +62,9 @@ describe('crédito de uso en la tabla', () => {
     const row = await rowFor('Marco Peña');
 
     expect(row.queryByText('Crédito vencido')).not.toBeInTheDocument();
-    expect(row.queryByRole('button', { name: 'Agregar crédito' })).not.toBeInTheDocument();
+    expect(
+      row.queryByRole('button', { name: 'Agregar crédito de conductor' }),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -73,7 +75,7 @@ describe('agregar crédito', () => {
     const { user } = renderApp(<Drivers />);
 
     await user.click(
-      (await rowFor('Rafael Soria')).getByRole('button', { name: 'Agregar crédito' }),
+      (await rowFor('Rafael Soria')).getByRole('button', { name: 'Agregar crédito de conductor' }),
     );
     const dialog = within(screen.getByRole('dialog'));
     expect(dialog.getByText(/Crédito actual: 180/)).toBeInTheDocument();
@@ -95,7 +97,7 @@ describe('agregar crédito', () => {
     const { user } = renderApp(<Drivers />);
 
     await user.click(
-      (await rowFor('Rafael Soria')).getByRole('button', { name: 'Agregar crédito' }),
+      (await rowFor('Rafael Soria')).getByRole('button', { name: 'Agregar crédito de conductor' }),
     );
     const dialog = within(screen.getByRole('dialog'));
     expect(dialog.queryByRole('alert')).not.toBeInTheDocument();
@@ -117,7 +119,7 @@ describe('agregar crédito', () => {
     const { user } = renderApp(<Drivers />);
 
     await user.click(
-      (await rowFor('Rafael Soria')).getByRole('button', { name: 'Agregar crédito' }),
+      (await rowFor('Rafael Soria')).getByRole('button', { name: 'Agregar crédito de conductor' }),
     );
     const dialog = within(screen.getByRole('dialog'));
     await user.type(dialog.getByLabelText(/Monto/), '0');
@@ -135,7 +137,9 @@ describe('agregar crédito', () => {
     withDrivers(fx.driverCreditExpired);
     const { user } = renderApp(<Drivers />);
 
-    await user.click((await rowFor('Elena Cruz')).getByRole('button', { name: 'Agregar crédito' }));
+    await user.click(
+      (await rowFor('Elena Cruz')).getByRole('button', { name: 'Agregar crédito de conductor' }),
+    );
 
     expect(within(screen.getByRole('dialog')).getByText(/Está vencido/)).toBeInTheDocument();
   });
@@ -150,7 +154,7 @@ describe('agregar crédito', () => {
     const { user } = renderApp(<Drivers />);
 
     await user.click(
-      (await rowFor('Rafael Soria')).getByRole('button', { name: 'Agregar crédito' }),
+      (await rowFor('Rafael Soria')).getByRole('button', { name: 'Agregar crédito de conductor' }),
     );
     const dialog = within(screen.getByRole('dialog'));
     await user.type(dialog.getByLabelText(/Monto/), '10');
@@ -169,7 +173,7 @@ describe('motivo del crédito', () => {
     const { user } = renderApp(<Drivers />);
 
     await user.click(
-      (await rowFor('Rafael Soria')).getByRole('button', { name: 'Agregar crédito' }),
+      (await rowFor('Rafael Soria')).getByRole('button', { name: 'Agregar crédito de conductor' }),
     );
     const dialog = within(screen.getByRole('dialog'));
     await user.type(dialog.getByLabelText(/Monto/), '50');
@@ -196,7 +200,7 @@ describe('motivo del crédito', () => {
     const { user } = renderApp(<Drivers />);
 
     await user.click(
-      (await rowFor('Rafael Soria')).getByRole('button', { name: 'Agregar crédito' }),
+      (await rowFor('Rafael Soria')).getByRole('button', { name: 'Agregar crédito de conductor' }),
     );
     const dialog = within(screen.getByRole('dialog'));
     await user.type(dialog.getByLabelText(/Monto/), '50');
@@ -226,7 +230,7 @@ describe('motivo del crédito', () => {
     const { user } = renderApp(<Drivers />);
 
     await user.click(
-      (await rowFor('Rafael Soria')).getByRole('button', { name: 'Agregar crédito' }),
+      (await rowFor('Rafael Soria')).getByRole('button', { name: 'Agregar crédito de conductor' }),
     );
     const dialog = within(screen.getByRole('dialog'));
     await user.type(dialog.getByLabelText(/Monto/), '50');

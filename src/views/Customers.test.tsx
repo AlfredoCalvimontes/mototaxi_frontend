@@ -14,33 +14,53 @@ async function rowFor(text: string) {
 }
 
 describe('listado de clientes', () => {
-  test('los teléfonos llegan enmascarados con revelado por fila', async () => {
+  test('los teléfonos se ven completos y se pueden tapar por fila', async () => {
     const { user } = renderApp(<Customers />);
 
     const row = await rowFor('Rosa Flores');
-    expect(row.getByText('+591····2222')).toBeInTheDocument();
-
-    await user.click(row.getByRole('button', { name: /Mostrar/ }));
     expect(row.getByText('+59171112222')).toBeInTheDocument();
+
+    await user.click(row.getByRole('button', { name: /Ocultar/ }));
+    expect(row.getByText('+591····2222')).toBeInTheDocument();
   });
 
-  test('los bloqueados quedan fuera salvo que se pidan', async () => {
+  test('«Ocultar todo» tapa la columna y «Mostrar todo» la vuelve a abrir', async () => {
     const { user } = renderApp(<Customers />);
     await screen.findByRole('table');
 
-    expect(screen.queryByText('+591····4444')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Ocultar todo: WhatsApp' }));
+    expect(screen.queryByText('+59171112222')).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('checkbox', { name: 'Incluir bloqueados' }));
+    await user.click(screen.getByRole('button', { name: 'Mostrar todo: WhatsApp' }));
+    expect(screen.getByText('+59171112222')).toBeInTheDocument();
+  });
 
-    expect(await screen.findByText('+591····4444')).toBeInTheDocument();
+  test('los bloqueados se ven por defecto y se pueden ocultar', async () => {
+    const { user } = renderApp(<Customers />);
+    await screen.findByRole('table');
+
+    expect(await screen.findByText('+59173334444')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('checkbox', { name: 'Mostrar bloqueados' }));
+
+    await waitFor(() => expect(screen.queryByText('+59173334444')).not.toBeInTheDocument());
+  });
+
+  test('el filtro de estado deja solo los bloqueados', async () => {
+    const { user } = renderApp(<Customers />);
+    await screen.findByRole('table');
+
+    await user.selectOptions(screen.getByLabelText('Estado'), 'blocked');
+
+    expect(screen.getByText('+59173334444')).toBeInTheDocument();
+    expect(screen.queryByText('+59171112222')).not.toBeInTheDocument();
   });
 
   test('un cliente bloqueado ofrece desbloquear, no bloquear', async () => {
-    const { user } = renderApp(<Customers />);
+    renderApp(<Customers />);
     await screen.findByRole('table');
-    await user.click(screen.getByRole('checkbox', { name: 'Incluir bloqueados' }));
 
-    const row = await rowFor('+591····4444');
+    const row = await rowFor('+59173334444');
     expect(row.getByRole('button', { name: 'Desbloquear' })).toBeInTheDocument();
   });
 });
@@ -73,9 +93,8 @@ describe('bloqueo', () => {
   test('desbloquear no pide motivo: no es una acción destructiva', async () => {
     const { user } = renderApp(<Customers />);
     await screen.findByRole('table');
-    await user.click(screen.getByRole('checkbox', { name: 'Incluir bloqueados' }));
 
-    const row = await rowFor('+591····4444');
+    const row = await rowFor('+59173334444');
     await user.click(row.getByRole('button', { name: 'Desbloquear' }));
 
     expect(screen.getByRole('dialog')).toBeInTheDocument();

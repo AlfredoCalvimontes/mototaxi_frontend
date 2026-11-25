@@ -13,7 +13,7 @@ export type IsoDateTime = string;
 export type IsoDate = string;
 
 export type DriverStatus = 'AVAILABLE' | 'IN_TRIP' | 'RESTING' | 'OFFLINE' | 'DISABLED';
-export type VehicleStatus = 'AVAILABLE' | 'DISABLED' | 'OUT_OF_SERVICE';
+export type VehicleStatus = 'AVAILABLE' | 'DISABLED' | 'OUT_OF_SERVICE' | 'ARCHIVED';
 /** The device protocol, not where a position came from. Only GT06 has a listener. */
 export type TrackerType = 'GT06' | 'SECUREMORE';
 
@@ -90,7 +90,14 @@ export type VehicleSummary = {
   current_driver_uuid: UUID | null;
   city_uuid: UUID | null;
   vehicle_type_uuid: UUID | null;
+  /** The GPS tracker on its own: `none` (not fitted), `ok` (recent fix) or `silent`. */
+  tracker_state: SourceState;
+  /** The assigned driver's phone app on its own; same values. */
+  phone_state: SourceState;
 };
+
+/** How one position source is doing; see `lib/gps.ts`. */
+export type SourceState = 'none' | 'ok' | 'silent';
 
 /** A setting the manager can change at runtime (`GET /admin/settings`). */
 export type RuntimeSetting = {
@@ -415,6 +422,10 @@ export type UsagePlan = {
   driver_count: number | null;
   /** Set only on an update that changed the price. */
   affected_drivers: number | null;
+  /** A global plan of the main business, usable by every empresa. */
+  is_shared: boolean;
+  /** Whether the caller's empresa owns it and so may change or remove it. */
+  is_owner: boolean;
 };
 
 export type CreateUsagePlanPayload = {
@@ -422,6 +433,8 @@ export type CreateUsagePlanPayload = {
   daily_credit: number;
   includes_vehicle_rental?: boolean;
   description?: string | null;
+  /** Only the main business may share a plan; the server refuses others. */
+  is_shared?: boolean;
 };
 
 /**
@@ -519,6 +532,8 @@ export type Tenant = {
   deactivated_at: IsoDateTime | null;
   created_at: IsoDateTime;
   updated_at: IsoDateTime;
+  /** The main business: runs the platform's WhatsApp numbers and shared plans. */
+  is_default: boolean;
 };
 
 /** Superadmin provisions tenants; `slug` is fixed once created. */
@@ -686,6 +701,9 @@ export type CityRouting = {
   /** The tenant's own number for this city, if it has one. */
   own_city_number: RoutingNumber | null;
   serving: Serving;
+  /** Set only in the Super Admin's all-empresas list. */
+  tenant_uuid?: UUID | null;
+  tenant_name?: string | null;
 };
 
 /** Body shared by the city and platform save routes. The token is always required. */

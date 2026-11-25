@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import * as authApi from '@/api/auth';
 import { setActAsTenant, setSessionExpiredHandler } from '@/api/client';
@@ -49,16 +49,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setActingAsTenantState(null);
   }, []);
 
-  const setActingAsTenant = useCallback(
-    (tenantId: string | null) => {
-      setActAsTenant(tenantId);
-      setActingAsTenantState(tenantId);
-      // `reset`, not `clear`: mounted views must refetch under the new tenant,
-      // and `clear` would leave them holding detached queries.
-      void queryClient.resetQueries();
-    },
-    [queryClient],
-  );
+  const setActingAsTenant = useCallback((tenantId: string | null) => {
+    setActAsTenant(tenantId);
+    setActingAsTenantState(tenantId);
+  }, []);
+
+  // Reset after the commit, not in the setter: a reset that runs before React
+  // re-renders refetches with the old queryFns (e.g. the all-empresas list) while
+  // the new X-Tenant-Id is already set, and the server answers 403.
+  // `reset`, not `clear`: mounted views must refetch under the new tenant.
+  const actingSeen = useRef(actingAsTenant);
+  useEffect(() => {
+    if (actingSeen.current === actingAsTenant) return;
+    actingSeen.current = actingAsTenant;
+    void queryClient.resetQueries();
+  }, [actingAsTenant, queryClient]);
 
   // The API client cannot navigate; it reports a dead session and this decides
   // what that means for the UI.

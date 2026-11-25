@@ -24,6 +24,7 @@ const vehicleTones: Record<VehicleStatus, Tone> = {
   AVAILABLE: 'good',
   DISABLED: 'bad',
   OUT_OF_SERVICE: 'warn',
+  ARCHIVED: 'idle',
 };
 
 const tripTones: Record<TripStatus, Tone> = {

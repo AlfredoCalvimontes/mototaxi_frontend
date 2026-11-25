@@ -56,7 +56,8 @@ describe('tipo de vehículo', () => {
     renderApp(<LiveTrips />);
 
     expect(await screen.findByText('Minivan (llegó Mototaxi)')).toBeInTheDocument();
-    expect(screen.getByText('Cualquiera')).toBeInTheDocument();
+    // «Cualquiera» también es una opción del filtro de tipo: se busca en la tabla.
+    expect(within(screen.getByRole('table')).getByText('Cualquiera')).toBeInTheDocument();
   });
 });
 

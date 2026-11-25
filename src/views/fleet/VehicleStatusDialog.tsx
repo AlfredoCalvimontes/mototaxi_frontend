@@ -8,7 +8,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { errorText } from '@/lib/errors';
 import { strings } from '@/lib/strings';
 
-const STATUSES: VehicleStatus[] = ['AVAILABLE', 'OUT_OF_SERVICE', 'DISABLED'];
+const STATUSES: VehicleStatus[] = ['AVAILABLE', 'OUT_OF_SERVICE', 'DISABLED', 'ARCHIVED'];
 
 /**
  * The vehicle's own condition — mechanical or administrative. Dispatch
@@ -71,6 +71,12 @@ export function VehicleStatusDialog({
             </label>
           ))}
         </fieldset>
+
+        {status === 'ARCHIVED' && (
+          <p className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            {strings.fleet.archiveWarning}
+          </p>
+        )}
 
         {save.error != null && (
           <p

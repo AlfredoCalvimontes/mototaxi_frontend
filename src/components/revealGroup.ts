@@ -7,8 +7,8 @@ import { useCallback, useMemo, useState } from 'react';
  */
 export type RevealGroup = { revealed: boolean; nonce: number; toggle: () => void };
 
-export function useRevealGroup(): RevealGroup {
-  const [state, setState] = useState({ revealed: false, nonce: 0 });
+export function useRevealGroup(initiallyRevealed = false): RevealGroup {
+  const [state, setState] = useState({ revealed: initiallyRevealed, nonce: 0 });
   const toggle = useCallback(
     () => setState((current) => ({ revealed: !current.revealed, nonce: current.nonce + 1 })),
     [],

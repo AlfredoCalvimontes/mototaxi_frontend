@@ -34,7 +34,7 @@ const matrix: [path: string, allowed: Record<keyof typeof profiles, boolean>][] 
     { SUPERADMIN: true, TENANT_ADMIN: true, CITY_ADMIN: false, OPERATOR: false },
   ],
   ['/tenants', { SUPERADMIN: true, TENANT_ADMIN: false, CITY_ADMIN: false, OPERATOR: false }],
-  ['/whatsapp', { SUPERADMIN: true, TENANT_ADMIN: false, CITY_ADMIN: false, OPERATOR: false }],
+  ['/whatsapp', { SUPERADMIN: true, TENANT_ADMIN: true, CITY_ADMIN: false, OPERATOR: false }],
   ['/rutas-whatsapp', { SUPERADMIN: true, TENANT_ADMIN: true, CITY_ADMIN: false, OPERATOR: false }],
   ['/plataforma', { SUPERADMIN: true, TENANT_ADMIN: false, CITY_ADMIN: false, OPERATOR: false }],
   [`/tenants/${T}`, { SUPERADMIN: true, TENANT_ADMIN: true, CITY_ADMIN: false, OPERATOR: false }],
@@ -79,11 +79,14 @@ describe('navegación por rol', () => {
   test.each([
     [
       'SUPERADMIN',
-      ['Empresas', 'Ciudades', 'WhatsApp', 'Plataforma', 'Tipos de vehículo', 'Configuración'],
+      ['Empresas', 'Ciudades', 'WhatsApp', 'Tipos de vehículo', 'Reportes', 'Configuración'],
     ],
-    ['TENANT_ADMIN', ['Mi empresa', 'Ciudades', 'Tipos de vehículo', 'Configuración']],
-    ['CITY_ADMIN', ['Ciudades']],
-    ['OPERATOR', []],
+    [
+      'TENANT_ADMIN',
+      ['Mi empresa', 'Ciudades', 'WhatsApp', 'Tipos de vehículo', 'Reportes', 'Configuración'],
+    ],
+    ['CITY_ADMIN', ['Ciudades', 'Reportes']],
+    ['OPERATOR', ['Reportes']],
   ] as const)('%s ve sus enlaces', async (role, links) => {
     asUser(profiles[role]);
     renderApp(<AppRoutes />);
@@ -96,6 +99,7 @@ describe('navegación por rol', () => {
       'Mi empresa',
       'Ciudades',
       'Tipos de vehículo',
+      'Reportes',
       'Configuración',
     ];
     for (const name of names) {
@@ -108,6 +112,11 @@ describe('navegación por rol', () => {
 describe('actuar como empresa', () => {
   test('envía X-Tenant-Id, muestra el banner, vacía la caché y se limpia al salir', async () => {
     asUser(fx.superadminProfile);
+    server.use(
+      http.get(`${BASE}/admin/tenants/:id`, ({ params }) =>
+        HttpResponse.json({ ...fx.tenant, tenant_id: params.id, name: 'Empresa B' }),
+      ),
+    );
     const seen: (string | null)[] = [];
     server.use(
       http.get(`${BASE}/admin/kpis`, ({ request }) => {
@@ -134,7 +143,7 @@ describe('actuar como empresa', () => {
     queryClient.setQueryData(['stale'], 'tenant-a-row');
 
     await user.click(screen.getByRole('button', { name: 'actuar' }));
-    expect(await screen.findByText('Actuando como tenant-b')).toBeInTheDocument();
+    expect(await screen.findByText('Actuando como Empresa B')).toBeInTheDocument();
     expect(queryClient.getQueryData(['stale'])).toBeUndefined();
     await waitFor(() => expect(seen).toContain('tenant-b'));
 

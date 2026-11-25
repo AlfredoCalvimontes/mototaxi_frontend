@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 
 import { RequireAuth } from '@/auth/RequireAuth';
-import { RequireRole } from '@/auth/RequireRole';
+import { RequireNotActing, RequireRole } from '@/auth/RequireRole';
 import { ADMIN, CITY_SCOPED, STAFF, SUPERADMIN } from '@/auth/roles';
 import { Layout } from '@/components/Layout';
 import Customers from '@/views/Customers';
@@ -16,8 +16,8 @@ import Cities from '@/views/tenancy/Cities';
 import CityDetail from '@/views/tenancy/CityDetail';
 import TenantDetail from '@/views/tenancy/TenantDetail';
 import Platform from '@/views/tenancy/Platform';
-import WhatsAppConfig from '@/views/tenancy/WhatsAppConfig';
-import WhatsAppRouting from '@/views/tenancy/WhatsAppRouting';
+import Reports from '@/views/Reports';
+import WhatsApp from '@/views/tenancy/WhatsApp';
 import AllCities from '@/views/tenancy/AllCities';
 import Tenants from '@/views/tenancy/Tenants';
 import UsagePlans from '@/views/tenancy/UsagePlans';
@@ -47,12 +47,24 @@ export function AppRoutes() {
             <Route path="/conductores" element={<Drivers />} />
             <Route path="/historial" element={<TripHistory />} />
             <Route path="/clientes" element={<Customers />} />
+            <Route path="/reportes" element={<Reports />}>
+              <Route index element={<Navigate to="historial" replace />} />
+              <Route path="historial" element={<TripHistory />} />
+              <Route element={<RequireRole roles={ADMIN} />}>
+                <Route path="credito" element={<CreditHistory />} />
+              </Route>
+              <Route element={<RequireRole roles={SUPERADMIN} />}>
+                <Route path="plataforma" element={<Platform />} />
+              </Route>
+            </Route>
           </Route>
           <Route element={<RequireRole roles={ADMIN} />}>
             <Route path="/configuracion" element={<Settings />} />
             <Route path="/vehiculos/tipos" element={<VehicleTypes />} />
             <Route path="/planes" element={<UsagePlans />} />
-            <Route path="/rutas-whatsapp" element={<WhatsAppRouting />} />
+            <Route path="/whatsapp" element={<WhatsApp />} />
+            {/* Routing and the company's numbers are one screen now. */}
+            <Route path="/rutas-whatsapp" element={<Navigate to="/whatsapp" replace />} />
             <Route path="/historial-credito" element={<CreditHistory />} />
             <Route path="/tenants/:tenantId" element={<TenantDetail />} />
             <Route
@@ -61,9 +73,14 @@ export function AppRoutes() {
             />
           </Route>
           <Route element={<RequireRole roles={SUPERADMIN} />}>
-            <Route path="/tenants" element={<Tenants />} />
-            <Route path="/cities" element={<AllCities />} />
-            <Route path="/whatsapp" element={<WhatsAppConfig />} />
+            <Route element={<RequireNotActing to={() => '/'} />}>
+              <Route path="/tenants" element={<Tenants />} />
+            </Route>
+            <Route element={<RequireNotActing to={(id) => `/tenants/${id}/cities`} />}>
+              <Route path="/cities" element={<AllCities />} />
+            </Route>
+            <Route path="/cities/:cityId" element={<CityDetail />} />
+            <Route path="/cities/:cityId/access" element={<CityAccessManager />} />
             <Route path="/plataforma" element={<Platform />} />
           </Route>
           <Route element={<RequireRole roles={CITY_SCOPED} />}>

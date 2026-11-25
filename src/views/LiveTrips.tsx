@@ -7,12 +7,14 @@ import { POLL, queryKeys } from '@/api/queries';
 import type { TripSummary } from '@/api/types';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { DataTable, type Column } from '@/components/DataTable';
+import { DateTimeRange, FilterBar, SelectFilter } from '@/components/Filters';
 import { ErrorState } from '@/components/ErrorState';
 import { MaskedValue } from '@/components/MaskedValue';
 import { ReachTime } from '@/components/ReachTime';
 import { TableSkeleton } from '@/components/Skeleton';
 import { StatusBadge } from '@/components/StatusBadge';
-import { EMPTY, formatRelative, maskPhone } from '@/lib/format';
+import { EMPTY, formatDateTime, formatRelative, maskPhone } from '@/lib/format';
+import { inWindow } from '@/lib/filters';
 import { useCityScope } from '@/lib/cityScope';
 import { strings } from '@/lib/strings';
 import { tripTypeLabel, useVehicleTypeNames } from '@/lib/useVehicleTypes';
@@ -28,6 +30,10 @@ export default function LiveTrips() {
   const cityScope = useCityScope();
   const [target, setTarget] = useState<TripSummary | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
 
   const trips = useQuery({
     queryKey: queryKeys.activeTripsIn(cityScope),
@@ -121,6 +127,16 @@ export default function LiveTrips() {
         cell: (trip) => formatRelative(trip.created_at),
       },
       {
+        // The relative age says how long; this says when, to the minute.
+        id: 'requestedAt',
+        header: strings.trips.requestedAt,
+        secondary: true,
+        sortValue: (trip) => trip.created_at,
+        cell: (trip) => (
+          <span className="whitespace-nowrap">{formatDateTime(trip.created_at)}</span>
+        ),
+      },
+      {
         id: 'actions',
         header: '',
         cell: (trip) => (
@@ -141,6 +157,21 @@ export default function LiveTrips() {
     [cancel, typeNames],
   );
 
+  const rows = useMemo(
+    () =>
+      (trips.data ?? []).filter(
+        (trip) =>
+          (!statusFilter || trip.status === statusFilter) &&
+          (!typeFilter ||
+            (typeFilter === 'any'
+              ? !trip.requested_vehicle_type_uuid
+              : trip.requested_vehicle_type_uuid === typeFilter)) &&
+          inWindow(trip.created_at, from, to),
+      ),
+    [trips.data, statusFilter, typeFilter, from, to],
+  );
+  const anyFilter = !!(statusFilter || typeFilter || from || to);
+
   if (trips.isPending) return <TableSkeleton rows={4} />;
   if (trips.isError) return <ErrorState error={trips.error} onRetry={() => void trips.refetch()} />;
 
@@ -157,11 +188,46 @@ export default function LiveTrips() {
         </p>
       )}
 
+      <FilterBar
+        active={anyFilter}
+        onClear={() => {
+          setStatusFilter('');
+          setTypeFilter('');
+          setFrom('');
+          setTo('');
+        }}
+        summary={strings.filters.results(rows.length, trips.data.length)}
+      >
+        <SelectFilter
+          label={strings.filters.status}
+          value={statusFilter}
+          onChange={setStatusFilter}
+          allLabel={strings.filters.allStatuses}
+          options={(
+            ['REQUESTED', 'OFFERED', 'ACCEPTED', 'EN_ROUTE', 'ARRIVED', 'IN_TRIP'] as const
+          ).map((v) => ({ value: v, label: strings.status.trip[v] }))}
+        />
+
+        <SelectFilter
+          label={strings.trips.vehicleType}
+          value={typeFilter}
+          onChange={setTypeFilter}
+          allLabel={strings.filters.allTypes}
+          options={[
+            { value: 'any', label: strings.trips.anyType },
+            ...[...typeNames].map(([value, label]) => ({ value, label })),
+          ]}
+        />
+        <DateTimeRange from={from} to={to} onFrom={setFrom} onTo={setTo} />
+        <span className="pb-1 text-xs text-slate-500">{strings.trips.requestedAt}</span>
+      </FilterBar>
+
       <DataTable
-        rows={trips.data}
+        rows={rows}
         columns={columns}
         rowKey={(trip) => trip.trip_uuid}
         caption={strings.trips.heading}
+        searchPlaceholder={strings.common.search}
         emptyMessage={strings.trips.noActiveTrips}
         initialSort={{ columnId: 'created', direction: 'asc' }}
       />

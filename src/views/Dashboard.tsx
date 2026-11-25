@@ -18,6 +18,8 @@ import { CardSkeleton } from '@/components/Skeleton';
 import { DataTable, type Column } from '@/components/DataTable';
 import type { TripKpiGroup } from '@/api/types';
 import { EMPTY, formatDuration, formatRating } from '@/lib/format';
+import { useCityScope } from '@/lib/cityScope';
+import { useCities } from '@/lib/useCities';
 import { simRechargeState } from '@/lib/sim';
 import { strings } from '@/lib/strings';
 
@@ -105,27 +107,35 @@ export default function Dashboard() {
   const { user, actingAsTenant } = useAuth();
   const ownTenant = user?.tenant_id ?? actingAsTenant;
   const isAdmin = user?.role === 'SUPERADMIN' || user?.role === 'TENANT_ADMIN';
+  const cityScope = useCityScope();
+  const { byId: cityById } = useCities();
+  // The fleet endpoints are tenant-admin only until city scoping lands (P4): a
+  // city admin or operator would get 403s, so their Resumen asks for nothing.
   const kpis = useQuery({
-    queryKey: queryKeys.kpis,
-    queryFn: getKpis,
+    queryKey: queryKeys.kpisIn(cityScope),
+    queryFn: () => getKpis(cityScope),
     refetchInterval: POLL.dashboard,
+    enabled: isAdmin,
   });
   const alerts = useQuery({
-    queryKey: queryKeys.alerts,
-    queryFn: getAlerts,
+    queryKey: queryKeys.alertsIn(cityScope),
+    queryFn: () => getAlerts(cityScope),
     refetchInterval: POLL.dashboard,
+    enabled: isAdmin,
   });
 
   // Already polled by the fleet views; here they only feed the credit alerts.
   const vehicles = useQuery({
-    queryKey: queryKeys.vehiclesIn(null),
-    queryFn: () => listVehicles(),
+    queryKey: queryKeys.vehiclesIn(cityScope),
+    queryFn: () => listVehicles(cityScope),
     refetchInterval: POLL.vehicles,
+    enabled: isAdmin,
   });
   const drivers = useQuery({
-    queryKey: queryKeys.drivers(),
-    queryFn: () => listDrivers(),
+    queryKey: queryKeys.drivers(undefined, cityScope),
+    queryFn: () => listDrivers(undefined, cityScope),
     refetchInterval: POLL.drivers,
+    enabled: isAdmin,
   });
 
   const panelAlerts: PanelAlerts | null = alerts.data
@@ -140,9 +150,25 @@ export default function Dashboard() {
       }
     : null;
 
+  if (!isAdmin) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-xl font-semibold text-slate-900">{strings.dashboard.heading}</h1>
+        <p className="text-sm text-slate-600">{strings.dashboard.staffNote}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold text-slate-900">{strings.dashboard.heading}</h1>
+      <div className="flex flex-wrap items-baseline gap-3">
+        <h1 className="text-xl font-semibold text-slate-900">{strings.dashboard.heading}</h1>
+        <span className="text-sm text-slate-500">
+          {cityScope
+            ? strings.dashboard.cityScope(cityById.get(cityScope)?.name ?? cityScope)
+            : strings.dashboard.allCitiesScope}
+        </span>
+      </div>
 
       {alerts.isPending ? (
         <div className="h-16 animate-pulse rounded-lg bg-slate-100" />

@@ -161,6 +161,31 @@ export const handlers = [
     `${BASE}/admin/whatsapp-routing/numbers/:uuid`,
     () => new HttpResponse(null, { status: 204 }),
   ),
+  http.post(`${BASE}/admin/whatsapp-routing/numbers`, async ({ request }) => {
+    const body = (await request.json()) as { role: string; phone_number_id: string };
+    return HttpResponse.json(
+      {
+        ...fx.ownCityNumber,
+        number_uuid: '63333333-3333-4333-8333-333333333333',
+        role: body.role,
+        city_uuid: null,
+        phone_number_id: body.phone_number_id,
+      },
+      { status: 201 },
+    );
+  }),
+  http.put(`${BASE}/admin/whatsapp-routing/numbers/:uuid/city`, async ({ request, params }) => {
+    const body = (await request.json()) as { city_uuid: string | null };
+    return HttpResponse.json({
+      ...fx.ownCityNumber,
+      number_uuid: params.uuid,
+      city_uuid: body.city_uuid,
+    });
+  }),
+  http.patch(`${BASE}/admin/whatsapp-routing/numbers/:uuid/active`, async ({ request }) => {
+    const body = (await request.json()) as { is_active: boolean };
+    return HttpResponse.json({ ...fx.platformMainNumber, is_active: body.is_active });
+  }),
   http.put(
     `${BASE}/admin/whatsapp-routing/cities/:uuid/delegation`,
     () => new HttpResponse(null, { status: 204 }),

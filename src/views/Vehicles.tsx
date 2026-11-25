@@ -6,12 +6,14 @@ import { listDrivers, listVehicles } from '@/api/admin';
 import { POLL, queryKeys } from '@/api/queries';
 import type { VehicleSummary } from '@/api/types';
 import { DataTable, type Column } from '@/components/DataTable';
+import { CheckFilter, FilterBar, SearchSelectFilter, SelectFilter } from '@/components/Filters';
 import { ErrorState } from '@/components/ErrorState';
-import { StatusBadge, ToneBadge, WarningBadge } from '@/components/StatusBadge';
+import { StatusBadge, ToneBadge } from '@/components/StatusBadge';
 import { TableSkeleton } from '@/components/Skeleton';
 import { EMPTY, formatCoords, formatDate, formatRelative, vehicleLabel } from '@/lib/format';
 import { usePersistentFlag } from '@/lib/persistentFlag';
 import { simRechargeState } from '@/lib/sim';
+import { GPS_KEYS, gpsLabel, gpsStatus, type GpsKey } from '@/lib/gps';
 import { filterParams, useCityScope } from '@/lib/cityScope';
 import { useVehicleTypeNames } from '@/lib/useVehicleTypes';
 import { useCities } from '@/lib/useCities';
@@ -43,6 +45,7 @@ type VehicleDialog =
 /** The SIM columns, hidden together by one toggle. */
 const SIM_COLUMN_IDS = new Set(['simLastRecharge', 'simAmount', 'simNext']);
 const HIDE_SIM_KEY = 'mototaxi.hideSimColumns';
+const SHOW_ARCHIVED_KEY = 'mototaxi.showArchivedVehicles';
 
 const SIM_TEXT = {
   ok: '',
@@ -92,10 +95,15 @@ export default function Vehicles() {
   const typeNames = useVehicleTypeNames();
   const { cities } = useCities();
   const [hideSim, toggleHideSim] = usePersistentFlag(HIDE_SIM_KEY, false);
+  const [showArchived, toggleShowArchived] = usePersistentFlag(SHOW_ARCHIVED_KEY, false);
+  const [statusFilter, setStatusFilter] = useState('');
+  const [gpsFilter, setGpsFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
+  const [driverFilter, setDriverFilter] = useState('');
 
   const vehicles = useQuery({
-    queryKey: queryKeys.vehiclesIn(cityScope),
-    queryFn: () => listVehicles(cityScope),
+    queryKey: queryKeys.vehiclesIn(cityScope, showArchived),
+    queryFn: () => listVehicles(cityScope, showArchived),
     refetchInterval: POLL.vehicles,
   });
 
@@ -127,9 +135,38 @@ export default function Vehicles() {
       (unit) =>
         (!onlyStale || unit.is_tracker_stale) &&
         (!onlyNoSimCredit ||
-          (unit.has_tracker && simRechargeState(unit.sim_next_recharge_at).state === 'overdue')),
+          (unit.has_tracker && simRechargeState(unit.sim_next_recharge_at).state === 'overdue')) &&
+        (!statusFilter || unit.status === statusFilter) &&
+        (!gpsFilter || gpsStatus(unit).key === gpsFilter) &&
+        (!typeFilter || unit.vehicle_type_uuid === typeFilter) &&
+        (!driverFilter ||
+          (driverFilter === 'none'
+            ? !unit.current_driver_uuid
+            : unit.current_driver_uuid === driverFilter)),
     );
-  }, [vehicles.data, onlyStale, onlyNoSimCredit]);
+  }, [
+    vehicles.data,
+    onlyStale,
+    onlyNoSimCredit,
+    statusFilter,
+    gpsFilter,
+    typeFilter,
+    driverFilter,
+  ]);
+
+  const anyFilter =
+    onlyStale ||
+    onlyNoSimCredit ||
+    showArchived ||
+    !!(statusFilter || gpsFilter || typeFilter || driverFilter);
+  function clearFilters() {
+    setStatusFilter('');
+    setGpsFilter('');
+    setTypeFilter('');
+    setDriverFilter('');
+    setSearchParams(filterParams(searchParams, STALE_PARAM, null), { replace: true });
+    if (showArchived) toggleShowArchived();
+  }
 
   const columns: Column<VehicleSummary>[] = useMemo(
     () => [
@@ -154,10 +191,10 @@ export default function Vehicles() {
         cell: (unit) => (
           <div className="flex flex-wrap items-center gap-1">
             <StatusBadge kind="vehicle" value={unit.status} />
-            {unit.is_tracker_stale && (
-              <WarningBadge title={strings.vehicles.staleHint}>
-                {strings.vehicles.staleTracker}
-              </WarningBadge>
+            {unit.status !== 'ARCHIVED' && (
+              <ToneBadge tone={gpsStatus(unit).tone} title={gpsStatus(unit).hint}>
+                {gpsStatus(unit).label}
+              </ToneBadge>
             )}
           </div>
         ),
@@ -284,40 +321,71 @@ export default function Vehicles() {
         >
           {hideSim ? strings.vehicles.showSim : strings.vehicles.hideSim}
         </button>
-        <label className="flex items-center gap-2 text-sm text-slate-700">
-          <input
-            type="checkbox"
-            checked={onlyStale}
-            onChange={(e) =>
-              // Kept in the URL so the dashboard alert can link straight here.
-              setSearchParams(
-                filterParams(searchParams, STALE_PARAM, e.target.checked ? STALE_VALUE : null),
-                {
-                  replace: true,
-                },
-              )
-            }
-            className="rounded border-slate-300"
-          />
-          {strings.vehicles.staleTracker}
-        </label>
-        <label className="flex items-center gap-2 text-sm text-slate-700">
-          <input
-            type="checkbox"
-            checked={onlyNoSimCredit}
-            onChange={(e) =>
-              setSearchParams(
-                filterParams(searchParams, SIM_PARAM, e.target.checked ? SIM_VALUE : null),
-                {
-                  replace: true,
-                },
-              )
-            }
-            className="rounded border-slate-300"
-          />
-          {strings.vehicles.noSimCredit}
-        </label>
       </div>
+
+      <FilterBar
+        active={anyFilter}
+        onClear={clearFilters}
+        summary={strings.filters.results(rows.length, vehicles.data?.length ?? 0)}
+      >
+        <SelectFilter
+          label={strings.filters.status}
+          value={statusFilter}
+          onChange={setStatusFilter}
+          allLabel={strings.filters.allStatuses}
+          options={(['AVAILABLE', 'DISABLED', 'OUT_OF_SERVICE', 'ARCHIVED'] as const).map((v) => ({
+            value: v,
+            label: strings.status.vehicle[v],
+          }))}
+        />
+        <SelectFilter
+          label={strings.vehicles.tracking}
+          value={gpsFilter}
+          onChange={setGpsFilter}
+          allLabel={strings.vehicles.allGpsStates}
+          options={GPS_KEYS.map((key: GpsKey) => ({ value: key, label: gpsLabel(key) }))}
+        />
+        <SelectFilter
+          label={strings.filters.type}
+          value={typeFilter}
+          onChange={setTypeFilter}
+          allLabel={strings.filters.allTypes}
+          options={[...typeNames].map(([value, label]) => ({ value, label }))}
+        />
+        <SearchSelectFilter
+          label={strings.filters.driver}
+          value={driverFilter}
+          onChange={setDriverFilter}
+          options={[
+            { value: 'none', label: strings.fleet.noDriver },
+            ...[...driverNames].map(([value, label]) => ({ value, label })),
+          ]}
+        />
+        <CheckFilter
+          label={strings.vehicles.staleTracker}
+          checked={onlyStale}
+          onChange={(checked) =>
+            // Kept in the URL so the dashboard alert can link straight here.
+            setSearchParams(filterParams(searchParams, STALE_PARAM, checked ? STALE_VALUE : null), {
+              replace: true,
+            })
+          }
+        />
+        <CheckFilter
+          label={strings.vehicles.noSimCredit}
+          checked={onlyNoSimCredit}
+          onChange={(checked) =>
+            setSearchParams(filterParams(searchParams, SIM_PARAM, checked ? SIM_VALUE : null), {
+              replace: true,
+            })
+          }
+        />
+        <CheckFilter
+          label={strings.vehicles.showArchived}
+          checked={showArchived}
+          onChange={toggleShowArchived}
+        />
+      </FilterBar>
 
       <Suspense fallback={<div className="h-72 animate-pulse rounded-lg bg-slate-100" />}>
         <FleetMap units={rows} geofences={geofences} typeNames={typeNames} />

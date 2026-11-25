@@ -135,6 +135,8 @@ export const vehicleSummary: VehicleSummary = {
   current_driver_uuid: '66666666-6666-4666-8666-666666666666',
   city_uuid: null,
   vehicle_type_uuid: null,
+  tracker_state: 'ok',
+  phone_state: 'none',
 };
 
 export const staleVehicleSummary: VehicleSummary = {
@@ -143,6 +145,7 @@ export const staleVehicleSummary: VehicleSummary = {
   plate_number: 'XYZ789',
   location_updated_at: '2026-07-20T13:00:00Z',
   is_tracker_stale: true,
+  tracker_state: 'silent',
   current_driver_uuid: null,
 };
 
@@ -182,6 +185,8 @@ export const freePlan: UsagePlan = {
   created_at: '2026-05-01T09:00:00Z',
   driver_count: null,
   affected_drivers: null,
+  is_shared: false,
+  is_owner: true,
 };
 
 export const rentalPlan: UsagePlan = {
@@ -389,6 +394,7 @@ export const tenant: Tenant = {
   deactivated_at: null,
   created_at: '2026-01-01T10:00:00Z',
   updated_at: '2026-01-01T10:00:00Z',
+  is_default: false,
 };
 
 export const otherTenant: Tenant = {

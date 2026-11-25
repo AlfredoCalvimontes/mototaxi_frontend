@@ -698,35 +698,34 @@ describe('posición del conductor frente a su unidad', () => {
 });
 
 describe('lista de conductores: datos a la vista', () => {
-  test('«Mostrar todo» revela la columna entera y «Ocultar todo» la vuelve a tapar', async () => {
+  test('todo se ve por defecto; «Ocultar todo» tapa la columna y «Mostrar todo» la abre', async () => {
     const { user } = renderApp(<Drivers />);
     await screen.findByRole('table');
 
-    expect(screen.queryByText(fx.driver.phone_whatsapp)).not.toBeInTheDocument();
-    expect(screen.queryByText(fx.driverWithoutCheckin.phone_whatsapp)).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: 'Mostrar todo: WhatsApp' }));
     expect(screen.getByText(fx.driver.phone_whatsapp)).toBeInTheDocument();
     expect(screen.getByText(fx.driverWithoutCheckin.phone_whatsapp)).toBeInTheDocument();
-    // La columna de CI es otra: sigue tapada.
-    expect(screen.queryByText(fx.driver.ci)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Ocultar todo: WhatsApp' }));
     expect(screen.queryByText(fx.driver.phone_whatsapp)).not.toBeInTheDocument();
     expect(screen.queryByText(fx.driverWithoutCheckin.phone_whatsapp)).not.toBeInTheDocument();
+    // La columna de CI es otra: sigue a la vista.
+    expect(screen.getByText(fx.driver.ci)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Mostrar todo: WhatsApp' }));
+    expect(screen.getByText(fx.driver.phone_whatsapp)).toBeInTheDocument();
   });
 
-  test('«Ocultar todo» también tapa lo que se reveló a mano fila por fila', async () => {
+  test('«Mostrar todo» también abre lo que se tapó a mano fila por fila', async () => {
     const { user } = renderApp(<Drivers />);
     const row = await rowFor('Marco Peña');
 
-    // El primer «Mostrar» de la fila es el del WhatsApp.
-    await user.click(row.getAllByRole('button', { name: /^Mostrar: / })[0]!);
-    expect(screen.getByText(fx.driver.phone_whatsapp)).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Mostrar todo: WhatsApp' }));
-    await user.click(screen.getByRole('button', { name: 'Ocultar todo: WhatsApp' }));
-
+    // El primer «Ocultar» de la fila es el del WhatsApp.
+    await user.click(row.getAllByRole('button', { name: /^Ocultar: / })[0]!);
     expect(screen.queryByText(fx.driver.phone_whatsapp)).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Ocultar todo: WhatsApp' }));
+    await user.click(screen.getByRole('button', { name: 'Mostrar todo: WhatsApp' }));
+
+    expect(screen.getByText(fx.driver.phone_whatsapp)).toBeInTheDocument();
   });
 
   test('el botón de estado muestra el estado actual del conductor', async () => {

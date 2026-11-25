@@ -2,6 +2,7 @@ import { screen, within } from '@testing-library/react';
 import { HttpResponse, http } from 'msw';
 import { describe, expect, test } from 'vitest';
 
+import { strings } from '@/lib/strings';
 import * as fx from '@/test/fixtures';
 import { renderApp } from '@/test/render';
 import { server } from '@/test/server';
@@ -143,18 +144,21 @@ describe('viajes por tipo de vehículo', () => {
     expect(screen.queryByRole('table', { name: /Viajes por tipo/ })).not.toBeInTheDocument();
   });
 
-  test('un city admin no pide el reparto (la ruta es de administradores)', async () => {
+  test('un city admin no pide datos de flota: solo ve la nota de su rol', async () => {
     server.use(http.get(`${BASE}/users/me`, () => HttpResponse.json(fx.cityAdminProfile)));
-    let asked = false;
-    server.use(
-      http.get(`${BASE}/admin/kpis/by-vehicle-type`, () => {
-        asked = true;
-        return HttpResponse.json([]);
-      }),
-    );
+    const asked: string[] = [];
+    for (const path of ['kpis', 'kpis/by-vehicle-type', 'alerts', 'vehicles', 'drivers']) {
+      server.use(
+        http.get(`${BASE}/admin/${path}`, () => {
+          asked.push(path);
+          return HttpResponse.json([]);
+        }),
+      );
+    }
     renderApp(<Dashboard />);
-    await screen.findByText(fx.kpis.trips_today);
+    expect(await screen.findByText(strings.dashboard.staffNote)).toBeInTheDocument();
+    expect(screen.queryByText(fx.kpis.trips_today)).not.toBeInTheDocument();
 
-    expect(asked).toBe(false);
+    expect(asked).toEqual([]);
   });
 });
