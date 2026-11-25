@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState, type FormEvent } from 'react';
 
-import { createVehicle, listVehicleTypes, updateVehicle } from '@/api/admin';
+import { createVehicle, listSettings, listVehicleTypes, updateVehicle } from '@/api/admin';
 import { queryKeys } from '@/api/queries';
 import type { TrackerType, Vehicle } from '@/api/types';
 import { CityField } from '@/components/CityField';
@@ -102,6 +102,13 @@ export function VehicleForm({
   const [validation, setValidation] = useState<Partial<Record<string, string>>>({});
   const [attributeProblems, setAttributeProblems] = useState<Record<string, string>>({});
   const [confirmingDetach, setConfirmingDetach] = useState(false);
+  // An existing vehicle with no IMEI is already tracked by the driver's phone.
+  const [noTracker, setNoTracker] = useState(
+    vehicle !== null && vehicle !== undefined && !initial.device_id,
+  );
+  // How long ten units of SIM credit last is a setting, so the hint follows it.
+  const settings = useQuery({ queryKey: queryKeys.settings, queryFn: listSettings });
+  const simDays = settings.data?.find((s) => s.key === 'sim_days_per_ten_credit')?.value;
 
   const { payload, detachesTracker } = vehicleChanges(initial, current);
   const hasTracker = values.device_id.trim() !== '';
@@ -215,14 +222,32 @@ export function VehicleForm({
             onChange={(key, value) => setDraft((d) => ({ ...d, [key]: value }))}
           />
 
-          <Field
-            label={
-              values.tracker_type === 'GT06' ? strings.vehicles.imei : strings.vehicles.deviceId
-            }
-            value={values.device_id}
-            onChange={(device_id) => setValues((v) => ({ ...v, device_id }))}
-            hint={strings.fleet.imeiHint}
-          />
+          <label className="flex items-start gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={noTracker}
+              onChange={(e) => {
+                setNoTracker(e.target.checked);
+                if (e.target.checked) setValues((v) => ({ ...v, device_id: '' }));
+              }}
+              className="mt-0.5 rounded border-slate-300"
+            />
+            <span>
+              {strings.fleet.noTracker}
+              <span className="block text-xs text-slate-500">{strings.fleet.noTrackerHint}</span>
+            </span>
+          </label>
+
+          {!noTracker && (
+            <Field
+              label={
+                values.tracker_type === 'GT06' ? strings.vehicles.imei : strings.vehicles.deviceId
+              }
+              value={values.device_id}
+              onChange={(device_id) => setValues((v) => ({ ...v, device_id }))}
+              hint={strings.fleet.imeiHint}
+            />
+          )}
 
           {hasTracker && (
             <SelectField
@@ -260,7 +285,7 @@ export function VehicleForm({
                   onChange={(sim_last_recharge_amount) =>
                     setValues((v) => ({ ...v, sim_last_recharge_amount }))
                   }
-                  hint={strings.fleet.simAmountHint}
+                  hint={strings.fleet.simAmountHint(simDays)}
                   error={validation.simAmount}
                 />
               </div>

@@ -5,7 +5,13 @@ import type { GeoJsonPolygon } from '@/api/types';
 import { toLatLngs } from '@/lib/geo';
 
 /** Read-only outline of a city's service perimeter. Drawing is deferred (plan §4). */
-export function GeofenceMap({ polygon }: { polygon: GeoJsonPolygon }) {
+export function GeofenceMap({
+  polygon,
+  className = 'h-64 w-full rounded-lg border border-slate-200',
+}: {
+  polygon: GeoJsonPolygon;
+  className?: string;
+}) {
   const points = toLatLngs(polygon);
   if (points.length < 3) return null;
   return (
@@ -13,7 +19,7 @@ export function GeofenceMap({ polygon }: { polygon: GeoJsonPolygon }) {
       bounds={points}
       boundsOptions={{ padding: [20, 20] }}
       scrollWheelZoom={false}
-      className="h-64 w-full rounded-lg border border-slate-200"
+      className={className}
     >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'

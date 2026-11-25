@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 
-import { getTenant, setTenantActive, updateTenant } from '@/api/admin';
+import { getTenant, setMainBusiness, setTenantActive, updateTenant } from '@/api/admin';
 import type { Tenant } from '@/api/types';
 import { useAuth } from '@/auth/context';
 import { ActiveToggle } from '@/components/ActiveToggle';
@@ -52,6 +52,10 @@ export default function TenantDetail() {
 
 function TenantForm({ tenant, onSaved }: { tenant: Tenant; onSaved: () => void }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  // A superadmin came from the list of empresas; a tenant admin has no list.
+  const backTo = user?.role === 'SUPERADMIN' ? '/tenants' : '/';
+  const backLabel = user?.role === 'SUPERADMIN' ? t.backToTenants : t.backToPanel;
   const initial = toValues(tenant);
   const [values, setValues] = useState<TenantFormValues>(initial);
   const [validation, setValidation] = useState<Partial<Record<string, string>>>({});
@@ -60,6 +64,11 @@ function TenantForm({ tenant, onSaved }: { tenant: Tenant; onSaved: () => void }
 
   const save = useMutation({
     mutationFn: () => updateTenant(tenant.tenant_id, payload),
+    onSuccess: onSaved,
+  });
+  const isSuperadmin = user?.role === 'SUPERADMIN';
+  const toggleMain = useMutation({
+    mutationFn: () => setMainBusiness(tenant.tenant_id, !tenant.is_default),
     onSuccess: onSaved,
   });
 
@@ -74,9 +83,19 @@ function TenantForm({ tenant, onSaved }: { tenant: Tenant; onSaved: () => void }
 
   return (
     <div className="space-y-4">
+      <Link to={backTo} className="inline-block text-sm text-slate-600 hover:text-slate-900">
+        ← {backLabel}
+      </Link>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">{tenant.name}</h1>
+          <h1 className="text-xl font-semibold text-slate-900">
+            {tenant.name}
+            {tenant.is_default && (
+              <span className="ml-2 align-middle text-xs font-medium text-emerald-700">
+                {t.mainBusinessBadge}
+              </span>
+            )}
+          </h1>
           <p className="text-xs text-slate-500">{tenant.slug}</p>
         </div>
         <div className="flex items-center gap-2">
@@ -105,6 +124,28 @@ function TenantForm({ tenant, onSaved }: { tenant: Tenant; onSaved: () => void }
           {t.citiesLink}
         </Link>
       </div>
+
+      {isSuperadmin && (
+        <div className="max-w-md space-y-2 rounded-lg border border-slate-200 bg-white p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-slate-900">{t.mainBusiness}</h2>
+            <button
+              type="button"
+              disabled={toggleMain.isPending || (!tenant.is_default && !tenant.is_active)}
+              onClick={() => toggleMain.mutate()}
+              className="rounded border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+            >
+              {tenant.is_default ? t.removeMainBusiness : t.makeMainBusiness}
+            </button>
+          </div>
+          <p className="text-xs text-slate-500">{t.mainBusinessHint}</p>
+          {toggleMain.error != null && (
+            <p role="alert" className="text-sm text-red-800">
+              {errorText(toggleMain.error)}
+            </p>
+          )}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="max-w-md space-y-4" noValidate>
         <Field
@@ -143,13 +184,22 @@ function TenantForm({ tenant, onSaved }: { tenant: Tenant; onSaved: () => void }
           </p>
         )}
 
-        <button
-          type="submit"
-          disabled={save.isPending}
-          className="rounded bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
-        >
-          {save.isPending ? strings.common.loading : strings.common.save}
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="submit"
+            disabled={save.isPending}
+            className="rounded bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
+          >
+            {save.isPending ? strings.common.loading : strings.common.save}
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate(backTo)}
+            className="rounded border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            {strings.common.cancel}
+          </button>
+        </div>
       </form>
     </div>
   );

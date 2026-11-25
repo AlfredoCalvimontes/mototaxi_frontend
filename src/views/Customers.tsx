@@ -7,10 +7,13 @@ import type { CustomerSummary } from '@/api/types';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { DataTable, type Column } from '@/components/DataTable';
 import { ErrorState } from '@/components/ErrorState';
-import { MaskedValue } from '@/components/MaskedValue';
+import { CheckFilter, DateTimeRange, FilterBar, SelectFilter } from '@/components/Filters';
+import { MaskedValue, RevealAllButton } from '@/components/MaskedValue';
+import { useRevealGroup } from '@/components/revealGroup';
 import { TableSkeleton } from '@/components/Skeleton';
 import { EMPTY, formatDateTime, formatRating, maskPhone } from '@/lib/format';
 import { useCityScope } from '@/lib/cityScope';
+import { inWindow } from '@/lib/filters';
 import { strings } from '@/lib/strings';
 
 type PendingAction = { customer: CustomerSummary; action: 'block' | 'unblock' };
@@ -23,7 +26,15 @@ function customerLabel(customer: CustomerSummary): string {
 export default function Customers() {
   const queryClient = useQueryClient();
   const cityScope = useCityScope();
-  const [includeBlocked, setIncludeBlocked] = useState(false);
+  // Everything is on screen by default: blocked customers and full numbers.
+  const [includeBlocked, setIncludeBlocked] = useState(true);
+  const phoneGroup = useRevealGroup(true);
+  const [stateFilter, setStateFilter] = useState('');
+  const [cancelFilter, setCancelFilter] = useState('');
+  const [tripsFilter, setTripsFilter] = useState('');
+  const [ratingFilter, setRatingFilter] = useState('');
+  const [msgFrom, setMsgFrom] = useState('');
+  const [msgTo, setMsgTo] = useState('');
   const [pending, setPending] = useState<PendingAction | null>(null);
 
   const customers = useQuery({
@@ -53,12 +64,14 @@ export default function Customers() {
       {
         id: 'phone',
         header: strings.customers.phone,
+        headerAction: <RevealAllButton group={phoneGroup} label={strings.customers.phone} />,
         // Searchable by the full number even though it renders masked.
         sortValue: (customer) => customer.phone_whatsapp,
         cell: (customer) => (
           <MaskedValue
             value={customer.phone_whatsapp}
             masked={maskPhone(customer.phone_whatsapp)}
+            group={phoneGroup}
           />
         ),
       },
@@ -120,8 +133,41 @@ export default function Customers() {
         ),
       },
     ],
-    [mutation],
+    [mutation, phoneGroup],
   );
+
+  const rows = useMemo(
+    () =>
+      (customers.data ?? []).filter(
+        (c) =>
+          (!stateFilter || (stateFilter === 'blocked' ? c.is_blocked : !c.is_blocked)) &&
+          (!cancelFilter || c.cancel_count >= Number(cancelFilter)) &&
+          (!tripsFilter || c.trip_count >= Number(tripsFilter)) &&
+          (!ratingFilter ||
+            (ratingFilter === 'none'
+              ? c.average_rating_given === null
+              : c.average_rating_given !== null &&
+                c.average_rating_given >= Number(ratingFilter))) &&
+          inWindow(c.last_message_at, msgFrom, msgTo),
+      ),
+    [customers.data, stateFilter, cancelFilter, tripsFilter, ratingFilter, msgFrom, msgTo],
+  );
+  const anyFilter = !!(
+    stateFilter ||
+    cancelFilter ||
+    tripsFilter ||
+    ratingFilter ||
+    msgFrom ||
+    msgTo
+  );
+  function clearFilters() {
+    setStateFilter('');
+    setCancelFilter('');
+    setTripsFilter('');
+    setRatingFilter('');
+    setMsgFrom('');
+    setMsgTo('');
+  }
 
   if (customers.isPending) return <TableSkeleton rows={5} />;
   if (customers.isError) {
@@ -134,19 +180,57 @@ export default function Customers() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-semibold text-slate-900">{strings.customers.heading}</h1>
-        <label className="flex items-center gap-2 text-sm text-slate-700">
-          <input
-            type="checkbox"
-            checked={includeBlocked}
-            onChange={(e) => setIncludeBlocked(e.target.checked)}
-            className="rounded border-slate-300"
-          />
-          {strings.customers.showBlocked}
-        </label>
+        <CheckFilter
+          label={strings.customers.showBlocked}
+          checked={includeBlocked}
+          onChange={setIncludeBlocked}
+        />
       </div>
 
+      <FilterBar
+        active={anyFilter}
+        onClear={clearFilters}
+        summary={strings.filters.results(rows.length, customers.data.length)}
+      >
+        <SelectFilter
+          label={strings.filters.status}
+          value={stateFilter}
+          onChange={setStateFilter}
+          allLabel={strings.filters.allStatuses}
+          options={[
+            { value: 'active', label: strings.customers.stateActive },
+            { value: 'blocked', label: strings.customers.blocked },
+          ]}
+        />
+        <SelectFilter
+          label={strings.customers.trips}
+          value={tripsFilter}
+          onChange={setTripsFilter}
+          options={[1, 5, 10, 20].map((n) => ({ value: String(n), label: `${n} o más` }))}
+        />
+        <SelectFilter
+          label={strings.customers.cancellations}
+          value={cancelFilter}
+          onChange={setCancelFilter}
+          options={[1, 3, 5].map((n) => ({ value: String(n), label: `${n} o más` }))}
+        />
+        <SelectFilter
+          label={strings.customers.ratingGiven}
+          value={ratingFilter}
+          onChange={setRatingFilter}
+          options={[
+            { value: '4', label: '4 ★ o más' },
+            { value: '3', label: '3 ★ o más' },
+            { value: '1', label: '1 ★ o más' },
+            { value: 'none', label: strings.customers.noRating },
+          ]}
+        />
+        <DateTimeRange from={msgFrom} to={msgTo} onFrom={setMsgFrom} onTo={setMsgTo} />
+        <span className="pb-1 text-xs text-slate-500">{strings.customers.lastMessage}</span>
+      </FilterBar>
+
       <DataTable
-        rows={customers.data}
+        rows={rows}
         columns={columns}
         rowKey={(customer) => customer.customer_uuid}
         caption={strings.customers.heading}

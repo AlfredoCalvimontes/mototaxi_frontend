@@ -19,3 +19,17 @@ export function RequireRole({ roles }: { roles: readonly UserRole[] }) {
 
   return <Outlet />;
 }
+
+/**
+ * Keeps a superadmin's platform-wide list pages off while they act as an empresa:
+ * those lists would 403 and the empresa's own page is the right place instead.
+ */
+export function RequireNotActing({ to }: { to: (tenantId: string) => string }) {
+  const { actingAsTenant } = useAuth();
+
+  if (actingAsTenant) {
+    return <Navigate to={to(actingAsTenant)} replace />;
+  }
+
+  return <Outlet />;
+}

@@ -36,8 +36,8 @@ describe('rango de fechas', () => {
     await waitFor(() => expect(seen).toHaveLength(1));
     // 22:00 del 20 en La Paz sigue siendo el día 20, aunque en UTC ya sea 21.
     expect(seen[0]!.searchParams.get('since')).toBe('2026-07-20T04:00:00.000Z');
-    // Cota superior exclusiva: el inicio del día siguiente.
-    expect(seen[0]!.searchParams.get('until')).toBe('2026-07-21T04:00:00.000Z');
+    // Cota superior inclusiva: el último milisegundo de 23:59 (hora de La Paz).
+    expect(seen[0]!.searchParams.get('until')).toBe('2026-07-21T03:59:59.999Z');
   });
 
   test('cambiar la fecha vuelve a consultar con el nuevo rango', async () => {
@@ -45,11 +45,12 @@ describe('rango de fechas', () => {
     const { user } = renderApp(<TripHistory />);
     await waitFor(() => expect(seen).toHaveLength(1));
 
-    await user.clear(screen.getByLabelText('Desde'));
-    await user.type(screen.getByLabelText('Desde'), '2026-07-18');
+    await user.clear(screen.getByLabelText('Fecha y hora de inicio'));
+    await user.type(screen.getByLabelText('Fecha y hora de inicio'), '2026-07-18T08:30');
 
     await waitFor(() => expect(seen.length).toBeGreaterThan(1));
-    expect(seen.at(-1)!.searchParams.get('since')).toBe('2026-07-18T04:00:00.000Z');
+    // 08:30 en La Paz (UTC−4) son las 12:30 UTC.
+    expect(seen.at(-1)!.searchParams.get('since')).toBe('2026-07-18T12:30:00.000Z');
   });
 });
 
@@ -58,7 +59,7 @@ describe('resultados', () => {
     renderApp(<TripHistory />);
     const table = within(await screen.findByRole('table'));
 
-    expect(await table.findByText('Cierre automático')).toBeInTheDocument();
+    expect(await table.findByText('Sin confirmar')).toBeInTheDocument();
   });
 
   test('avisa cuando el resultado llegó al tope y quedaron viajes fuera', async () => {
@@ -126,7 +127,7 @@ describe('exportación CSV', () => {
     expect(createObjectURL).toHaveBeenCalled();
     // El archivo se ofrece con un nombre que refleja el rango exportado.
     const anchor = click.mock.instances[0] as HTMLAnchorElement;
-    expect(anchor.download).toBe('viajes_2026-07-20_2026-07-20.csv');
+    expect(anchor.download).toBe('viajes_2026-07-20T0000_2026-07-20T2359.csv');
     expect(revokeObjectURL).toHaveBeenCalled();
 
     click.mockRestore();

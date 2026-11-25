@@ -18,13 +18,17 @@ export const POLL = {
 export const queryKeys = {
   profile: ['profile'] as const,
   kpis: ['kpis'] as const,
+  kpisIn: (city: UUID | null) => ['kpis', city ?? 'all'] as const,
   alerts: ['alerts'] as const,
+  alertsIn: (city: UUID | null) => ['alerts', city ?? 'all'] as const,
   /** Prefix of every vehicle list: invalidate with this. */
   vehicles: ['vehicles'] as const,
-  vehiclesIn: (city: UUID | null) => ['vehicles', city ?? 'all'] as const,
+  vehiclesIn: (city: UUID | null, archived = false) =>
+    ['vehicles', city ?? 'all', archived ? 'with-archived' : 'live'] as const,
   vehicle: (uuid: UUID) => ['vehicle', uuid] as const,
   vehicleTypes: ['vehicle-types'] as const,
   usagePlans: ['usage-plans'] as const,
+  staffUsers: ['staff-users'] as const,
   usagePlan: (uuid: UUID) => ['usage-plans', uuid] as const,
   drivers: (status?: DriverStatus, city: UUID | null = null) =>
     ['drivers', status ?? 'all', city ?? 'all'] as const,

@@ -12,15 +12,15 @@ import { ReachTime } from '@/components/ReachTime';
 import { TableSkeleton } from '@/components/Skeleton';
 import { StatusBadge, WarningBadge } from '@/components/StatusBadge';
 import { errorText } from '@/lib/errors';
+import { EMPTY, formatDateTime, formatRating, maskPhone, todayInLaPaz } from '@/lib/format';
+import { localInputEndIso, localInputToIso } from '@/lib/filters';
 import {
-  EMPTY,
-  formatDateTime,
-  formatRating,
-  laPazDayEndIso,
-  laPazDayStartIso,
-  maskPhone,
-  todayInLaPaz,
-} from '@/lib/format';
+  CheckFilter,
+  DateTimeRange,
+  FilterBar,
+  SearchSelectFilter,
+  SelectFilter,
+} from '@/components/Filters';
 import { filterParams, useCityScope } from '@/lib/cityScope';
 import { strings } from '@/lib/strings';
 import { tripTypeLabel, useVehicleTypeNames } from '@/lib/useVehicleTypes';
@@ -48,19 +48,25 @@ export default function TripHistory() {
   const cityScope = useCityScope();
   const onlyAutoCompleted = searchParams.get(REVIEW_PARAM) === REVIEW_VALUE;
 
+  // The window is date + time, La Paz wall clock; it starts as «today, all day».
   const today = todayInLaPaz();
-  const [since, setSince] = useState(today);
-  const [until, setUntil] = useState(today);
+  const [since, setSince] = useState(`${today}T00:00`);
+  const [until, setUntil] = useState(`${today}T23:59`);
+  const [statusFilter, setStatusFilter] = useState('');
+  const [cancelledByFilter, setCancelledByFilter] = useState('');
+  const [driverFilter, setDriverFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
+  const [ratingFilter, setRatingFilter] = useState('');
   const [limit, setLimit] = useState<number>(LIMIT_OPTIONS[0]);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<unknown>(null);
 
-  // Local dates become explicit instants: the API compares TIMESTAMPTZ, and a
-  // bare date would be read as midnight UTC — four hours off from La Paz.
+  // The typed La Paz date and time become explicit instants: the API compares
+  // TIMESTAMPTZ, and a bare value would be read as UTC — four hours off.
   const params = useMemo(
     () => ({
-      since: laPazDayStartIso(since),
-      until: laPazDayEndIso(until),
+      since: localInputToIso(since),
+      until: localInputEndIso(until),
       limit,
       ...(cityScope && { city_uuid: cityScope }),
     }),
@@ -74,8 +80,49 @@ export default function TripHistory() {
 
   const rows = useMemo(() => {
     const all = history.data ?? [];
-    return onlyAutoCompleted ? all.filter((trip) => trip.completion_source === 'AUTO') : all;
-  }, [history.data, onlyAutoCompleted]);
+    return all.filter(
+      (trip) =>
+        (!onlyAutoCompleted || trip.completion_source === 'AUTO') &&
+        (!statusFilter || trip.status === statusFilter) &&
+        (!cancelledByFilter || trip.cancelled_by === cancelledByFilter) &&
+        (!driverFilter ||
+          (driverFilter === 'none' ? !trip.driver_name : trip.driver_name === driverFilter)) &&
+        (!typeFilter ||
+          (typeFilter === 'any'
+            ? !trip.requested_vehicle_type_uuid
+            : trip.requested_vehicle_type_uuid === typeFilter)) &&
+        (!ratingFilter ||
+          (ratingFilter === 'none'
+            ? trip.rating === null
+            : trip.rating !== null && trip.rating >= Number(ratingFilter))),
+    );
+  }, [
+    history.data,
+    onlyAutoCompleted,
+    statusFilter,
+    cancelledByFilter,
+    driverFilter,
+    typeFilter,
+    ratingFilter,
+  ]);
+
+  const driverNames = useMemo(
+    () => [
+      ...new Set((history.data ?? []).map((t) => t.driver_name).filter((n): n is string => !!n)),
+    ],
+    [history.data],
+  );
+  const anyFilter =
+    onlyAutoCompleted ||
+    !!(statusFilter || cancelledByFilter || driverFilter || typeFilter || ratingFilter);
+  function clearFilters() {
+    setStatusFilter('');
+    setCancelledByFilter('');
+    setDriverFilter('');
+    setTypeFilter('');
+    setRatingFilter('');
+    setSearchParams(filterParams(searchParams, REVIEW_PARAM, null), { replace: true });
+  }
 
   // The API returns no total, so a full page is the only signal that rows were
   // left behind. Better to say so than to let the operator read a partial
@@ -94,7 +141,7 @@ export default function TripHistory() {
             <StatusBadge kind="trip" value={trip.status} />
             {trip.completion_source === 'AUTO' && (
               <WarningBadge title={strings.trips.autoCompletedHint}>
-                {strings.trips.autoCompleted}
+                {strings.trips.autoCompletedBadge}
               </WarningBadge>
             )}
           </div>
@@ -187,7 +234,7 @@ export default function TripHistory() {
     setExportError(null);
     try {
       const blob = await downloadTripHistoryCsv(params);
-      triggerDownload(blob, `viajes_${since}_${until}.csv`);
+      triggerDownload(blob, `viajes_${since.replace(':', '')}_${until.replace(':', '')}.csv`);
     } catch (caught) {
       setExportError(caught);
     } finally {
@@ -200,26 +247,7 @@ export default function TripHistory() {
       <h1 className="text-xl font-semibold text-slate-900">{strings.trips.historyHeading}</h1>
 
       <div className="flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-3">
-        <label className="text-sm">
-          <span className="block text-slate-600">{strings.trips.since}</span>
-          <input
-            type="date"
-            value={since}
-            max={until}
-            onChange={(e) => setSince(e.target.value)}
-            className="mt-1 rounded border border-slate-300 px-2 py-1"
-          />
-        </label>
-        <label className="text-sm">
-          <span className="block text-slate-600">{strings.trips.until}</span>
-          <input
-            type="date"
-            value={until}
-            min={since}
-            onChange={(e) => setUntil(e.target.value)}
-            className="mt-1 rounded border border-slate-300 px-2 py-1"
-          />
-        </label>
+        <DateTimeRange from={since} to={until} onFrom={setSince} onTo={setUntil} />
         <label className="text-sm">
           <span className="block text-slate-600">{strings.trips.limit}</span>
           <select
@@ -235,23 +263,6 @@ export default function TripHistory() {
           </select>
         </label>
 
-        <label className="flex items-center gap-2 text-sm text-slate-700">
-          <input
-            type="checkbox"
-            checked={onlyAutoCompleted}
-            onChange={(e) =>
-              setSearchParams(
-                filterParams(searchParams, REVIEW_PARAM, e.target.checked ? REVIEW_VALUE : null),
-                {
-                  replace: true,
-                },
-              )
-            }
-            className="rounded border-slate-300"
-          />
-          {strings.trips.autoCompleted}
-        </label>
-
         <div className="ml-auto text-right">
           <button
             type="button"
@@ -264,6 +275,74 @@ export default function TripHistory() {
           <p className="mt-1 text-xs text-slate-500">{strings.trips.exportHint}</p>
         </div>
       </div>
+
+      <FilterBar
+        active={anyFilter}
+        onClear={clearFilters}
+        summary={strings.filters.results(rows.length, history.data?.length ?? 0)}
+      >
+        <SelectFilter
+          label={strings.filters.status}
+          value={statusFilter}
+          onChange={setStatusFilter}
+          allLabel={strings.filters.allStatuses}
+          options={(['COMPLETED', 'CANCELLED', 'NO_DRIVER'] as const).map((v) => ({
+            value: v,
+            label: strings.status.trip[v],
+          }))}
+        />
+        <SelectFilter
+          label={strings.trips.cancelledBy}
+          value={cancelledByFilter}
+          onChange={setCancelledByFilter}
+          options={(['CUSTOMER', 'DRIVER', 'SYSTEM', 'ADMIN'] as const).map((v) => ({
+            value: v,
+            label: strings.status.cancelledBy[v],
+          }))}
+        />
+        <SearchSelectFilter
+          label={strings.trips.driver}
+          value={driverFilter}
+          onChange={setDriverFilter}
+          options={[
+            { value: 'none', label: strings.fleet.noDriver },
+            ...driverNames.map((name) => ({ value: name, label: name })),
+          ]}
+        />
+        <SelectFilter
+          label={strings.trips.vehicleType}
+          value={typeFilter}
+          onChange={setTypeFilter}
+          allLabel={strings.filters.allTypes}
+          options={[
+            { value: 'any', label: strings.trips.anyType },
+            ...[...typeNames].map(([value, label]) => ({ value, label })),
+          ]}
+        />
+        <SelectFilter
+          label={strings.trips.rating}
+          value={ratingFilter}
+          onChange={setRatingFilter}
+          options={[
+            { value: '4', label: '4 ★ o más' },
+            { value: '3', label: '3 ★ o más' },
+            { value: '1', label: '1 ★ o más' },
+            { value: 'none', label: strings.customers.noRating },
+          ]}
+        />
+        <CheckFilter
+          label={strings.trips.autoCompleted}
+          checked={onlyAutoCompleted}
+          onChange={(checked) =>
+            setSearchParams(
+              filterParams(searchParams, REVIEW_PARAM, checked ? REVIEW_VALUE : null),
+              {
+                replace: true,
+              },
+            )
+          }
+        />
+      </FilterBar>
 
       {exportError != null && (
         <p

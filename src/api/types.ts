@@ -13,7 +13,7 @@ export type IsoDateTime = string;
 export type IsoDate = string;
 
 export type DriverStatus = 'AVAILABLE' | 'IN_TRIP' | 'RESTING' | 'OFFLINE' | 'DISABLED';
-export type VehicleStatus = 'AVAILABLE' | 'DISABLED' | 'OUT_OF_SERVICE';
+export type VehicleStatus = 'AVAILABLE' | 'DISABLED' | 'OUT_OF_SERVICE' | 'ARCHIVED';
 /** The device protocol, not where a position came from. Only GT06 has a listener. */
 export type TrackerType = 'GT06' | 'SECUREMORE';
 
@@ -90,7 +90,14 @@ export type VehicleSummary = {
   current_driver_uuid: UUID | null;
   city_uuid: UUID | null;
   vehicle_type_uuid: UUID | null;
+  /** The GPS tracker on its own: `none` (not fitted), `ok` (recent fix) or `silent`. */
+  tracker_state: SourceState;
+  /** The assigned driver's phone app on its own; same values. */
+  phone_state: SourceState;
 };
+
+/** How one position source is doing; see `lib/gps.ts`. */
+export type SourceState = 'none' | 'ok' | 'silent';
 
 /** A setting the manager can change at runtime (`GET /admin/settings`). */
 export type RuntimeSetting = {
@@ -415,6 +422,12 @@ export type UsagePlan = {
   driver_count: number | null;
   /** Set only on an update that changed the price. */
   affected_drivers: number | null;
+  /** A global plan of the main business, usable by every empresa. */
+  is_shared: boolean;
+  /** Whether the caller's empresa owns it and so may change or remove it. */
+  is_owner: boolean;
+  /** The empresa that owns the plan; null for a plan with no empresa. */
+  tenant_uuid: string | null;
 };
 
 export type CreateUsagePlanPayload = {
@@ -422,6 +435,8 @@ export type CreateUsagePlanPayload = {
   daily_credit: number;
   includes_vehicle_rental?: boolean;
   description?: string | null;
+  /** Only the main business may share a plan; the server refuses others. */
+  is_shared?: boolean;
 };
 
 /**
@@ -454,6 +469,30 @@ export type TokenPair = {
 export type UserRole = 'SUPERADMIN' | 'TENANT_ADMIN' | 'CITY_ADMIN' | 'OPERATOR' | 'CUSTOMER';
 
 /** Only the fields the panel actually reads off `GET /users/me`. */
+/** A staff account (every role but CUSTOMER) and the cities it is granted. */
+export type StaffUser = {
+  user_uuid: UUID;
+  email: string | null;
+  name: string;
+  first_lastname: string;
+  second_lastname: string | null;
+  role: 'SUPERADMIN' | 'TENANT_ADMIN' | 'CITY_ADMIN' | 'OPERATOR';
+  tenant_id: UUID | null;
+  is_active: boolean;
+  city_uuids: UUID[];
+  created_at: IsoDateTime;
+};
+
+export type CreateStaffUserPayload = {
+  email: string;
+  name: string;
+  first_lastname: string;
+  second_lastname?: string | null;
+  role: 'TENANT_ADMIN' | 'CITY_ADMIN' | 'OPERATOR';
+  tenant_id?: UUID | null;
+  city_uuids: UUID[];
+};
+
 export type UserProfile = {
   user_uuid: UUID;
   email: string | null;
@@ -519,6 +558,8 @@ export type Tenant = {
   deactivated_at: IsoDateTime | null;
   created_at: IsoDateTime;
   updated_at: IsoDateTime;
+  /** The main business: runs the platform's WhatsApp numbers and shared plans. */
+  is_default: boolean;
 };
 
 /** Superadmin provisions tenants; `slug` is fixed once created. */
@@ -686,9 +727,29 @@ export type CityRouting = {
   /** The tenant's own number for this city, if it has one. */
   own_city_number: RoutingNumber | null;
   serving: Serving;
+  /** Set only in the Super Admin's all-empresas list. */
+  tenant_uuid?: UUID | null;
+  tenant_name?: string | null;
 };
 
 /** Body shared by the city and platform save routes. The token is always required. */
+/** Edit a stored number. A token left out (`undefined`) keeps the stored one. */
+export type UpdateNumberPayload = {
+  phone_number_id: string;
+  access_token?: string;
+  waba_id?: string | null;
+  display_phone_number?: string | null;
+  /** Left out: the role stays. Switching to MAIN drops the city. */
+  role?: RoutingRole;
+};
+
+/** A partial staff edit: a field left out is unchanged; `city_uuids` replaces the set. */
+export type UpdateStaffUserPayload = {
+  role?: 'TENANT_ADMIN' | 'CITY_ADMIN' | 'OPERATOR';
+  is_active?: boolean;
+  city_uuids?: UUID[];
+};
+
 export type SaveNumberPayload = {
   phone_number_id: string;
   access_token: string;

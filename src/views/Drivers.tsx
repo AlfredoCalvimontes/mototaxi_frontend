@@ -7,6 +7,7 @@ import { POLL, queryKeys } from '@/api/queries';
 import type { Driver, VehicleSummary } from '@/api/types';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { DataTable, type Column } from '@/components/DataTable';
+import { CheckFilter, FilterBar, SearchSelectFilter, SelectFilter } from '@/components/Filters';
 import { ErrorState } from '@/components/ErrorState';
 import { MaskedValue, RevealAllButton } from '@/components/MaskedValue';
 import { useRevealGroup } from '@/components/revealGroup';
@@ -45,7 +46,7 @@ const CREDIT_PARAM = 'credito';
 const CREDIT_EXHAUSTED = 'agotado';
 
 /** The response-time and usage-credit columns, hidden together by one toggle. */
-const CREDIT_COLUMN_IDS = new Set(['response', 'credit', 'creditExpires']);
+const CREDIT_COLUMN_IDS = new Set(['plan', 'credit', 'creditExpires']);
 const HIDE_CREDIT_KEY = 'driver.hideCreditColumns';
 
 /** Which dialog is open, and for whom. `null` driver means "register new". */
@@ -131,8 +132,15 @@ export default function Drivers() {
   const [hideCredit, toggleHideCredit] = usePersistentFlag(HIDE_CREDIT_KEY, false);
   const cityScope = useCityScope();
   const { cities, byId: cityById } = useCities();
-  const phoneGroup = useRevealGroup();
-  const ciGroup = useRevealGroup();
+  // Everything is on screen by default; the column buttons mask it again.
+  const phoneGroup = useRevealGroup(true);
+  const ciGroup = useRevealGroup(true);
+  const [statusFilter, setStatusFilter] = useState('');
+  const [vehicleFilter, setVehicleFilter] = useState('');
+  const [trackingFilter, setTrackingFilter] = useState('');
+  const [planFilter, setPlanFilter] = useState('');
+  const [creditFilter, setCreditFilter] = useState('');
+  const [phoneKeyFilter, setPhoneKeyFilter] = useState('');
 
   const retire = useMutation({
     mutationFn: ({ driver, reason }: { driver: Driver; reason?: string }) =>
@@ -178,9 +186,61 @@ export default function Drivers() {
     return all.filter(
       (driver) =>
         (!onlyWithoutCheckin || !driver.has_checked_in_today) &&
-        (!onlyNoCredit || driver.usage_credit_expired),
+        (!onlyNoCredit || driver.usage_credit_expired) &&
+        (!statusFilter || driver.status === statusFilter) &&
+        (!vehicleFilter ||
+          (vehicleFilter === 'none'
+            ? !driver.current_vehicle_uuid
+            : driver.current_vehicle_uuid === vehicleFilter)) &&
+        (!trackingFilter || trackingState(unitOf(driver)) === trackingFilter) &&
+        (!planFilter ||
+          (planFilter === 'none'
+            ? !driver.usage_plan_name
+            : driver.usage_plan_name === planFilter)) &&
+        (!creditFilter || usageCreditState(driver).state === creditFilter) &&
+        (!phoneKeyFilter || driver.has_phone_key === (phoneKeyFilter === 'yes')),
     );
-  }, [drivers.data, onlyWithoutCheckin, onlyNoCredit]);
+  }, [
+    drivers.data,
+    onlyWithoutCheckin,
+    onlyNoCredit,
+    statusFilter,
+    vehicleFilter,
+    trackingFilter,
+    planFilter,
+    creditFilter,
+    phoneKeyFilter,
+    unitOf,
+  ]);
+
+  const planNames = useMemo(
+    () => [
+      ...new Set(
+        (drivers.data ?? []).map((d) => d.usage_plan_name).filter((n): n is string => !!n),
+      ),
+    ],
+    [drivers.data],
+  );
+  const anyFilter =
+    onlyWithoutCheckin ||
+    onlyNoCredit ||
+    !!(
+      statusFilter ||
+      vehicleFilter ||
+      trackingFilter ||
+      planFilter ||
+      creditFilter ||
+      phoneKeyFilter
+    );
+  function clearFilters() {
+    setStatusFilter('');
+    setVehicleFilter('');
+    setTrackingFilter('');
+    setPlanFilter('');
+    setCreditFilter('');
+    setPhoneKeyFilter('');
+    setSearchParams(filterParams(searchParams, CHECKIN_PARAM, null), { replace: true });
+  }
 
   const columns: Column<Driver>[] = useMemo(
     () => [
@@ -363,25 +423,29 @@ export default function Drivers() {
       {
         id: 'actions',
         header: '',
-        cell: (driver) => (
-          <div className="flex flex-wrap justify-end gap-1">
-            <RowAction onClick={() => setDialog({ kind: 'form', driver })}>
+        cell: (driver) => {
+          // Fixed slots, 4 per row: a button that does not apply leaves its slot empty,
+          // so each action keeps its column on every row.
+          const slots: (ReactNode | null)[] = [
+            <RowAction key="edit" onClick={() => setDialog({ kind: 'form', driver })}>
               {strings.common.edit}
-            </RowAction>
-            {cities.length > 0 && (
+            </RowAction>,
+            cities.length > 0 ? (
               <RowAction
+                key="move"
                 disabled={driver.status === 'IN_TRIP'}
                 title={driver.status === 'IN_TRIP' ? strings.tenancy.moveBlockedInTrip : undefined}
                 onClick={() => setDialog({ kind: 'city', driver })}
               >
                 {strings.tenancy.moveToCity}
               </RowAction>
-            )}
-            <RowAction onClick={() => setDialog({ kind: 'status', driver })}>
+            ) : null,
+            <RowAction key="status" onClick={() => setDialog({ kind: 'status', driver })}>
               {strings.fleet.changeStatus}
               <StatusBadge kind="driver" value={driver.status} />
-            </RowAction>
+            </RowAction>,
             <RowAction
+              key="phone"
               active={driver.has_phone_key}
               onClick={() => setDialog({ kind: 'phoneKey', driver })}
             >
@@ -394,27 +458,36 @@ export default function Drivers() {
                   ? strings.drivers.phoneKeyActive
                   : strings.drivers.phoneKeyMissing}
               </ToneBadge>
-            </RowAction>
-            <RowAction onClick={() => setDialog({ kind: 'position', driver })}>
+            </RowAction>,
+            <RowAction key="position" onClick={() => setDialog({ kind: 'position', driver })}>
               {strings.drivers.positionCheck}
-            </RowAction>
-            {driver.usage_credit_enabled && (
-              <RowAction onClick={() => setDialog({ kind: 'credit', driver })}>
+            </RowAction>,
+            driver.usage_credit_enabled ? (
+              <RowAction key="credit" onClick={() => setDialog({ kind: 'credit', driver })}>
                 {strings.drivers.addCredit}
               </RowAction>
-            )}
-            {driver.usage_credit_enabled && (
-              <RowAction onClick={() => setDialog({ kind: 'creditHistory', driver })}>
+            ) : null,
+            driver.usage_credit_enabled ? (
+              <RowAction key="ledger" onClick={() => setDialog({ kind: 'creditHistory', driver })}>
                 {strings.creditLedger.openDriver}
               </RowAction>
-            )}
-            {driver.status !== 'DISABLED' && (
-              <RowAction danger onClick={() => setDialog({ kind: 'retire', driver })}>
+            ) : null,
+            driver.status !== 'DISABLED' ? (
+              <RowAction key="retire" danger onClick={() => setDialog({ kind: 'retire', driver })}>
                 {strings.fleet.retire}
               </RowAction>
-            )}
-          </div>
-        ),
+            ) : null,
+          ];
+          return (
+            <div className="grid grid-cols-4 gap-1">
+              {slots.map((slot, index) => (
+                <div key={index} className="flex">
+                  {slot ?? null}
+                </div>
+              ))}
+            </div>
+          );
+        },
       },
     ],
     [plates, unitOf, phoneGroup, ciGroup, cities.length, cityById],
@@ -444,47 +517,90 @@ export default function Drivers() {
         >
           {hideCredit ? strings.drivers.showCredit : strings.drivers.hideCredit}
         </button>
-        <label className="flex items-center gap-2 text-sm text-slate-700">
-          <input
-            type="checkbox"
-            checked={onlyWithoutCheckin}
-            onChange={(e) =>
-              setSearchParams(
-                filterParams(
-                  searchParams,
-                  CHECKIN_PARAM,
-                  e.target.checked ? CHECKIN_PENDING : null,
-                ),
-                {
-                  replace: true,
-                },
-              )
-            }
-            className="rounded border-slate-300"
-          />
-          {strings.drivers.onlyWithoutCheckin}
-        </label>
-        <label className="flex items-center gap-2 text-sm text-slate-700">
-          <input
-            type="checkbox"
-            checked={onlyNoCredit}
-            onChange={(e) =>
-              setSearchParams(
-                filterParams(
-                  searchParams,
-                  CREDIT_PARAM,
-                  e.target.checked ? CREDIT_EXHAUSTED : null,
-                ),
-                {
-                  replace: true,
-                },
-              )
-            }
-            className="rounded border-slate-300"
-          />
-          {strings.drivers.noCredit}
-        </label>
       </div>
+
+      <FilterBar
+        active={anyFilter}
+        onClear={clearFilters}
+        summary={strings.filters.results(rows.length, drivers.data.length)}
+      >
+        <SelectFilter
+          label={strings.filters.status}
+          value={statusFilter}
+          onChange={setStatusFilter}
+          allLabel={strings.filters.allStatuses}
+          options={(['AVAILABLE', 'IN_TRIP', 'RESTING', 'OFFLINE', 'DISABLED'] as const).map(
+            (v) => ({ value: v, label: strings.status.driver[v] }),
+          )}
+        />
+        <SearchSelectFilter
+          label={strings.drivers.vehicle}
+          value={vehicleFilter}
+          onChange={setVehicleFilter}
+          options={[
+            { value: 'none', label: strings.drivers.noVehicleBadge },
+            ...[...plates].map(([value, label]) => ({ value, label })),
+          ]}
+        />
+        <SelectFilter
+          label={strings.drivers.tracking}
+          value={trackingFilter}
+          onChange={setTrackingFilter}
+          options={(Object.keys(TRACKING_BADGES) as TrackingState[]).map((key) => ({
+            value: key,
+            label: TRACKING_BADGES[key].label,
+          }))}
+        />
+        <SelectFilter
+          label={strings.drivers.plan}
+          value={planFilter}
+          onChange={setPlanFilter}
+          options={[
+            { value: 'none', label: strings.drivers.noPlan },
+            ...planNames.map((name) => ({ value: name, label: name })),
+          ]}
+        />
+        <SelectFilter
+          label={strings.drivers.credit}
+          value={creditFilter}
+          onChange={setCreditFilter}
+          options={[
+            { value: 'ok', label: strings.drivers.creditStateOk },
+            { value: 'soon', label: strings.drivers.creditStateSoon },
+            { value: 'expired', label: strings.drivers.creditStateExpired },
+            { value: 'off', label: strings.drivers.creditStateOff },
+          ]}
+        />
+        <SelectFilter
+          label={strings.fleet.phoneKey}
+          value={phoneKeyFilter}
+          onChange={setPhoneKeyFilter}
+          options={[
+            { value: 'yes', label: strings.drivers.phoneKeyActive },
+            { value: 'no', label: strings.drivers.phoneKeyMissing },
+          ]}
+        />
+        <CheckFilter
+          label={strings.drivers.onlyWithoutCheckin}
+          checked={onlyWithoutCheckin}
+          onChange={(checked) =>
+            setSearchParams(
+              filterParams(searchParams, CHECKIN_PARAM, checked ? CHECKIN_PENDING : null),
+              { replace: true },
+            )
+          }
+        />
+        <CheckFilter
+          label={strings.drivers.noCredit}
+          checked={onlyNoCredit}
+          onChange={(checked) =>
+            setSearchParams(
+              filterParams(searchParams, CREDIT_PARAM, checked ? CREDIT_EXHAUSTED : null),
+              { replace: true },
+            )
+          }
+        />
+      </FilterBar>
 
       <DataTable
         rows={rows}

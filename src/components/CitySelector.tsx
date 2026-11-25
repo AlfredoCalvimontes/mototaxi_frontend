@@ -4,6 +4,7 @@ import { useAuth } from '@/auth/context';
 import { CITY_PARAM } from '@/lib/cityScope';
 import { strings } from '@/lib/strings';
 import { useCities } from '@/lib/useCities';
+import { useTenantList } from '@/lib/useTenantList';
 
 /**
  * Header city scope. A city admin is fixed to their granted cities; a tenant
@@ -18,7 +19,9 @@ export function CitySelector() {
   const [searchParams, setSearchParams] = useSearchParams();
   const selected = searchParams.get(CITY_PARAM) ?? '';
 
-  const { cities, enabled } = useCities();
+  const { cities, enabled, platformWide } = useCities();
+  const tenants = useTenantList(platformWide);
+  const tenantName = (id: string) => tenants.data?.items.find((x) => x.tenant_id === id)?.name;
 
   if (!enabled || !user) return null;
 
@@ -49,7 +52,9 @@ export function CitySelector() {
       <option value="">{strings.tenancy.allCities}</option>
       {options.map((c) => (
         <option key={c.city_id} value={c.city_id}>
-          {c.name}
+          {platformWide && tenantName(c.tenant_id)
+            ? `${c.name} · ${tenantName(c.tenant_id)}`
+            : c.name}
         </option>
       ))}
     </select>

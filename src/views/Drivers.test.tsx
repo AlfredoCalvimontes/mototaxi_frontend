@@ -69,26 +69,25 @@ describe('mototaxi asignada', () => {
 });
 
 describe('privacidad', () => {
-  test('teléfono y CI llegan enmascarados', async () => {
+  test('teléfono y CI se ven completos por defecto', async () => {
     renderApp(<Drivers />);
     const rows = await (await table()).findAllByRole('row');
     const marco = rows.find((row) => within(row).queryByText('Marco Peña'))!;
 
-    expect(within(marco).getByText('+591····4567')).toBeInTheDocument();
-    expect(within(marco).getByText('····21TJ')).toBeInTheDocument();
-    expect(within(marco).queryByText('+59171234567')).not.toBeInTheDocument();
+    expect(within(marco).getByText('+59171234567')).toBeInTheDocument();
+    expect(within(marco).getByText('7654321 TJ')).toBeInTheDocument();
+    expect(within(marco).queryByText('+591····4567')).not.toBeInTheDocument();
   });
 
-  test('el valor completo se revela fila por fila, de forma deliberada', async () => {
+  test('cada fila se puede tapar por separado, sin tocar el CI de la misma fila', async () => {
     const { user } = renderApp(<Drivers />);
     const rows = await (await table()).findAllByRole('row');
     const marco = within(rows.find((row) => within(row).queryByText('Marco Peña'))!);
 
-    await user.click(marco.getByRole('button', { name: /Mostrar: \+591····4567/ }));
+    await user.click(marco.getByRole('button', { name: /Ocultar: \+591····4567/ }));
 
-    expect(marco.getByText('+59171234567')).toBeInTheDocument();
-    // Revelar un teléfono no revela el CI de la misma fila.
-    expect(marco.getByText('····21TJ')).toBeInTheDocument();
+    expect(marco.getByText('+591····4567')).toBeInTheDocument();
+    expect(marco.getByText('7654321 TJ')).toBeInTheDocument();
   });
 });
 

@@ -40,8 +40,10 @@ import type {
   DriverPositionCheck,
   PhoneKey,
   RoutingNumber,
+  RoutingRole,
   RuntimeSetting,
   SaveNumberPayload,
+  UpdateNumberPayload,
   SavePlatformNumberPayload,
   Serving,
   VehicleSummary,
@@ -53,6 +55,9 @@ import type {
   UpdateVehicleTypePayload,
   UsagePlan,
   VehicleType,
+  CreateStaffUserPayload,
+  StaffUser,
+  UpdateStaffUserPayload,
 } from '@/api/types';
 
 /**
@@ -72,9 +77,12 @@ export type TripHistoryParams = {
 
 // --- dispatch board -------------------------------------------------------
 
-export function listVehicles(cityUuid?: UUID | null): Promise<VehicleSummary[]> {
+export function listVehicles(
+  cityUuid?: UUID | null,
+  includeArchived = false,
+): Promise<VehicleSummary[]> {
   return request<VehicleSummary[]>('/admin/vehicles', {
-    query: { city_uuid: cityUuid ?? undefined },
+    query: { city_uuid: cityUuid ?? undefined, include_archived: includeArchived || undefined },
   });
 }
 
@@ -108,12 +116,12 @@ export function forceCancelTrip(tripUuid: UUID, reason?: string): Promise<void> 
   });
 }
 
-export function getKpis(): Promise<KPIs> {
-  return request<KPIs>('/admin/kpis');
+export function getKpis(cityUuid?: UUID | null): Promise<KPIs> {
+  return request<KPIs>('/admin/kpis', { query: { city_uuid: cityUuid ?? undefined } });
 }
 
-export function getAlerts(): Promise<Alerts> {
-  return request<Alerts>('/admin/alerts');
+export function getAlerts(cityUuid?: UUID | null): Promise<Alerts> {
+  return request<Alerts>('/admin/alerts', { query: { city_uuid: cityUuid ?? undefined } });
 }
 
 // --- customers ------------------------------------------------------------
@@ -315,6 +323,27 @@ export function updateVehicleType(
 // --- usage plans (each tenant prices its own) --------------------------------
 
 /** By name. The list leaves `driver_count` empty; `getUsagePlan` has it. */
+/** Staff accounts: a tenant admin sees its empresa, a Super Admin every empresa. */
+export function listStaffUsers(): Promise<StaffUser[]> {
+  return request<StaffUser[]>('/admin/staff-users');
+}
+
+/** Change a staff account's role, switch, or cities. */
+export function updateStaffUser(
+  userUuid: UUID,
+  payload: UpdateStaffUserPayload,
+): Promise<StaffUser> {
+  return request<StaffUser>(`/admin/staff-users/${seg(userUuid)}`, {
+    method: 'PATCH',
+    json: payload,
+  });
+}
+
+/** Create a staff account with its cities; the person then sets the password by email. */
+export function createStaffUser(payload: CreateStaffUserPayload): Promise<StaffUser> {
+  return request<StaffUser>('/admin/staff-users', { method: 'POST', json: payload });
+}
+
 export function listUsagePlans(activeOnly = false): Promise<UsagePlan[]> {
   return request<UsagePlan[]>('/admin/usage-plans', {
     query: { active_only: activeOnly || undefined },
@@ -353,6 +382,14 @@ export function listTenants(params: PaginationParams = {}): Promise<Paginated<Te
 
 export function getTenant(tenantId: UUID): Promise<Tenant> {
   return request<Tenant>(`/admin/tenants/${seg(tenantId)}`);
+}
+
+/** Superadmin: name the main business, or take the name away (`false`). */
+export function setMainBusiness(tenantId: UUID, isMain: boolean): Promise<Tenant> {
+  return request<Tenant>(`/admin/tenants/${seg(tenantId)}/main-business`, {
+    method: 'PUT',
+    json: { is_main: isMain },
+  });
 }
 
 export function createTenant(payload: CreateTenantPayload): Promise<Tenant> {
@@ -469,7 +506,9 @@ export function deleteWhatsAppConfig(): Promise<void> {
 
 // --- platform operations ------------------------------------------------------
 
-export function getUsage(params: { since?: string; until?: string } = {}): Promise<TenantUsage[]> {
+export function getUsage(
+  params: { since?: string; until?: string; city_uuid?: string } = {},
+): Promise<TenantUsage[]> {
   return request<TenantUsage[]>('/admin/usage', { query: { ...params } });
 }
 
@@ -477,8 +516,10 @@ export function listAuditLogs(params: AuditLogParams = {}): Promise<Paginated<Au
   return request<Paginated<AuditEntry>>('/admin/audit-logs', { query: { ...params } });
 }
 
-export function getKpisByTenant(hours?: number): Promise<TripKpiGroup[]> {
-  return request<TripKpiGroup[]>('/admin/kpis/by-tenant', { query: { hours } });
+export function getKpisByTenant(hours?: number, cityUuid?: UUID | null): Promise<TripKpiGroup[]> {
+  return request<TripKpiGroup[]>('/admin/kpis/by-tenant', {
+    query: { hours, city_uuid: cityUuid ?? undefined },
+  });
 }
 
 export function getKpisByVehicleType(hours?: number): Promise<TripKpiGroup[]> {
@@ -516,9 +557,47 @@ export function savePlatformNumber(payload: SavePlatformNumberPayload): Promise<
   return request<RoutingNumber>(`${ROUTING}/platform-numbers`, { method: 'PUT', json: payload });
 }
 
+/** Payload for a new number of the acting company: its MAIN, or a spare (no city yet). */
+export type CreateNumberPayload = SaveNumberPayload & { role: RoutingRole };
+
+/** Edit a number's ids; the token is replaced only when one is sent. */
+export function updateRoutingNumber(
+  numberUuid: UUID,
+  payload: UpdateNumberPayload,
+): Promise<RoutingNumber> {
+  return request<RoutingNumber>(`${ROUTING}/numbers/${seg(numberUuid)}`, {
+    method: 'PATCH',
+    json: payload,
+  });
+}
+
+/** Add a WABA to the company. A spare is assigned to a city later. */
+export function createRoutingNumber(payload: CreateNumberPayload): Promise<RoutingNumber> {
+  return request<RoutingNumber>(`${ROUTING}/numbers`, { method: 'POST', json: payload });
+}
+
+/** Put one of the company's numbers on a city; `null` makes it spare. The city's previous number steps down. */
+export function assignNumberCity(numberUuid: UUID, cityUuid: UUID | null): Promise<RoutingNumber> {
+  return request<RoutingNumber>(`${ROUTING}/numbers/${seg(numberUuid)}/city`, {
+    method: 'PUT',
+    json: { city_uuid: cityUuid },
+  });
+}
+
 /** Remove a number. Its city falls back to the MAIN number or the platform. */
 export function deleteRoutingNumber(numberUuid: UUID): Promise<void> {
   return request<void>(`${ROUTING}/numbers/${seg(numberUuid)}`, { method: 'DELETE' });
+}
+
+/**
+ * Switch a number on or off. The stored token is not touched, so no token is
+ * needed. 409 when another number in the same slot is already active.
+ */
+export function setNumberActive(numberUuid: UUID, isActive: boolean): Promise<RoutingNumber> {
+  return request<RoutingNumber>(`${ROUTING}/numbers/${seg(numberUuid)}/active`, {
+    method: 'PATCH',
+    json: { is_active: isActive },
+  });
 }
 
 /** Each city the acted-as tenant operates, with its number, delegation and serving route. */

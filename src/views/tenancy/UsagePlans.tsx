@@ -9,6 +9,8 @@ import {
   updateUsagePlan,
 } from '@/api/admin';
 import { queryKeys } from '@/api/queries';
+import { useAuth } from '@/auth/context';
+import { useTenantList } from '@/lib/useTenantList';
 import type { UsagePlan } from '@/api/types';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { DataTable, type Column } from '@/components/DataTable';
@@ -19,6 +21,7 @@ import { ToneBadge } from '@/components/StatusBadge';
 import { parseCredit } from '@/lib/dirty';
 import { errorText } from '@/lib/errors';
 import { strings } from '@/lib/strings';
+import { useIsMainBusiness } from '@/lib/useActingTenant';
 import { useUsagePlans } from '@/lib/useUsagePlans';
 import { formatCredit } from '@/lib/usageCredit';
 
@@ -62,6 +65,9 @@ function PlanForm({
   const [price, setPrice] = useState(plan ? String(plan.daily_credit) : (draft?.price ?? ''));
   const [rental, setRental] = useState(plan?.includes_vehicle_rental ?? draft?.rental ?? false);
   const [description, setDescription] = useState(plan?.description ?? '');
+  // Only the main business may offer a plan to every empresa; set once, at creation.
+  const mainBusiness = useIsMainBusiness();
+  const [shared, setShared] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [problems, setProblems] = useState<Partial<Record<'name' | 'price' | 'confirm', string>>>(
     {},
@@ -91,6 +97,7 @@ function PlanForm({
           daily_credit: amount!,
           includes_vehicle_rental: rental,
           ...(text && { description: text }),
+          ...(mainBusiness && shared && { is_shared: true }),
         });
       }
       return updateUsagePlan(plan.usage_plan_uuid, {
@@ -141,6 +148,19 @@ function PlanForm({
           <p className="text-xs text-slate-500">{t.rentalHint}</p>
         </div>
         <Field label={t.description} value={description} onChange={setDescription} />
+        {!editing && mainBusiness && (
+          <div className="space-y-1">
+            <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+              <input
+                type="checkbox"
+                checked={shared}
+                onChange={(e) => setShared(e.target.checked)}
+              />
+              {t.sharedLabel}
+            </label>
+            <p className="text-xs text-slate-500">{t.sharedHint}</p>
+          </div>
+        )}
 
         {impact === 'reprice' && (
           <p
@@ -199,12 +219,22 @@ function PlanForm({
 
 export default function UsagePlans() {
   const queryClient = useQueryClient();
+  const { user, actingAsTenant } = useAuth();
+  // Without an empresa picked, a Super Admin sees every empresa's plans and can
+  // edit them, but creates none: a new plan belongs to one empresa.
+  const platformWide = user?.role === 'SUPERADMIN' && actingAsTenant === null;
+  const tenants = useTenantList(platformWide);
+  const ownerName = (id: string | null) =>
+    id === null
+      ? t.ownerPlatform
+      : (tenants.data?.items.find((x) => x.tenant_id === id)?.name ?? id);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [deleting, setDeleting] = useState<UsagePlan | null>(null);
   const plans = useUsagePlans();
   // The list carries no counts, so tally them from the drivers; the server
   // still refuses to delete a plan that has any.
   const drivers = useQuery({ queryKey: ['drivers', 'all', 'all'], queryFn: () => listDrivers() });
+  // Only the owner's drivers are listed here, so a shared plan's count is not shown.
   const countOf = (plan: UsagePlan) =>
     (drivers.data ?? []).filter((d) => d.usage_plan_uuid === plan.usage_plan_uuid).length;
 
@@ -226,11 +256,27 @@ export default function UsagePlans() {
   if (plans.isError) return <ErrorState error={plans.error} onRetry={() => void plans.refetch()} />;
 
   const columns: Column<UsagePlan>[] = [
+    ...(platformWide
+      ? [
+          {
+            id: 'owner',
+            header: t.owner,
+            sortValue: (x: UsagePlan) => ownerName(x.tenant_uuid),
+            cell: (x: UsagePlan) => ownerName(x.tenant_uuid),
+          },
+        ]
+      : []),
     {
       id: 'name',
       header: t.name,
       sortValue: (x) => x.name,
-      cell: (x) => <span className="font-medium text-slate-900">{x.name}</span>,
+      cell: (x) => (
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="font-medium text-slate-900">{x.name}</span>
+          {x.is_shared && <ToneBadge tone="neutral">{t.sharedBadge}</ToneBadge>}
+          {!x.is_owner && <span className="text-xs text-slate-500">{t.readOnlyPlan}</span>}
+        </span>
+      ),
     },
     {
       id: 'price',
@@ -250,7 +296,7 @@ export default function UsagePlans() {
       header: t.drivers,
       align: 'right',
       sortValue: countOf,
-      cell: (x) => countOf(x),
+      cell: (x) => (x.is_owner ? countOf(x) : '—'),
     },
     {
       id: 'status',
@@ -266,26 +312,31 @@ export default function UsagePlans() {
       id: 'actions',
       header: '',
       align: 'right',
-      cell: (x) => (
-        <div className="flex justify-end gap-3 text-sm">
-          <button type="button" className="underline" onClick={() => setDialog({ plan: x })}>
-            {strings.common.edit}
-          </button>
-          <button
-            type="button"
-            className="underline"
-            disabled={toggle.isPending}
-            onClick={() => toggle.mutate(x)}
-          >
-            {x.is_active ? t.archive : t.restore}
-          </button>
-          {drivers.isSuccess && countOf(x) === 0 && (
-            <button type="button" className="text-red-700 underline" onClick={() => setDeleting(x)}>
-              {t.delete}
+      cell: (x) =>
+        x.is_owner ? (
+          <div className="flex justify-end gap-3 text-sm">
+            <button type="button" className="underline" onClick={() => setDialog({ plan: x })}>
+              {strings.common.edit}
             </button>
-          )}
-        </div>
-      ),
+            <button
+              type="button"
+              className="underline"
+              disabled={toggle.isPending}
+              onClick={() => toggle.mutate(x)}
+            >
+              {x.is_active ? t.archive : t.restore}
+            </button>
+            {drivers.isSuccess && countOf(x) === 0 && (
+              <button
+                type="button"
+                className="text-red-700 underline"
+                onClick={() => setDeleting(x)}
+              >
+                {t.delete}
+              </button>
+            )}
+          </div>
+        ) : null,
     },
   ];
 
@@ -293,16 +344,21 @@ export default function UsagePlans() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl font-semibold text-slate-900">{t.heading}</h1>
-        <button
-          type="button"
-          onClick={() => setDialog({ plan: null })}
-          className="rounded bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
-        >
-          {t.newPlan}
-        </button>
+        {!platformWide && (
+          <button
+            type="button"
+            onClick={() => setDialog({ plan: null })}
+            className="rounded bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+          >
+            {t.newPlan}
+          </button>
+        )}
       </div>
-      <p className="text-sm text-slate-600">{t.intro}</p>
+      <p className="text-sm text-slate-600">{platformWide ? t.platformIntro : t.intro}</p>
       <p className="text-xs text-slate-500">{t.archiveHint}</p>
+      {plans.data.some((p) => !p.is_owner) && (
+        <p className="text-xs text-slate-500">{t.readOnlyHint}</p>
+      )}
       {toggle.error != null && (
         <p
           role="alert"

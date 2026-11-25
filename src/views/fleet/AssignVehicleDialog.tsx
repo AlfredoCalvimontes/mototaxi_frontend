@@ -6,6 +6,7 @@ import { queryKeys } from '@/api/queries';
 import type { Driver } from '@/api/types';
 import { FormDialog } from '@/components/Field';
 import { errorText } from '@/lib/errors';
+import { matchesText } from '@/lib/filters';
 import { vehicleLabel } from '@/lib/format';
 import { strings } from '@/lib/strings';
 
@@ -15,6 +16,7 @@ const DETACH = '';
 export function AssignVehicleDialog({ driver, onClose }: { driver: Driver; onClose: () => void }) {
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState(driver.current_vehicle_uuid ?? DETACH);
+  const [query, setQuery] = useState('');
 
   const vehicles = useQuery({
     queryKey: queryKeys.vehiclesIn(null),
@@ -40,8 +42,14 @@ export function AssignVehicleDialog({ driver, onClose }: { driver: Driver; onClo
 
   // A vehicle already driven by someone else would be refused with a 409, so
   // it is not offered in the first place.
-  const available = (vehicles.data ?? []).filter(
+  const free = (vehicles.data ?? []).filter(
     (unit) => unit.current_driver_uuid === null || unit.current_driver_uuid === driver.driver_uuid,
+  );
+  // The search narrows the list but never drops the current choice.
+  const available = free.filter(
+    (unit) =>
+      unit.vehicle_uuid === selected ||
+      matchesText([unit.alias, unit.plate_number, vehicleLabel(unit)], query),
   );
 
   return (
@@ -51,6 +59,14 @@ export function AssignVehicleDialog({ driver, onClose }: { driver: Driver; onClo
           <label htmlFor="vehicle" className="block text-sm font-medium text-slate-700">
             {strings.drivers.vehicle}
           </label>
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={strings.filters.vehicleSearch}
+            aria-label={strings.filters.vehicleSearch}
+            className="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+          />
           <select
             id="vehicle"
             value={selected}
@@ -65,6 +81,11 @@ export function AssignVehicleDialog({ driver, onClose }: { driver: Driver; onClo
               </option>
             ))}
           </select>
+          {query.trim() !== '' && (
+            <p className="text-xs text-slate-500">
+              {strings.filters.results(available.length, free.length)}
+            </p>
+          )}
         </div>
 
         {driver.status === 'IN_TRIP' && (

@@ -21,7 +21,7 @@ const SCOPED_ROLES = ['CITY_ADMIN', 'OPERATOR'];
  * so a tenant admin pastes a user ID instead of picking from a list.
  */
 export default function CityAccessManager() {
-  const { tenantId, cityId } = useParams<{ tenantId: string; cityId: string }>();
+  const { tenantId: tenantFromPath, cityId } = useParams<{ tenantId?: string; cityId: string }>();
   const { user } = useAuth();
   const isSuper = user?.role === 'SUPERADMIN';
   const queryClient = useQueryClient();
@@ -29,6 +29,11 @@ export default function CityAccessManager() {
   const [revoking, setRevoking] = useState<string | null>(null);
 
   const city = useQuery({ queryKey: ['city', cityId], queryFn: () => getCity(cityId!) });
+  // Platform path has no empresa in the URL: the city says whose access list this is.
+  const tenantId = tenantFromPath ?? city.data?.tenant_id;
+  const backHref = tenantFromPath
+    ? `/tenants/${tenantFromPath}/cities/${cityId}`
+    : `/cities/${cityId}`;
   const grants = useQuery({
     queryKey: ['city-access', cityId],
     queryFn: () => listCityAccess(cityId!),
@@ -57,6 +62,7 @@ export default function CityAccessManager() {
   });
 
   if (grants.isPending || city.isPending) return <TableSkeleton rows={3} />;
+  if (!tenantId) return null;
   if (grants.isError)
     return <ErrorState error={grants.error} onRetry={() => void grants.refetch()} />;
 
@@ -76,51 +82,59 @@ export default function CityAccessManager() {
   }
 
   return (
-    <div className="max-w-2xl space-y-4">
+    <div className="max-w-3xl space-y-6">
+      <Link to={backHref} className="text-sm font-medium text-slate-600 hover:text-slate-900">
+        ← {city.data?.name ?? t.backToCities}
+      </Link>
       <div className="space-y-1">
         <h1 className="text-xl font-semibold text-slate-900">{t.cityAccessHeading}</h1>
-        {city.data && <p className="text-sm text-slate-600">{city.data.name}</p>}
-        <Link
-          to={`/tenants/${tenantId}/cities/${cityId}`}
-          className="text-sm font-medium text-slate-600 hover:text-slate-900"
-        >
-          ← {t.backToCities}
-        </Link>
+        {city.data && <p className="text-sm text-slate-500">{city.data.name}</p>}
       </div>
 
-      {grants.data.length === 0 ? (
-        <p className="text-sm text-slate-500">{t.cityAccessNoGrants}</p>
-      ) : (
-        <table className="w-full text-sm">
-          <caption className="sr-only">{t.cityAccessHeading}</caption>
-          <thead>
-            <tr className="text-left text-slate-500">
-              <th className="py-1 font-medium">{t.cityAccessUser}</th>
-              <th className="py-1 font-medium">{t.cityAccessGrantedSince}</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {grants.data.map((g) => (
-              <tr key={g.user_city_access_id} className="border-t border-slate-100">
-                <td className="py-2">{labelFor(g.user_id)}</td>
-                <td className="py-2">{formatDateTime(g.created_at)}</td>
-                <td className="py-2 text-right">
-                  <button
-                    type="button"
-                    onClick={() => setRevoking(g.user_id)}
-                    className="text-red-700 underline"
-                  >
-                    {t.cityAccessRevoke}
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      <section
+        aria-label={t.cityAccessHeading}
+        className="rounded-lg border border-slate-200 bg-white shadow-sm"
+      >
+        {grants.data.length === 0 ? (
+          <p className="p-5 text-sm text-slate-500">{t.cityAccessNoGrants}</p>
+        ) : (
+          <div className="px-5 py-2">
+            <table className="w-full text-sm">
+              <caption className="sr-only">{t.cityAccessHeading}</caption>
+              <thead>
+                <tr className="text-left text-slate-500">
+                  <th className="py-1 font-medium">{t.cityAccessUser}</th>
+                  <th className="py-1 font-medium">{t.cityAccessGrantedSince}</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {grants.data.map((g) => (
+                  <tr key={g.user_city_access_id} className="border-t border-slate-100">
+                    <td className="py-2">{labelFor(g.user_id)}</td>
+                    <td className="py-2">{formatDateTime(g.created_at)}</td>
+                    <td className="py-2 text-right">
+                      <button
+                        type="button"
+                        onClick={() => setRevoking(g.user_id)}
+                        className="text-red-700 underline"
+                      >
+                        {t.cityAccessRevoke}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
-      <form onSubmit={submit} className="space-y-3 rounded border border-slate-200 p-3">
+      <form
+        onSubmit={submit}
+        className="space-y-3 rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
+      >
+        <h2 className="text-sm font-semibold text-slate-900">{t.cityAccessGrant}</h2>
         {isSuper ? (
           <SelectField
             label={t.cityAccessSelectUser}
