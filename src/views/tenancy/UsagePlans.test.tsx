@@ -173,3 +173,72 @@ describe('planes de uso', () => {
     expect(dialog.getByRole('checkbox', { name: /alquiler/i })).toBeChecked();
   });
 });
+
+describe('planes sin empresa elegida', () => {
+  test('el Super Admin debe elegir una empresa antes de ver planes', async () => {
+    server.use(http.get(`${BASE}/users/me`, () => HttpResponse.json(fx.superadminProfile)));
+    renderApp(<UsagePlans />, { route: '/planes' });
+
+    expect(await screen.findByText(/Elige una empresa/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Nuevo plan' })).not.toBeInTheDocument();
+  });
+});
+
+describe('planes compartidos', () => {
+  function asBusiness(isMain: boolean) {
+    server.use(
+      http.get(`${BASE}/admin/tenants/:id`, () =>
+        HttpResponse.json({ ...fx.tenant, is_default: isMain }),
+      ),
+    );
+  }
+
+  test('la empresa principal comparte un plan nuevo con todas', async () => {
+    asBusiness(true);
+    const bodies = capture('post', '/admin/usage-plans', fx.rentalPlan);
+    const { user } = renderApp(<UsagePlans />);
+    await screen.findByRole('table');
+
+    await user.click(screen.getByRole('button', { name: 'Nuevo plan' }));
+    const dialog = within(screen.getByRole('dialog'));
+    await user.type(dialog.getByLabelText(/Nombre/), 'Global');
+    await user.type(dialog.getByLabelText(/Crédito por día/), '60');
+    await user.click(dialog.getByLabelText(/Compartido con todas las empresas/));
+    await user.click(dialog.getByRole('button', { name: 'Guardar' }));
+
+    await waitFor(() =>
+      expect(bodies).toEqual([
+        { name: 'Global', daily_credit: 60, includes_vehicle_rental: false, is_shared: true },
+      ]),
+    );
+  });
+
+  test('otra empresa no ve la casilla de compartir', async () => {
+    asBusiness(false);
+    const { user } = renderApp(<UsagePlans />);
+    await screen.findByRole('table');
+
+    await user.click(screen.getByRole('button', { name: 'Nuevo plan' }));
+
+    expect(screen.queryByLabelText(/Compartido con todas las empresas/)).not.toBeInTheDocument();
+  });
+
+  test('un plan de otra empresa se ve pero no se edita', async () => {
+    asBusiness(false);
+    server.use(
+      http.get(`${BASE}/admin/usage-plans`, () =>
+        HttpResponse.json([
+          { ...fx.rentalPlan, name: 'Principal', is_shared: true, is_owner: false },
+        ]),
+      ),
+    );
+    renderApp(<UsagePlans />);
+
+    const row = await rowFor('Principal');
+
+    expect(row.getByText('Global')).toBeInTheDocument();
+    expect(row.getByText('De otra empresa')).toBeInTheDocument();
+    expect(row.queryByRole('button', { name: 'Editar' })).not.toBeInTheDocument();
+    expect(row.queryByRole('button', { name: 'Archivar' })).not.toBeInTheDocument();
+  });
+});

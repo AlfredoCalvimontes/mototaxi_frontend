@@ -1,48 +1,124 @@
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { getKpisByTenant, getUsage, listAuditLogs } from '@/api/admin';
 import type { AuditEntry, TenantUsage, TripKpiGroup } from '@/api/types';
+import { useAuth } from '@/auth/context';
 import { DataTable, type Column } from '@/components/DataTable';
 import { ErrorState } from '@/components/ErrorState';
 import { Field, SelectField } from '@/components/Field';
+import { FilterBar, SelectFilter } from '@/components/Filters';
 import { Pager } from '@/components/Pager';
 import { TableSkeleton } from '@/components/Skeleton';
 import { EMPTY, formatDateTime, formatDuration, formatRating } from '@/lib/format';
 import { strings } from '@/lib/strings';
+import { useActingTenantName } from '@/lib/useActingTenantName';
+import { useCities } from '@/lib/useCities';
 import { useTenantList } from '@/lib/useTenantList';
 
 const t = strings.platform;
 
-function useTenantNames() {
-  const tenants = useTenantList(true);
-  const names = new Map((tenants.data?.items ?? []).map((x) => [x.tenant_id, x.name]));
-  return (id: string | null) => (id ? (names.get(id) ?? id) : EMPTY);
+/**
+ * Who the Platform view is about. A superadmin with no empresa picked sees every
+ * empresa and can filter by one; acting as an empresa, the view is that empresa's
+ * own numbers, so the empresa filter and the audit trail (platform-wide) are hidden.
+ */
+function usePlatformContext() {
+  const { user, actingAsTenant } = useAuth();
+  const platformWide = user?.role === 'SUPERADMIN' && !actingAsTenant;
+  // Empresas list is superadmin-only; it is only needed for names and the empresa filter.
+  const tenants = useTenantList(platformWide);
+  const names = useMemo(
+    () => new Map((tenants.data?.items ?? []).map((x) => [x.tenant_id, x.name])),
+    [tenants.data],
+  );
+  // Acting as an empresa, the list is not loaded: its own name is the only one shown.
+  const ownName = useActingTenantName();
+  const nameOf = (id: string | null) => {
+    if (!id) return EMPTY;
+    if (!platformWide && id === actingAsTenant) return ownName ?? EMPTY;
+    return names.get(id) ?? (platformWide ? id : EMPTY);
+  };
+  const { cities } = useCities();
+  return { platformWide, tenants: tenants.data?.items ?? [], nameOf, cities };
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+/** One section's own filters. Each section has its own, so they never fight. */
+type Scope = { tenant: string; city: string };
+
+function ScopeFilters({
+  scope,
+  onScope,
+  platformWide,
+  tenants,
+  cities,
+}: {
+  scope: Scope;
+  onScope: (next: Scope) => void;
+  platformWide: boolean;
+  tenants: { tenant_id: string; name: string }[];
+  cities: { city_id: string; name: string; tenant_id: string }[];
+}) {
+  const cityOptions = cities
+    .filter((c) => !scope.tenant || c.tenant_id === scope.tenant)
+    .map((c) => ({ value: c.city_id, label: c.name }));
   return (
-    <section className="space-y-3">
-      <h2 className="text-base font-semibold text-slate-900">{title}</h2>
+    <>
+      {platformWide && (
+        <SelectFilter
+          label={strings.filters.tenant}
+          value={scope.tenant}
+          // A city of another empresa stops applying once the empresa changes.
+          onChange={(tenant) => onScope({ tenant, city: '' })}
+          allLabel={t.allTenants}
+          options={tenants.map((x) => ({ value: x.tenant_id, label: x.name }))}
+        />
+      )}
+      <SelectFilter
+        label={strings.filters.city}
+        value={scope.city}
+        onChange={(city) => onScope({ ...scope, city })}
+        allLabel={strings.filters.allCities}
+        options={cityOptions}
+      />
+    </>
+  );
+}
+
+function Section({
+  title,
+  children,
+  id,
+}: {
+  title: string;
+  children: React.ReactNode;
+  id: string;
+}) {
+  return (
+    <section aria-labelledby={id} className="space-y-3">
+      <h2 id={id} className="text-base font-semibold text-slate-900">
+        {title}
+      </h2>
       {children}
     </section>
   );
 }
 
-function KpiByTenant() {
-  const nameOf = useTenantNames();
+function KpiByTenant({ ctx }: { ctx: ReturnType<typeof usePlatformContext> }) {
   const [hours, setHours] = useState('24');
+  const [scope, setScope] = useState<Scope>({ tenant: '', city: '' });
   const kpis = useQuery({
-    queryKey: ['kpis', 'by-tenant', hours],
-    queryFn: () => getKpisByTenant(Number(hours)),
+    queryKey: ['kpis', 'by-tenant', hours, scope.city],
+    queryFn: () => getKpisByTenant(Number(hours), scope.city || null),
   });
+  const rows = (kpis.data ?? []).filter((g) => !scope.tenant || g.group_uuid === scope.tenant);
 
   const columns: Column<TripKpiGroup>[] = [
     {
       id: 'tenant',
       header: t.tenant,
-      sortValue: (g) => nameOf(g.group_uuid),
-      cell: (g) => <span className="font-medium text-slate-900">{nameOf(g.group_uuid)}</span>,
+      sortValue: (g) => ctx.nameOf(g.group_uuid),
+      cell: (g) => <span className="font-medium text-slate-900">{ctx.nameOf(g.group_uuid)}</span>,
     },
     {
       id: 'trips',
@@ -83,22 +159,37 @@ function KpiByTenant() {
   ];
 
   return (
-    <Section title={t.kpiHeading}>
-      <div className="max-w-xs">
-        <SelectField
-          label={t.window}
-          value={hours}
-          onChange={setHours}
-          options={Object.entries(t.windowOptions).map(([value, label]) => ({ value, label }))}
+    <Section title={t.kpiHeading} id="platform-kpi-heading">
+      <FilterBar
+        active={!!(scope.tenant || scope.city) || hours !== '24'}
+        onClear={() => {
+          setScope({ tenant: '', city: '' });
+          setHours('24');
+        }}
+      >
+        <ScopeFilters
+          scope={scope}
+          onScope={setScope}
+          platformWide={ctx.platformWide}
+          tenants={ctx.tenants}
+          cities={ctx.cities}
         />
-      </div>
+        <div className="w-52">
+          <SelectField
+            label={t.window}
+            value={hours}
+            onChange={setHours}
+            options={Object.entries(t.windowOptions).map(([value, label]) => ({ value, label }))}
+          />
+        </div>
+      </FilterBar>
       {kpis.isPending ? (
         <TableSkeleton rows={3} />
       ) : kpis.isError ? (
         <ErrorState error={kpis.error} onRetry={() => void kpis.refetch()} />
       ) : (
         <DataTable
-          rows={kpis.data}
+          rows={rows}
           columns={columns}
           rowKey={(g) => g.group_uuid ?? 'none'}
           caption={t.kpiHeading}
@@ -110,26 +201,26 @@ function KpiByTenant() {
   );
 }
 
-/** `YYYY-MM-DD` from a date input to the start/end of that day in UTC. */
-function dayBound(date: string, end: boolean): string | undefined {
-  return date ? `${date}T${end ? '23:59:59' : '00:00:00'}Z` : undefined;
-}
-
-function Usage() {
-  const nameOf = useTenantNames();
-  const [since, setSince] = useState('');
-  const [until, setUntil] = useState('');
+function Usage({ ctx }: { ctx: ReturnType<typeof usePlatformContext> }) {
+  const [hours, setHours] = useState('720');
+  const [scope, setScope] = useState<Scope>({ tenant: '', city: '' });
   const usage = useQuery({
-    queryKey: ['usage', since, until],
-    queryFn: () => getUsage({ since: dayBound(since, false), until: dayBound(until, true) }),
+    queryKey: ['usage', hours, scope.city],
+    queryFn: () =>
+      getUsage({
+        // The window ends now and starts `hours` earlier, like the trips table.
+        since: new Date(Date.now() - Number(hours) * 3_600_000).toISOString(),
+        city_uuid: scope.city || undefined,
+      }),
   });
+  const rows = (usage.data ?? []).filter((u) => !scope.tenant || u.tenant_uuid === scope.tenant);
 
   const columns: Column<TenantUsage>[] = [
     {
       id: 'tenant',
       header: t.tenant,
-      sortValue: (u) => nameOf(u.tenant_uuid),
-      cell: (u) => <span className="font-medium text-slate-900">{nameOf(u.tenant_uuid)}</span>,
+      sortValue: (u) => ctx.nameOf(u.tenant_uuid),
+      cell: (u) => <span className="font-medium text-slate-900">{ctx.nameOf(u.tenant_uuid)}</span>,
     },
     {
       id: 'drivers',
@@ -171,19 +262,38 @@ function Usage() {
   ];
 
   return (
-    <Section title={t.usageHeading}>
+    <Section title={t.usageHeading} id="platform-usage-heading">
       <p className="text-xs text-slate-500">{t.usageHint}</p>
-      <div className="grid max-w-md gap-3 sm:grid-cols-2">
-        <Field label={t.since} type="date" value={since} onChange={setSince} />
-        <Field label={t.until} type="date" value={until} onChange={setUntil} />
-      </div>
+      <FilterBar
+        active={!!(scope.tenant || scope.city) || hours !== '720'}
+        onClear={() => {
+          setScope({ tenant: '', city: '' });
+          setHours('720');
+        }}
+      >
+        <ScopeFilters
+          scope={scope}
+          onScope={setScope}
+          platformWide={ctx.platformWide}
+          tenants={ctx.tenants}
+          cities={ctx.cities}
+        />
+        <div className="w-52">
+          <SelectField
+            label={t.window}
+            value={hours}
+            onChange={setHours}
+            options={Object.entries(t.windowOptions).map(([value, label]) => ({ value, label }))}
+          />
+        </div>
+      </FilterBar>
       {usage.isPending ? (
         <TableSkeleton rows={3} />
       ) : usage.isError ? (
         <ErrorState error={usage.error} onRetry={() => void usage.refetch()} />
       ) : (
         <DataTable
-          rows={usage.data}
+          rows={rows}
           columns={columns}
           rowKey={(u) => u.tenant_uuid}
           caption={t.usageHeading}
@@ -207,9 +317,8 @@ function Json({ label, value }: { label: string; value: Record<string, unknown> 
   );
 }
 
-function AuditLog() {
-  const nameOf = useTenantNames();
-  const tenants = useTenantList(true);
+function AuditLog({ ctx }: { ctx: ReturnType<typeof usePlatformContext> }) {
+  const nameOf = ctx.nameOf;
   const [page, setPage] = useState(1);
   const [tenant, setTenant] = useState('');
   const [table, setTable] = useState('');
@@ -265,19 +374,17 @@ function AuditLog() {
   ];
 
   return (
-    <Section title={t.auditHeading}>
-      <div className="grid max-w-md gap-3 sm:grid-cols-2">
-        <SelectField
-          label={t.tenant}
+    <Section title={t.auditHeading} id="platform-audit-heading">
+      <div className="grid max-w-2xl gap-3 sm:grid-cols-2">
+        <SelectFilter
+          label={strings.filters.tenant}
           value={tenant}
           onChange={(value) => {
             setTenant(value);
             setPage(1);
           }}
-          options={[
-            { value: '', label: t.auditAllTenants },
-            ...(tenants.data?.items ?? []).map((x) => ({ value: x.tenant_id, label: x.name })),
-          ]}
+          allLabel={t.allTenants}
+          options={ctx.tenants.map((x) => ({ value: x.tenant_id, label: x.name }))}
         />
         <Field
           label={t.auditTable}
@@ -308,14 +415,16 @@ function AuditLog() {
   );
 }
 
-/** Superadmin operations: cross-tenant numbers, usage and the audit trail. Tables, no charts. */
+/** Superadmin view: trips and usage per empresa and per city, and the audit trail. */
 export default function Platform() {
+  const ctx = usePlatformContext();
   return (
     <div className="space-y-8">
       <h1 className="text-xl font-semibold text-slate-900">{t.heading}</h1>
-      <KpiByTenant />
-      <Usage />
-      <AuditLog />
+      {/* Cross-empresa figures: a business acting as itself sees only its own usage below. */}
+      {ctx.platformWide && <KpiByTenant ctx={ctx} />}
+      <Usage ctx={ctx} />
+      {ctx.platformWide && <AuditLog ctx={ctx} />}
     </div>
   );
 }

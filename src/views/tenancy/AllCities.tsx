@@ -7,6 +7,7 @@ import type { City } from '@/api/types';
 import { DataTable, type Column } from '@/components/DataTable';
 import { ErrorState } from '@/components/ErrorState';
 import { Field, SelectField } from '@/components/Field';
+import { NewCityDialog } from '@/views/tenancy/NewCityDialog';
 import { Pager } from '@/components/Pager';
 import { TableSkeleton } from '@/components/Skeleton';
 import { useTenantList } from '@/lib/useTenantList';
@@ -21,6 +22,7 @@ export default function AllCities() {
   const [status, setStatus] = useState('');
   const [search, setSearch] = useState('');
   const tenants = useTenantList(true);
+  const [creating, setCreating] = useState(false);
 
   const cities = useQuery({
     queryKey: ['cities', 'all', page, tenant, status, search],
@@ -70,7 +72,7 @@ export default function AllCities() {
       header: '',
       cell: (x) => (
         <Link
-          to={`/tenants/${x.tenant_id}/cities/${x.city_id}`}
+          to={`/cities/${x.city_id}`}
           className="rounded border border-slate-300 px-2 py-1 text-xs font-medium whitespace-nowrap text-slate-700 hover:bg-slate-50"
         >
           {t.allCitiesOpen}
@@ -81,7 +83,19 @@ export default function AllCities() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold text-slate-900">{t.allCitiesHeading}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-xl font-semibold text-slate-900">{t.allCitiesHeading}</h1>
+        <button
+          type="button"
+          onClick={() => setCreating(true)}
+          className="rounded bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+        >
+          {t.newCity}
+        </button>
+      </div>
+      {creating && (
+        <NewCityDialog tenants={tenants.data?.items ?? []} onClose={() => setCreating(false)} />
+      )}
       <div className="grid gap-3 sm:grid-cols-3">
         <SelectField
           label={t.allCitiesTenant}

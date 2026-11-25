@@ -318,3 +318,37 @@ describe('accesos a la ciudad', () => {
     await waitFor(() => expect(calls).toEqual([fx.cityGrant.user_id]));
   });
 });
+
+describe('empresa principal', () => {
+  test('el superadmin la nombra desde la ficha de la empresa', async () => {
+    asUser(fx.superadminProfile);
+    const bodies = capture('put', '/admin/tenants/:id/main-business', {
+      ...fx.tenant,
+      is_default: true,
+    });
+    const { user } = renderApp(
+      <Routes>
+        <Route path="/tenants/:tenantId" element={<TenantDetail />} />
+      </Routes>,
+      { route: `/tenants/${fx.tenant.tenant_id}` },
+    );
+
+    await user.click(await screen.findByRole('button', { name: 'Hacer principal' }));
+
+    await waitFor(() => expect(bodies).toEqual([{ is_main: true }]));
+  });
+
+  test('una empresa que no es la principal no ve el control', async () => {
+    asUser(fx.adminProfile);
+    renderApp(
+      <Routes>
+        <Route path="/tenants/:tenantId" element={<TenantDetail />} />
+      </Routes>,
+      { route: `/tenants/${fx.tenant.tenant_id}` },
+    );
+
+    await screen.findByLabelText(/Nombre/);
+
+    expect(screen.queryByRole('button', { name: 'Hacer principal' })).not.toBeInTheDocument();
+  });
+});

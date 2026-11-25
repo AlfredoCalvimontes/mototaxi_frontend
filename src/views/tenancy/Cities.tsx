@@ -1,84 +1,19 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState, type FormEvent } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
-import { createCity, listCities } from '@/api/admin';
+import { listCities } from '@/api/admin';
 import type { City } from '@/api/types';
 import { useAuth } from '@/auth/context';
 import { ADMIN } from '@/auth/roles';
 import { DataTable, type Column } from '@/components/DataTable';
 import { ErrorState } from '@/components/ErrorState';
-import { Field, FormDialog } from '@/components/Field';
+import { NewCityDialog } from '@/views/tenancy/NewCityDialog';
 import { Pager } from '@/components/Pager';
 import { TableSkeleton } from '@/components/Skeleton';
-import { errorText } from '@/lib/errors';
 import { strings } from '@/lib/strings';
 
 const t = strings.tenancy;
-
-function NewCityDialog({ tenantId, onClose }: { tenantId: string; onClose: () => void }) {
-  const queryClient = useQueryClient();
-  const [name, setName] = useState('');
-  const [timezone, setTimezone] = useState('America/La_Paz');
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const create = useMutation({
-    mutationFn: () => createCity(tenantId, { name: name.trim(), timezone: timezone.trim() }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['cities'] });
-      onClose();
-    },
-  });
-
-  function submit(event: FormEvent) {
-    event.preventDefault();
-    const next: Record<string, string> = {};
-    if (!name.trim()) next.name = strings.fleet.requiredField;
-    if (!timezone.trim()) next.timezone = strings.fleet.requiredField;
-    setErrors(next);
-    if (Object.keys(next).length === 0) create.mutate();
-  }
-
-  return (
-    <FormDialog title={t.newCity} onClose={onClose}>
-      <form onSubmit={submit} className="space-y-4" noValidate>
-        <Field label={t.cityName} value={name} onChange={setName} required error={errors.name} />
-        <Field
-          label={t.cityTimezone}
-          value={timezone}
-          onChange={setTimezone}
-          required
-          hint={t.cityTimezoneHint}
-          error={errors.timezone}
-        />
-        {create.error != null && (
-          <p
-            role="alert"
-            className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
-          >
-            {errorText(create.error)}
-          </p>
-        )}
-        <div className="flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            {strings.common.cancel}
-          </button>
-          <button
-            type="submit"
-            disabled={create.isPending}
-            className="rounded bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
-          >
-            {create.isPending ? strings.common.loading : strings.common.save}
-          </button>
-        </div>
-      </form>
-    </FormDialog>
-  );
-}
 
 export default function Cities() {
   const { tenantId } = useParams<{ tenantId: string }>();
