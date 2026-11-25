@@ -43,6 +43,7 @@ import type {
   RoutingRole,
   RuntimeSetting,
   SaveNumberPayload,
+  UpdateNumberPayload,
   SavePlatformNumberPayload,
   Serving,
   VehicleSummary,
@@ -54,6 +55,9 @@ import type {
   UpdateVehicleTypePayload,
   UsagePlan,
   VehicleType,
+  CreateStaffUserPayload,
+  StaffUser,
+  UpdateStaffUserPayload,
 } from '@/api/types';
 
 /**
@@ -319,6 +323,27 @@ export function updateVehicleType(
 // --- usage plans (each tenant prices its own) --------------------------------
 
 /** By name. The list leaves `driver_count` empty; `getUsagePlan` has it. */
+/** Staff accounts: a tenant admin sees its empresa, a Super Admin every empresa. */
+export function listStaffUsers(): Promise<StaffUser[]> {
+  return request<StaffUser[]>('/admin/staff-users');
+}
+
+/** Change a staff account's role, switch, or cities. */
+export function updateStaffUser(
+  userUuid: UUID,
+  payload: UpdateStaffUserPayload,
+): Promise<StaffUser> {
+  return request<StaffUser>(`/admin/staff-users/${seg(userUuid)}`, {
+    method: 'PATCH',
+    json: payload,
+  });
+}
+
+/** Create a staff account with its cities; the person then sets the password by email. */
+export function createStaffUser(payload: CreateStaffUserPayload): Promise<StaffUser> {
+  return request<StaffUser>('/admin/staff-users', { method: 'POST', json: payload });
+}
+
 export function listUsagePlans(activeOnly = false): Promise<UsagePlan[]> {
   return request<UsagePlan[]>('/admin/usage-plans', {
     query: { active_only: activeOnly || undefined },
@@ -534,6 +559,17 @@ export function savePlatformNumber(payload: SavePlatformNumberPayload): Promise<
 
 /** Payload for a new number of the acting company: its MAIN, or a spare (no city yet). */
 export type CreateNumberPayload = SaveNumberPayload & { role: RoutingRole };
+
+/** Edit a number's ids; the token is replaced only when one is sent. */
+export function updateRoutingNumber(
+  numberUuid: UUID,
+  payload: UpdateNumberPayload,
+): Promise<RoutingNumber> {
+  return request<RoutingNumber>(`${ROUTING}/numbers/${seg(numberUuid)}`, {
+    method: 'PATCH',
+    json: payload,
+  });
+}
 
 /** Add a WABA to the company. A spare is assigned to a city later. */
 export function createRoutingNumber(payload: CreateNumberPayload): Promise<RoutingNumber> {

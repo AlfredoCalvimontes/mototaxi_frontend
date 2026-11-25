@@ -187,6 +187,7 @@ export const freePlan: UsagePlan = {
   affected_drivers: null,
   is_shared: false,
   is_owner: true,
+  tenant_uuid: null,
 };
 
 export const rentalPlan: UsagePlan = {

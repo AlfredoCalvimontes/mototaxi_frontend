@@ -16,9 +16,10 @@ import { ErrorState } from '@/components/ErrorState';
 import { KpiCard } from '@/components/KpiCard';
 import { CardSkeleton } from '@/components/Skeleton';
 import { DataTable, type Column } from '@/components/DataTable';
-import type { TripKpiGroup } from '@/api/types';
+import type { TenantUsage, TripKpiGroup } from '@/api/types';
 import { EMPTY, formatDuration, formatRating } from '@/lib/format';
 import { useCityScope } from '@/lib/cityScope';
+import { useTenantList } from '@/lib/useTenantList';
 import { useCities } from '@/lib/useCities';
 import { simRechargeState } from '@/lib/sim';
 import { strings } from '@/lib/strings';
@@ -81,6 +82,81 @@ function ByVehicleType() {
   );
 }
 
+/** Every empresa's numbers for the last 30 days, shown when no empresa is picked. */
+function AllUsage() {
+  const usage = useQuery({ queryKey: ['usage', 'all'], queryFn: () => getUsage() });
+  const tenants = useTenantList(true);
+  const nameOf = (id: string) => tenants.data?.items.find((x) => x.tenant_id === id)?.name ?? id;
+
+  const t = strings.dashboard;
+  const columns: Column<TenantUsage>[] = [
+    {
+      id: 'tenant',
+      header: t.usageAllTenant,
+      sortValue: (u) => nameOf(u.tenant_uuid),
+      cell: (u) => <span className="font-medium text-slate-900">{nameOf(u.tenant_uuid)}</span>,
+    },
+    {
+      id: 'drivers',
+      header: t.usageDrivers,
+      align: 'right',
+      sortValue: (u) => u.active_drivers,
+      cell: (u) => u.active_drivers,
+    },
+    {
+      id: 'vehicles',
+      header: t.usageVehicles,
+      align: 'right',
+      sortValue: (u) => u.vehicles,
+      cell: (u) => u.vehicles,
+    },
+    {
+      id: 'trips',
+      header: t.usageTrips,
+      align: 'right',
+      sortValue: (u) => u.trips,
+      cell: (u) => u.trips,
+    },
+    {
+      id: 'in',
+      header: t.usageInbound,
+      align: 'right',
+      secondary: true,
+      sortValue: (u) => u.inbound_messages,
+      cell: (u) => u.inbound_messages,
+    },
+    {
+      id: 'out',
+      header: t.usageOutbound,
+      align: 'right',
+      secondary: true,
+      sortValue: (u) => u.outbound_messages,
+      cell: (u) => u.outbound_messages,
+    },
+  ];
+
+  return (
+    <section aria-label={t.usageAllHeading} className="space-y-2">
+      <h2 className="text-sm font-semibold text-slate-900">{t.usageAllHeading}</h2>
+      {usage.isPending ? (
+        <CardSkeleton />
+      ) : usage.isError ? (
+        <ErrorState error={usage.error} onRetry={() => void usage.refetch()} />
+      ) : (
+        <DataTable
+          rows={usage.data}
+          columns={columns}
+          rowKey={(u) => u.tenant_uuid}
+          caption={t.usageAllHeading}
+          emptyMessage={t.usageHint}
+          initialSort={{ columnId: 'trips', direction: 'desc' }}
+        />
+      )}
+      <p className="text-xs text-slate-500">{t.usageHint}</p>
+    </section>
+  );
+}
+
 /** The company's own numbers for the last 30 days; the server returns only its row. */
 function OwnUsage({ tenantId }: { tenantId: string }) {
   const usage = useQuery({ queryKey: ['usage', 'own', tenantId], queryFn: () => getUsage() });
@@ -107,6 +183,7 @@ export default function Dashboard() {
   const { user, actingAsTenant } = useAuth();
   const ownTenant = user?.tenant_id ?? actingAsTenant;
   const isAdmin = user?.role === 'SUPERADMIN' || user?.role === 'TENANT_ADMIN';
+  const isSuper = user?.role === 'SUPERADMIN';
   const cityScope = useCityScope();
   const { byId: cityById } = useCities();
   // The fleet endpoints are tenant-admin only until city scoping lands (P4): a
@@ -220,6 +297,7 @@ export default function Dashboard() {
       )}
       {isAdmin && <ByVehicleType />}
       {isAdmin && ownTenant && <OwnUsage tenantId={ownTenant} />}
+      {isSuper && !ownTenant && <AllUsage />}
     </div>
   );
 }

@@ -20,6 +20,7 @@ import Reports from '@/views/Reports';
 import WhatsApp from '@/views/tenancy/WhatsApp';
 import AllCities from '@/views/tenancy/AllCities';
 import Tenants from '@/views/tenancy/Tenants';
+import StaffUsers from '@/views/tenancy/StaffUsers';
 import UsagePlans from '@/views/tenancy/UsagePlans';
 import VehicleTypes from '@/views/tenancy/VehicleTypes';
 import Settings from '@/views/Settings';
@@ -62,6 +63,7 @@ export function AppRoutes() {
             <Route path="/configuracion" element={<Settings />} />
             <Route path="/vehiculos/tipos" element={<VehicleTypes />} />
             <Route path="/planes" element={<UsagePlans />} />
+            <Route path="/usuarios" element={<StaffUsers />} />
             <Route path="/whatsapp" element={<WhatsApp />} />
             {/* Routing and the company's numbers are one screen now. */}
             <Route path="/rutas-whatsapp" element={<Navigate to="/whatsapp" replace />} />

@@ -10,6 +10,7 @@ import {
 } from '@/api/admin';
 import { queryKeys } from '@/api/queries';
 import { useAuth } from '@/auth/context';
+import { useTenantList } from '@/lib/useTenantList';
 import type { UsagePlan } from '@/api/types';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { DataTable, type Column } from '@/components/DataTable';
@@ -219,6 +220,14 @@ function PlanForm({
 export default function UsagePlans() {
   const queryClient = useQueryClient();
   const { user, actingAsTenant } = useAuth();
+  // Without an empresa picked, a Super Admin sees every empresa's plans and can
+  // edit them, but creates none: a new plan belongs to one empresa.
+  const platformWide = user?.role === 'SUPERADMIN' && actingAsTenant === null;
+  const tenants = useTenantList(platformWide);
+  const ownerName = (id: string | null) =>
+    id === null
+      ? t.ownerPlatform
+      : (tenants.data?.items.find((x) => x.tenant_id === id)?.name ?? id);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [deleting, setDeleting] = useState<UsagePlan | null>(null);
   const plans = useUsagePlans();
@@ -243,20 +252,20 @@ export default function UsagePlans() {
     },
   });
 
-  // Plans are per empresa: without one picked, the Super Admin would see every
-  // empresa's plans mixed together and could not tell whose they are.
-  if (user?.role === 'SUPERADMIN' && actingAsTenant === null) {
-    return (
-      <div className="space-y-3">
-        <h1 className="text-xl font-semibold text-slate-900">{t.heading}</h1>
-        <p className="text-sm text-slate-500">{t.pickTenant}</p>
-      </div>
-    );
-  }
   if (plans.isPending) return <TableSkeleton rows={3} />;
   if (plans.isError) return <ErrorState error={plans.error} onRetry={() => void plans.refetch()} />;
 
   const columns: Column<UsagePlan>[] = [
+    ...(platformWide
+      ? [
+          {
+            id: 'owner',
+            header: t.owner,
+            sortValue: (x: UsagePlan) => ownerName(x.tenant_uuid),
+            cell: (x: UsagePlan) => ownerName(x.tenant_uuid),
+          },
+        ]
+      : []),
     {
       id: 'name',
       header: t.name,
@@ -335,15 +344,17 @@ export default function UsagePlans() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl font-semibold text-slate-900">{t.heading}</h1>
-        <button
-          type="button"
-          onClick={() => setDialog({ plan: null })}
-          className="rounded bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
-        >
-          {t.newPlan}
-        </button>
+        {!platformWide && (
+          <button
+            type="button"
+            onClick={() => setDialog({ plan: null })}
+            className="rounded bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+          >
+            {t.newPlan}
+          </button>
+        )}
       </div>
-      <p className="text-sm text-slate-600">{t.intro}</p>
+      <p className="text-sm text-slate-600">{platformWide ? t.platformIntro : t.intro}</p>
       <p className="text-xs text-slate-500">{t.archiveHint}</p>
       {plans.data.some((p) => !p.is_owner) && (
         <p className="text-xs text-slate-500">{t.readOnlyHint}</p>

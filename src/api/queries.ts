@@ -28,6 +28,7 @@ export const queryKeys = {
   vehicle: (uuid: UUID) => ['vehicle', uuid] as const,
   vehicleTypes: ['vehicle-types'] as const,
   usagePlans: ['usage-plans'] as const,
+  staffUsers: ['staff-users'] as const,
   usagePlan: (uuid: UUID) => ['usage-plans', uuid] as const,
   drivers: (status?: DriverStatus, city: UUID | null = null) =>
     ['drivers', status ?? 'all', city ?? 'all'] as const,

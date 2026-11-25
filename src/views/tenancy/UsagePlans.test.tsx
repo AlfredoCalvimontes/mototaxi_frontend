@@ -175,11 +175,12 @@ describe('planes de uso', () => {
 });
 
 describe('planes sin empresa elegida', () => {
-  test('el Super Admin debe elegir una empresa antes de ver planes', async () => {
+  test('el Super Admin ve los planes de todas las empresas, sin crear uno', async () => {
     server.use(http.get(`${BASE}/users/me`, () => HttpResponse.json(fx.superadminProfile)));
     renderApp(<UsagePlans />, { route: '/planes' });
 
-    expect(await screen.findByText(/Elige una empresa/)).toBeInTheDocument();
+    expect(await screen.findByText(fx.freePlan.name)).toBeInTheDocument();
+    expect(screen.getAllByText('Plataforma').length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: 'Nuevo plan' })).not.toBeInTheDocument();
   });
 });

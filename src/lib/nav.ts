@@ -26,6 +26,7 @@ export function navItemsFor(user: UserProfile | null, actingAsTenant: string | n
     items.push({ to: '/whatsapp', label: strings.nav.whatsapp, end: false });
     items.push({ to: '/vehiculos/tipos', label: strings.nav.vehicleTypes, end: false });
     items.push({ to: '/planes', label: strings.nav.usagePlans, end: false });
+    items.push({ to: '/usuarios', label: strings.nav.staffUsers, end: false });
   }
   if (platformWide) {
     items.push({ to: '/tenants', label: strings.nav.tenants, end: true });
