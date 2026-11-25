@@ -175,13 +175,43 @@ describe('planes de uso', () => {
 });
 
 describe('planes sin empresa elegida', () => {
-  test('el Super Admin ve los planes de todas las empresas, sin crear uno', async () => {
-    server.use(http.get(`${BASE}/users/me`, () => HttpResponse.json(fx.superadminProfile)));
-    renderApp(<UsagePlans />, { route: '/planes' });
+  test('el Super Admin ve solo los planes globales y crea uno global', async () => {
+    const globalPlan: UsagePlan = {
+      ...fx.freePlan,
+      usage_plan_uuid: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+      name: 'Plan de plataforma',
+      is_shared: true,
+      tenant_uuid: null,
+    };
+    const companyPlan: UsagePlan = {
+      ...fx.freePlan,
+      usage_plan_uuid: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+      name: 'Plan de empresa',
+      is_shared: false,
+      tenant_uuid: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    };
+    const bodies: unknown[] = [];
+    server.use(
+      http.get(`${BASE}/users/me`, () => HttpResponse.json(fx.superadminProfile)),
+      http.get(`${BASE}/admin/usage-plans`, () => HttpResponse.json([globalPlan, companyPlan])),
+      http.post(`${BASE}/admin/usage-plans`, async ({ request }) => {
+        bodies.push(await request.json());
+        return HttpResponse.json(globalPlan, { status: 201 });
+      }),
+    );
+    const { user } = renderApp(<UsagePlans />, { route: '/planes' });
 
-    expect(await screen.findByText(fx.freePlan.name)).toBeInTheDocument();
-    expect(screen.getAllByText('Plataforma').length).toBeGreaterThan(0);
-    expect(screen.queryByRole('button', { name: 'Nuevo plan' })).not.toBeInTheDocument();
+    expect(await screen.findByText('Plan de plataforma')).toBeInTheDocument();
+    expect(screen.queryByText('Plan de empresa')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Nuevo plan global' }));
+    const dialog = within(await screen.findByRole('dialog'));
+    await user.type(dialog.getByLabelText(/Nombre/), 'Nuevo global');
+    await user.type(dialog.getByLabelText(/Crédito por día/), '50');
+    await user.click(dialog.getByRole('button', { name: /Guardar/ }));
+
+    await waitFor(() => expect(bodies).toHaveLength(1));
+    expect(bodies[0]).toMatchObject({ name: 'Nuevo global', is_shared: true });
   });
 });
 
