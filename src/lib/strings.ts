@@ -270,6 +270,11 @@ export const strings = {
   },
   staffUsers: {
     heading: 'Usuarios',
+    phone: 'Teléfono',
+    phoneHint: 'Formato internacional, p. ej. +59176543210. Déjalo vacío para quitarlo.',
+    invalidEmail: 'Correo no válido.',
+    invalidPhone: 'Teléfono no válido (formato +código de país y número).',
+    citiesMulti: 'Ciudades (mantén Ctrl o Cmd para elegir varias)',
     intro:
       'Personas que administran o operan la empresa. Un administrador de empresa crea operadores y administradores de ciudad de su empresa; el superadmin también crea administradores de empresa.',
     newUser: 'Nuevo usuario',
@@ -305,7 +310,7 @@ export const strings = {
   },
   usagePlans: {
     platformIntro:
-      'Planes de todas las empresas. Puedes editar cualquiera; para crear un plan, elige una empresa (arriba).',
+      'Planes globales de la plataforma: los ofrece la empresa principal a todas las empresas. Puedes crearlos y editarlos aquí.',
     owner: 'Empresa',
     ownerPlatform: 'Plataforma',
     heading: 'Planes de uso',
@@ -313,6 +318,7 @@ export const strings = {
       'Cada plan fija cuánto crédito consume un conductor por día. Los conductores se asignan a un plan; ' +
       'si cambias el precio, el vencimiento de todos los conductores del plan se recalcula.',
     newPlan: 'Nuevo plan',
+    newGlobalPlan: 'Nuevo plan global',
     editPlan: 'Editar plan',
     name: 'Nombre',
     dailyCredit: 'Crédito por día',

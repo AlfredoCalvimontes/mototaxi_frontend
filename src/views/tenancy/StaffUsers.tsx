@@ -335,27 +335,35 @@ function CityChecklist({
   legendError?: string;
 }) {
   const active = (cities.data?.items ?? []).filter((c) => c.is_active);
+  if (cities.isPending) return <TableSkeleton rows={1} />;
+  if (active.length === 0) return <p className="text-sm text-slate-500">{t.noCities}</p>;
   return (
-    <fieldset className="space-y-2">
-      <legend className="text-sm font-medium text-slate-700">{t.pickCities}</legend>
-      {cities.isPending ? (
-        <TableSkeleton rows={1} />
-      ) : active.length === 0 ? (
-        <p className="text-sm text-slate-500">{t.noCities}</p>
-      ) : (
-        active.map((c) => (
-          <label key={c.city_id} className="flex items-center gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              checked={picked.includes(c.city_id)}
-              onChange={() => onToggle(c.city_id)}
-            />
+    <div className="space-y-1">
+      <label htmlFor="staff-cities" className="block text-sm font-medium text-slate-700">
+        {t.pickCities}
+      </label>
+      <select
+        id="staff-cities"
+        multiple
+        size={Math.min(active.length, 6)}
+        value={picked}
+        onChange={(e) => {
+          const chosen = Array.from(e.target.selectedOptions, (o) => o.value as UUID);
+          // Report each change as a toggle so the parent keeps one list of ids.
+          for (const id of chosen) if (!picked.includes(id)) onToggle(id);
+          for (const id of picked) if (!chosen.includes(id)) onToggle(id);
+        }}
+        className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
+      >
+        {active.map((c) => (
+          <option key={c.city_id} value={c.city_id}>
             {c.name}
-          </label>
-        ))
-      )}
+          </option>
+        ))}
+      </select>
+      <p className="text-xs text-slate-500">{t.citiesMulti}</p>
       {legendError && <p className="text-sm text-red-700">{legendError}</p>}
-    </fieldset>
+    </div>
   );
 }
 
@@ -377,7 +385,13 @@ function EditStaffForm({
   );
   const [active, setActive] = useState(member.is_active);
   const [cityIds, setCityIds] = useState<UUID[]>(member.city_uuids);
+  const [name, setName] = useState(member.name);
+  const [firstLastname, setFirstLastname] = useState(member.first_lastname);
+  const [secondLastname, setSecondLastname] = useState(member.second_lastname ?? '');
+  const [email, setEmail] = useState(member.email ?? '');
+  const [phone, setPhone] = useState(member.phone_number ?? '');
   const [problem, setProblem] = useState<string | undefined>();
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<'email' | 'phone', string>>>({});
   const cityRole = role !== 'TENANT_ADMIN';
   const cities = useQuery({
     queryKey: ['cities', 'staff-edit', member.tenant_id],
@@ -406,12 +420,27 @@ function EditStaffForm({
       setProblem(t.pickCities);
       return;
     }
+    const errors: typeof fieldErrors = {};
+    const mail = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) errors.email = t.invalidEmail;
+    const tel = phone.trim().replace(/[\s-]/g, '');
+    if (tel !== '' && !/^\+[1-9]\d{6,14}$/.test(tel)) errors.phone = t.invalidPhone;
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) return;
     setProblem(undefined);
     const payload: UpdateStaffUserPayload = {
       is_active: active,
       city_uuids: cityRole ? cityIds : [],
     };
     if (member.role !== 'SUPERADMIN' && role !== member.role) payload.role = role;
+    // Only changed personal data goes out.
+    if (name.trim() !== member.name) payload.name = name.trim();
+    if (firstLastname.trim() !== member.first_lastname)
+      payload.first_lastname = firstLastname.trim();
+    if ((secondLastname.trim() || null) !== member.second_lastname)
+      payload.second_lastname = secondLastname.trim() || null;
+    if (mail !== (member.email ?? '')) payload.email = mail;
+    if (tel !== (member.phone_number ?? '')) payload.phone_number = tel;
     save.mutate(payload);
   }
 
@@ -425,6 +454,23 @@ function EditStaffForm({
           options={roleOptions}
           hint={cityRole ? t.cityRolesHint : t.tenantRoleHint}
           required
+        />
+        <Field label={t.name} value={name} onChange={setName} required />
+        <Field label={t.firstLastname} value={firstLastname} onChange={setFirstLastname} required />
+        <Field label={t.secondLastname} value={secondLastname} onChange={setSecondLastname} />
+        <Field
+          label={t.email}
+          value={email}
+          onChange={setEmail}
+          error={fieldErrors.email}
+          required
+        />
+        <Field
+          label={t.phone}
+          value={phone}
+          onChange={setPhone}
+          hint={t.phoneHint}
+          error={fieldErrors.phone}
         />
         {cityRole && (
           <CityChecklist

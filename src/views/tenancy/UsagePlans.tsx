@@ -10,7 +10,6 @@ import {
 } from '@/api/admin';
 import { queryKeys } from '@/api/queries';
 import { useAuth } from '@/auth/context';
-import { useTenantList } from '@/lib/useTenantList';
 import type { UsagePlan } from '@/api/types';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { DataTable, type Column } from '@/components/DataTable';
@@ -53,10 +52,13 @@ function priceImpact(
 function PlanForm({
   plan,
   draft,
+  global = false,
   onClose,
 }: {
   plan: UsagePlan | null;
   draft?: Draft;
+  /** A platform plan: created shared, owned by the main business. */
+  global?: boolean;
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -97,7 +99,7 @@ function PlanForm({
           daily_credit: amount!,
           includes_vehicle_rental: rental,
           ...(text && { description: text }),
-          ...(mainBusiness && shared && { is_shared: true }),
+          ...((global || (mainBusiness && shared)) && { is_shared: true }),
         });
       }
       return updateUsagePlan(plan.usage_plan_uuid, {
@@ -148,7 +150,7 @@ function PlanForm({
           <p className="text-xs text-slate-500">{t.rentalHint}</p>
         </div>
         <Field label={t.description} value={description} onChange={setDescription} />
-        {!editing && mainBusiness && (
+        {!editing && !global && mainBusiness && (
           <div className="space-y-1">
             <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
               <input
@@ -223,14 +225,11 @@ export default function UsagePlans() {
   // Without an empresa picked, a Super Admin sees every empresa's plans and can
   // edit them, but creates none: a new plan belongs to one empresa.
   const platformWide = user?.role === 'SUPERADMIN' && actingAsTenant === null;
-  const tenants = useTenantList(platformWide);
-  const ownerName = (id: string | null) =>
-    id === null
-      ? t.ownerPlatform
-      : (tenants.data?.items.find((x) => x.tenant_id === id)?.name ?? id);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [deleting, setDeleting] = useState<UsagePlan | null>(null);
   const plans = useUsagePlans();
+  // Without an empresa picked, the screen lists only the global (shared) plans.
+  const rows = platformWide ? plans.data?.filter((x) => x.is_shared) : plans.data;
   // The list carries no counts, so tally them from the drivers; the server
   // still refuses to delete a plan that has any.
   const drivers = useQuery({ queryKey: ['drivers', 'all', 'all'], queryFn: () => listDrivers() });
@@ -256,16 +255,6 @@ export default function UsagePlans() {
   if (plans.isError) return <ErrorState error={plans.error} onRetry={() => void plans.refetch()} />;
 
   const columns: Column<UsagePlan>[] = [
-    ...(platformWide
-      ? [
-          {
-            id: 'owner',
-            header: t.owner,
-            sortValue: (x: UsagePlan) => ownerName(x.tenant_uuid),
-            cell: (x: UsagePlan) => ownerName(x.tenant_uuid),
-          },
-        ]
-      : []),
     {
       id: 'name',
       header: t.name,
@@ -344,15 +333,13 @@ export default function UsagePlans() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl font-semibold text-slate-900">{t.heading}</h1>
-        {!platformWide && (
-          <button
-            type="button"
-            onClick={() => setDialog({ plan: null })}
-            className="rounded bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
-          >
-            {t.newPlan}
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => setDialog({ plan: null })}
+          className="rounded bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+        >
+          {platformWide ? t.newGlobalPlan : t.newPlan}
+        </button>
       </div>
       <p className="text-sm text-slate-600">{platformWide ? t.platformIntro : t.intro}</p>
       <p className="text-xs text-slate-500">{t.archiveHint}</p>
@@ -386,7 +373,7 @@ export default function UsagePlans() {
         </div>
       ) : (
         <DataTable
-          rows={plans.data}
+          rows={rows ?? []}
           columns={columns}
           rowKey={(x) => x.usage_plan_uuid}
           caption={t.heading}
@@ -394,7 +381,12 @@ export default function UsagePlans() {
         />
       )}
       {dialog && (
-        <PlanForm plan={dialog.plan} draft={dialog.draft} onClose={() => setDialog(null)} />
+        <PlanForm
+          plan={dialog.plan}
+          draft={dialog.draft}
+          global={platformWide}
+          onClose={() => setDialog(null)}
+        />
       )}
       <ConfirmDialog
         open={deleting !== null}

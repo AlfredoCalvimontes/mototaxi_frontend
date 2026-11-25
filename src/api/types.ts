@@ -481,6 +481,7 @@ export type StaffUser = {
   is_active: boolean;
   city_uuids: UUID[];
   created_at: IsoDateTime;
+  phone_number: string | null;
 };
 
 export type CreateStaffUserPayload = {
@@ -748,6 +749,12 @@ export type UpdateStaffUserPayload = {
   role?: 'TENANT_ADMIN' | 'CITY_ADMIN' | 'OPERATOR';
   is_active?: boolean;
   city_uuids?: UUID[];
+  name?: string;
+  first_lastname?: string;
+  second_lastname?: string | null;
+  email?: string;
+  /** Empty string clears the phone. */
+  phone_number?: string;
 };
 
 export type SaveNumberPayload = {
