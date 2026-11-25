@@ -115,4 +115,31 @@ describe('WhatsApp: una sola pantalla para números y rutas', () => {
     await waitFor(() => expect(patched).toEqual([{ is_active: false }]));
     expect(await screen.findByText('Guardado.')).toBeInTheDocument();
   });
+
+  test('editar un número de la empresa permite cambiar su rol y su ciudad', async () => {
+    asUser(fx.adminProfile);
+    const patches: unknown[] = [];
+    const assigns: unknown[] = [];
+    server.use(
+      http.patch(`${BASE}/admin/whatsapp-routing/numbers/:id`, async ({ request }) => {
+        patches.push(await request.json());
+        return HttpResponse.json(fx.ownCityNumber);
+      }),
+      http.put(`${BASE}/admin/whatsapp-routing/numbers/:id/city`, async ({ request }) => {
+        assigns.push(await request.json());
+        return HttpResponse.json(fx.ownCityNumber);
+      }),
+    );
+    const { user } = renderApp(<WhatsApp />, { route: '/whatsapp' });
+
+    const row = await rowFor(fx.ownCityNumber.phone_number_id, 'Números');
+    await user.click(row.getByRole('button', { name: 'Editar número' }));
+    const form = within(screen.getByRole('form', { name: 'Editar número' }));
+    await user.selectOptions(form.getByLabelText('Rol'), 'MAIN');
+    await user.click(form.getByRole('button', { name: 'Guardar' }));
+
+    await waitFor(() => expect(patches).toHaveLength(1));
+    expect(patches[0]).toMatchObject({ role: 'MAIN' });
+    expect(assigns).toHaveLength(0);
+  });
 });

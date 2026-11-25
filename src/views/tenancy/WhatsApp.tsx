@@ -14,6 +14,7 @@ import {
   savePlatformNumber,
   setNumberActive,
   undelegateCity,
+  updateRoutingNumber,
   type CreateNumberPayload,
 } from '@/api/admin';
 import { queryKeys } from '@/api/queries';
@@ -24,6 +25,7 @@ import type {
   RoutingRole,
   SaveNumberPayload,
   Serving,
+  UpdateNumberPayload,
 } from '@/api/types';
 import { useAuth } from '@/auth/context';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -80,6 +82,7 @@ function NumberForm({
 }) {
   const [phoneNumberId, setPhoneNumberId] = useState(initial?.phone_number_id ?? '');
   const [token, setToken] = useState('');
+  const editing = initial !== null;
   const [waba, setWaba] = useState(initial?.waba_id ?? '');
   const [display, setDisplay] = useState(initial?.display_phone_number ?? '');
   const [isActive, setIsActive] = useState(initial?.is_active ?? true);
@@ -89,7 +92,7 @@ function NumberForm({
     event.preventDefault();
     const next: Record<string, string> = {};
     if (!phoneNumberId.trim()) next.phone = strings.fleet.requiredField;
-    if (!token.trim()) next.token = r.tokenHint;
+    if (!editing && !token.trim()) next.token = r.tokenHint;
     setErrors(next);
     if (Object.keys(next).length > 0) return;
     onSubmit({
@@ -122,8 +125,8 @@ function NumberForm({
         type="password"
         value={token}
         onChange={setToken}
-        required
-        hint={r.tokenHint}
+        required={!editing}
+        hint={editing ? r.tokenHintEdit : r.tokenHint}
         error={errors.token}
       />
       <Field label={r.waba} value={waba} onChange={setWaba} />
@@ -265,6 +268,85 @@ function PlatformNumberForm({
           />
           {cityError && <p className="text-sm text-red-700">{cityError}</p>}
         </div>
+      )}
+    </NumberForm>
+  );
+}
+
+/** Edit a stored number: its ids, token (optional), and on/off switch. Role and city move elsewhere. */
+function EditNumberForm({
+  number,
+  cityRows,
+  onDone,
+  onSaved,
+}: {
+  number: RoutingNumber;
+  /** The cities this number's company operates; empty for platform numbers. */
+  cityRows: CityRouting[];
+  onDone: () => void;
+  onSaved: (message: string) => void;
+}) {
+  const queryClient = useQueryClient();
+  const [role, setRole] = useState<RoutingRole>(number.role);
+  const [cityId, setCityId] = useState<string>(number.city_uuid ?? '');
+  const isCompany = number.scope === 'TENANT';
+  const ownCities = cityRows.filter(
+    (c) => !isCompany || c.tenant_uuid == null || c.tenant_uuid === number.owner_tenant,
+  );
+  const save = useMutation({
+    mutationFn: async (base: SaveNumberPayload) => {
+      const payload: UpdateNumberPayload = {
+        phone_number_id: base.phone_number_id,
+        waba_id: base.waba_id,
+        display_phone_number: base.display_phone_number,
+        role,
+        ...(base.access_token ? { access_token: base.access_token } : {}),
+      };
+      let updated = await updateRoutingNumber(number.number_uuid, payload);
+      // A city is taken on through the same route as the table's «Asignar».
+      if (isCompany && role === 'CITY' && cityId !== (number.city_uuid ?? '')) {
+        updated = await assignNumberCity(number.number_uuid, cityId || null);
+      }
+      if (base.is_active !== undefined && base.is_active !== number.is_active) {
+        updated = await setNumberActive(number.number_uuid, base.is_active);
+      }
+      return updated;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.whatsappRouting });
+      onSaved(t.saved);
+      onDone();
+    },
+  });
+  return (
+    <NumberForm
+      title={r.editNumber}
+      initial={number}
+      pending={save.isPending}
+      error={save.error}
+      onCancel={onDone}
+      onSubmit={(base) => save.mutate(base)}
+    >
+      <SelectField
+        label={r.role}
+        value={role}
+        onChange={(v) => setRole(v as RoutingRole)}
+        options={[
+          { value: 'MAIN', label: r.roleMain },
+          { value: 'CITY', label: r.roleCity },
+        ]}
+        hint={role === 'MAIN' ? r.mainDropsCity : undefined}
+      />
+      {isCompany && role === 'CITY' && (
+        <SelectField
+          label={r.cityOptional}
+          value={cityId}
+          onChange={setCityId}
+          options={[
+            { value: '', label: r.noCityYet },
+            ...ownCities.map((c) => ({ value: c.city_uuid, label: c.city_name })),
+          ]}
+        />
       )}
     </NumberForm>
   );
@@ -417,6 +499,7 @@ export default function WhatsApp() {
   const [formOpen, setFormOpen] = useState<'company' | 'platform' | null>(null);
   const [assigning, setAssigning] = useState<CityRouting | null>(null);
   const [removal, setRemoval] = useState<RoutingNumber | null>(null);
+  const [editing, setEditing] = useState<RoutingNumber | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   const refresh = () => void queryClient.invalidateQueries({ queryKey: queryKeys.whatsappRouting });
@@ -680,13 +763,22 @@ export default function WhatsApp() {
       header: t.actions,
       cell: (n) =>
         canManage(n) ? (
-          <button
-            type="button"
-            onClick={() => setRemoval(n)}
-            className="rounded border border-red-300 px-2 py-1 text-xs text-red-700 hover:bg-red-50"
-          >
-            {t.remove}
-          </button>
+          <span className="flex flex-wrap gap-1">
+            <button
+              type="button"
+              onClick={() => setEditing(n)}
+              className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
+            >
+              {r.editNumber}
+            </button>
+            <button
+              type="button"
+              onClick={() => setRemoval(n)}
+              className="rounded border border-red-300 px-2 py-1 text-xs text-red-700 hover:bg-red-50"
+            >
+              {t.remove}
+            </button>
+          </span>
         ) : (
           <span className="text-slate-400">—</span>
         ),
@@ -809,6 +901,15 @@ export default function WhatsApp() {
         )}
         {formOpen === 'platform' && (
           <PlatformNumberForm onDone={() => setFormOpen(null)} onSaved={setNotice} />
+        )}
+        {editing && (
+          <EditNumberForm
+            key={editing.number_uuid}
+            number={editing}
+            cityRows={cities.data ?? []}
+            onDone={() => setEditing(null)}
+            onSaved={setNotice}
+          />
         )}
 
         {numberRows.length === 0 ? (
