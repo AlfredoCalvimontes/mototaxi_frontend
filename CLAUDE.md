@@ -22,4 +22,4 @@ Gate commits on the test exit status; do not chain `test; git commit`.
 
 ## Deploy
 
-Merging to `main` dispatches a deploy to the dev VM through the backend repo's `deploy.yml`. Deploy the backend first when a frontend change needs new API fields. Push to dev only unless told otherwise.
+**Merging to `main` releases to production** (the only environment) through the backend repo's `deploy.yml`, unless that repo's `DEPLOY_ENABLED` variable is not `true`. There is no staging: exercise the change locally first. Deploy the backend first when a frontend change needs new API fields. The backend workflow looks up the check names `Typecheck & Lint`, `Tests`, `Production Build` and `Docker Image Build`.
