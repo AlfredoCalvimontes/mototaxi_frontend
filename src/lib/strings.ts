@@ -854,7 +854,8 @@ export const strings = {
     attributesSection: 'Datos del vehículo',
     attributeInvalidNumber: 'Escribe un número válido',
     attributeRequired: 'Este dato es obligatorio',
-    imeiHint: 'Vaciarlo desconecta el GPS de la unidad y la saca de la lista autorizada.',
+    imeiHint:
+      '15 dígitos, impresos en la etiqueta del GPS o en su caja. Al guardar, el GPS queda autorizado en el servidor. Vaciarlo desconecta el GPS de la unidad y lo saca de la lista autorizada.',
     detachTrackerTitle: 'Desconectar el GPS',
     detachTrackerBody: (imei: string, plate: string) =>
       `Se quitará el IMEI ${imei} de ${plate}. La unidad dejará de reportar posición y saldrá de la lista autorizada del servidor GPS.`,
