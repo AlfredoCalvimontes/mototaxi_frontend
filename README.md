@@ -126,18 +126,12 @@ them with `server.use(...)`.
 
 ## Deployment
 
-The API container serves the built SPA, so there is one origin, one deploy,
-first-party cookies, and no CORS. CI builds this repo, then copies `dist/` into
-the API image (multi-stage Dockerfile with a Node stage).
-
-Backend-side requirements, if not already in place:
-
-- Register `/api/*`, `/webhook/*`, `/internal/*` and the sqladmin mount **before**
-  the SPA catch-all, or the catch-all swallows them.
-- Unknown non-API paths return `index.html` so client-side routes survive a
-  refresh; an unknown `/api` path must still 404 as JSON, never HTML.
-- Hashed assets get a long `Cache-Control`; `index.html` must be `no-cache`, or
-  browsers pin a stale build referencing deleted asset hashes.
+Merging to `main` releases to production. This repo has no deploy credentials:
+once CI is green it sends `frontend-prod` to the backend repository, whose
+`deploy.yml` updates both checkouts on the VM and builds the `frontend` service
+from the [Dockerfile](Dockerfile). The backend stack's Caddy routes `/api/*` to
+the API and everything else to that container, so the browser sees one origin:
+first-party cookies and no CORS.
 
 ### End-to-end smoke
 
